@@ -1,0 +1,215 @@
+<?php
+/**
+ * Plugin Name:       Tuiles - LCV
+ * Description:       Affiche les articles d'une catégorie spécifique via un shortcode, avec un design personnalisable.
+ * Version:           2.4.0
+ * Author:            LCV
+ * License:           GPL-2.0+
+ * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
+ * Text Domain:       mon-articles
+ * Domain Path:       /languages
+ */
+
+if ( ! defined( 'WPINC' ) ) {
+    die;
+}
+
+define( 'MY_ARTICLES_VERSION', '2.4.0' );
+define( 'MY_ARTICLES_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'MY_ARTICLES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+
+final class Mon_Affichage_Articles {
+    private static $instance;
+
+    public static function get_instance() {
+        if ( ! isset( self::$instance ) ) {
+            self::$instance = new Mon_Affichage_Articles();
+            self::$instance->includes();
+            self::$instance->add_hooks();
+        }
+        return self::$instance;
+    }
+
+    private function includes() {
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
+    }
+
+    private function add_hooks() {
+        add_action( 'init', array( $this, 'register_post_type' ) );
+        add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
+        
+        add_action( 'wp_ajax_filter_articles', array( $this, 'filter_articles_callback' ) );
+        add_action( 'wp_ajax_nopriv_filter_articles', array( $this, 'filter_articles_callback' ) );
+        
+        add_action( 'wp_ajax_search_posts_for_select2', array( $this, 'search_posts_callback' ) );
+
+        add_action( 'wp_ajax_load_more_articles', array( $this, 'load_more_articles_callback' ) );
+        add_action( 'wp_ajax_nopriv_load_more_articles', array( $this, 'load_more_articles_callback' ) );
+
+        My_Articles_Metaboxes::get_instance();
+        My_Articles_Shortcode::get_instance();
+        My_Articles_Enqueue::get_instance();
+    }
+    
+    public function filter_articles_callback() {
+        check_ajax_referer( 'my_articles_filter_nonce', 'security' );
+
+        $instance_id = isset( $_POST['instance_id'] ) ? absint( $_POST['instance_id'] ) : 0;
+        $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( $_POST['category'] ) : '';
+
+        if ( !$instance_id ) {
+            wp_send_json_error( 'ID d\'instance manquant.' );
+        }
+
+        $shortcode_instance = My_Articles_Shortcode::get_instance();
+        $options = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $display_mode = $options['display_mode'] ?? 'grid';
+        
+        $pinned_ids = array();
+        $pinned_query = null;
+        $pinned_posts_found = 0;
+
+        if ( !empty($options['pinned_posts_ignore_filter']) && !empty($options['pinned_posts']) && is_array($options['pinned_posts']) ) {
+            $pinned_ids = $options['pinned_posts'];
+            $pinned_query = new WP_Query([
+                'post_type' => 'any',
+                'post_status' => 'publish',
+                'post__in' => $pinned_ids,
+                'orderby' => 'post__in',
+                'posts_per_page' => count($pinned_ids),
+            ]);
+            $pinned_posts_found = $pinned_query->post_count;
+        }
+
+        $total_posts_needed = (int)($options['posts_per_page'] ?? 10);
+        $regular_posts_needed = $total_posts_needed - $pinned_posts_found;
+        $articles_query = null;
+        
+        if ($regular_posts_needed > 0) {
+            $query_args = [
+                'post_type' => 'post',
+                'post_status' => 'publish',
+                'posts_per_page' => $regular_posts_needed,
+                'post__not_in' => $pinned_ids,
+            ];
+    
+            if ( !empty($category_slug) && $category_slug !== 'all' ) {
+                $query_args['category_name'] = $category_slug;
+            }
+            $articles_query = new WP_Query($query_args);
+        }
+
+        ob_start();
+
+        if ( $pinned_query && $pinned_query->have_posts() ) {
+            while ( $pinned_query->have_posts() ) {
+                $pinned_query->the_post();
+                if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
+                $shortcode_instance->render_article_item($options, true);
+                if ($display_mode === 'slideshow') echo '</div>';
+            }
+        }
+
+        if ( $articles_query && $articles_query->have_posts() ) {
+            while ( $articles_query->have_posts() ) {
+                $articles_query->the_post();
+                if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
+                $shortcode_instance->render_article_item($options, false);
+                if ($display_mode === 'slideshow') echo '</div>';
+            }
+        }
+        
+        if ( (!$pinned_query || !$pinned_query->have_posts()) && (!$articles_query || !$articles_query->have_posts()) ) {
+            echo '<p style="text-align: center; width: 100%; padding: 20px;">' . __('Aucun article trouvé dans cette catégorie.', 'mon-articles') . '</p>';
+        }
+        
+        wp_reset_postdata();
+        $html = ob_get_clean();
+
+        wp_send_json_success( ['html' => $html] );
+    }
+
+    public function load_more_articles_callback() {
+        check_ajax_referer( 'my_articles_load_more_nonce', 'security' );
+
+        $instance_id = isset( $_POST['instance_id'] ) ? absint( $_POST['instance_id'] ) : 0;
+        $paged = isset( $_POST['paged'] ) ? absint( $_POST['paged'] ) : 1;
+        $pinned_ids_str = isset( $_POST['pinned_ids'] ) ? sanitize_text_field( $_POST['pinned_ids'] ) : '';
+        $category = isset( $_POST['category'] ) ? sanitize_text_field( $_POST['category'] ) : '';
+
+        if (!$instance_id) { wp_send_json_error(); }
+
+        $shortcode_instance = My_Articles_Shortcode::get_instance();
+        $options = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $pinned_ids = !empty($pinned_ids_str) ? array_map('absint', explode(',', $pinned_ids_str)) : array();
+
+        $query_args = [
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => $options['posts_per_page'] ?? 10,
+            'post__not_in' => $pinned_ids,
+            'paged' => $paged,
+            'category_name' => $category
+        ];
+
+        $query = new WP_Query($query_args);
+
+        ob_start();
+        if ($query->have_posts()) {
+            while ($query->have_posts()) {
+                $query->the_post();
+                $shortcode_instance->render_article_item($options, false);
+            }
+        }
+        wp_reset_postdata();
+        $html = ob_get_clean();
+
+        wp_send_json_success(['html' => $html]);
+    }
+
+    public function search_posts_callback() {
+        check_ajax_referer( 'my_articles_select2_nonce', 'security' );
+
+        $search_term = isset( $_GET['search'] ) ? sanitize_text_field( $_GET['search'] ) : '';
+        $results = [];
+
+        if ( !empty($search_term) ) {
+            $query = new WP_Query([
+                's' => $search_term,
+                'post_type' => 'post',
+                'post_status' => 'publish',
+                'posts_per_page' => 20,
+            ]);
+
+            if ($query->have_posts()) {
+                while ($query->have_posts()) {
+                    $query->the_post();
+                    $results[] = [
+                        'id' => get_the_ID(),
+                        'text' => get_the_title(),
+                    ];
+                }
+            }
+        }
+        
+        wp_send_json_success($results);
+    }
+
+    public function register_post_type() {
+        $labels = array('name' => _x( 'Affichages Articles', 'Post Type General Name', 'mon-articles' ), 'singular_name' => _x( 'Affichage Articles', 'Post Type Singular Name', 'mon-articles' ), 'menu_name' => __( 'Mes Affichages', 'mon-articles' ), 'name_admin_bar' => __( 'Affichage Articles', 'mon-articles' ), 'all_items' => __( 'Tous les Affichages', 'mon-articles' ), 'add_new_item' => __( 'Ajouter un nouvel Affichage', 'mon-articles' ), 'add_new' => __( 'Ajouter', 'mon-articles' ), 'new_item' => __( 'Nouvel Affichage', 'mon-articles' ), 'edit_item' => __( 'Modifier l\'Affichage', 'mon-articles' ), 'update_item' => __( 'Mettre à jour l\'Affichage', 'mon-articles' ),);
+        $args = array('label' => __( 'Affichage Articles', 'mon-articles' ), 'description' => __( 'Configurations pour le shortcode d\'affichage d\'articles.', 'mon-articles' ), 'labels' => $labels, 'supports' => array( 'title' ), 'hierarchical' => false, 'public' => false, 'show_ui' => true, 'show_in_menu' => true, 'menu_position' => 26, 'menu_icon' => 'dashicons-layout', 'show_in_admin_bar' => true, 'show_in_nav_menus' => false, 'can_export' => true, 'has_archive' => false, 'exclude_from_search' => true, 'publicly_queryable' => false, 'capability_type' => 'post', 'show_in_rest' => false,);
+        register_post_type( 'mon_affichage', $args );
+    }
+
+    public function load_textdomain() {
+        load_plugin_textdomain( 'mon-articles', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+    }
+}
+
+function my_articles_plugin_run() {
+    return Mon_Affichage_Articles::get_instance();
+}
+
+my_articles_plugin_run();
