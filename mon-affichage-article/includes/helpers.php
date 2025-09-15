@@ -17,29 +17,27 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
             $color = trim( $color );
         }
 
-        if ( preg_match( '/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*((?:\d+(?:\.\d+)?|\.\d+))\s*\)$/', $color, $matches ) ) {
-            $red   = (int) $matches[1];
-            $green = (int) $matches[2];
-            $blue  = (int) $matches[3];
-            $alpha = (float) $matches[4];
+        if ( preg_match(
+            '/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*((?:\d+(?:\.\d+)?|\.\d+))\s*\)$/',
+            $color,
+            $matches
+        ) ) {
+            list( , $red_component, $green_component, $blue_component, $alpha_component ) = $matches;
 
-            $alpha_value = trim( $matches[4] );
+            $red   = (int) $red_component;
+            $green = (int) $green_component;
+            $blue  = (int) $blue_component;
+            $alpha = (float) $alpha_component;
 
-            if ( '' === $alpha_value ) {
+            if ( $red < 0 || $red > 255 || $green < 0 || $green > 255 || $blue < 0 || $blue > 255 ) {
                 return $default;
-            }
-
-            foreach ( array( $red, $green, $blue ) as $channel ) {
-                if ( $channel < 0 || $channel > 255 ) {
-                    return $default;
-                }
             }
 
             if ( $alpha < 0 || $alpha > 1 ) {
                 return $default;
             }
 
-            return sprintf( 'rgba(%d, %d, %d, %s)', $red, $green, $blue, $alpha_value );
+            return sprintf( 'rgba(%d, %d, %d, %s)', $red, $green, $blue, $alpha_component );
         }
 
         $hex_color = sanitize_hex_color( $color );
