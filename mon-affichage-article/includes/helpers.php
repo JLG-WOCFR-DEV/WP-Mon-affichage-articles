@@ -17,8 +17,29 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
             $color = trim( $color );
         }
 
-        if ( preg_match( '/^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d*(?:\.\d+)?)\)$/', $color ) ) {
-            return $color;
+        if ( preg_match( '/^rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*((?:\d+(?:\.\d+)?|\.\d+))\s*\)$/', $color, $matches ) ) {
+            $red   = (int) $matches[1];
+            $green = (int) $matches[2];
+            $blue  = (int) $matches[3];
+            $alpha = (float) $matches[4];
+
+            $alpha_value = trim( $matches[4] );
+
+            if ( '' === $alpha_value ) {
+                return $default;
+            }
+
+            foreach ( array( $red, $green, $blue ) as $channel ) {
+                if ( $channel < 0 || $channel > 255 ) {
+                    return $default;
+                }
+            }
+
+            if ( $alpha < 0 || $alpha > 1 ) {
+                return $default;
+            }
+
+            return sprintf( 'rgba(%d, %d, %d, %s)', $red, $green, $blue, $alpha_value );
         }
 
         $hex_color = sanitize_hex_color( $color );
