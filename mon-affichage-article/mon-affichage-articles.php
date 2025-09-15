@@ -250,12 +250,25 @@ final class Mon_Affichage_Articles {
         }
 
         $search_term = isset( $_GET['search'] ) ? sanitize_text_field( $_GET['search'] ) : '';
+        $post_type   = 'post';
+
+        if ( isset( $_GET['post_type'] ) ) {
+            $post_type = sanitize_key( wp_unslash( $_GET['post_type'] ) );
+        }
+
+        if ( empty( $post_type ) ) {
+            $post_type = 'post';
+        }
+
+        if ( ! post_type_exists( $post_type ) ) {
+            wp_send_json_error( __( 'Type de contenu invalide.', 'mon-articles' ), 400 );
+        }
         $results = [];
 
         if ( !empty($search_term) ) {
             $query = new WP_Query([
                 's' => $search_term,
-                'post_type' => 'post',
+                'post_type' => $post_type,
                 'post_status' => 'publish',
                 'posts_per_page' => 20,
             ]);
