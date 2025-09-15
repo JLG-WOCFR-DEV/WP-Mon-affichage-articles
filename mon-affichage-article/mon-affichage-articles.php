@@ -32,6 +32,7 @@ final class Mon_Affichage_Articles {
 
     private function includes() {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/helpers.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-settings.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
@@ -52,6 +53,7 @@ final class Mon_Affichage_Articles {
         add_action( 'wp_ajax_load_more_articles', array( $this, 'load_more_articles_callback' ) );
         add_action( 'wp_ajax_nopriv_load_more_articles', array( $this, 'load_more_articles_callback' ) );
 
+        My_Articles_Settings::get_instance();
         My_Articles_Metaboxes::get_instance();
         My_Articles_Shortcode::get_instance();
         My_Articles_Enqueue::get_instance();
