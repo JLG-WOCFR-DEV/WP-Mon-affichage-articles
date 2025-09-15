@@ -42,7 +42,10 @@ final class Mon_Affichage_Articles {
         
         add_action( 'wp_ajax_filter_articles', array( $this, 'filter_articles_callback' ) );
         add_action( 'wp_ajax_nopriv_filter_articles', array( $this, 'filter_articles_callback' ) );
-        
+
+        add_action( 'wp_ajax_get_post_type_taxonomies', array( $this, 'get_post_type_taxonomies_callback' ) );
+        add_action( 'wp_ajax_get_taxonomy_terms', array( $this, 'get_taxonomy_terms_callback' ) );
+
         add_action( 'wp_ajax_search_posts_for_select2', array( $this, 'search_posts_callback' ) );
 
         add_action( 'wp_ajax_load_more_articles', array( $this, 'load_more_articles_callback' ) );
@@ -167,6 +170,75 @@ final class Mon_Affichage_Articles {
         $html = ob_get_clean();
 
         wp_send_json_success(['html' => $html]);
+    }
+
+    public function get_post_type_taxonomies_callback() {
+        check_ajax_referer( 'my_articles_admin_nonce', 'security' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Action non autorisée.', 'mon-articles' ) ) );
+        }
+
+        $post_type = isset( $_POST['post_type'] ) ? sanitize_text_field( wp_unslash( $_POST['post_type'] ) ) : '';
+
+        if ( empty( $post_type ) || ! post_type_exists( $post_type ) ) {
+            wp_send_json_error( array( 'message' => __( 'Type de contenu invalide.', 'mon-articles' ) ) );
+        }
+
+        $taxonomies_objects = get_object_taxonomies( $post_type, 'objects' );
+        $taxonomies = array();
+
+        foreach ( $taxonomies_objects as $taxonomy ) {
+            if ( isset( $taxonomy->show_ui ) && ! $taxonomy->show_ui ) {
+                continue;
+            }
+
+            $label = isset( $taxonomy->labels->singular_name ) ? $taxonomy->labels->singular_name : $taxonomy->label;
+
+            $taxonomies[] = array(
+                'name'  => $taxonomy->name,
+                'label' => $label,
+            );
+        }
+
+        wp_send_json_success( array_values( $taxonomies ) );
+    }
+
+    public function get_taxonomy_terms_callback() {
+        check_ajax_referer( 'my_articles_admin_nonce', 'security' );
+
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( array( 'message' => __( 'Action non autorisée.', 'mon-articles' ) ) );
+        }
+
+        $taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_text_field( wp_unslash( $_POST['taxonomy'] ) ) : '';
+
+        if ( empty( $taxonomy ) || ! taxonomy_exists( $taxonomy ) ) {
+            wp_send_json_error( array( 'message' => __( 'Taxonomie invalide.', 'mon-articles' ) ) );
+        }
+
+        $terms = get_terms(
+            array(
+                'taxonomy'   => $taxonomy,
+                'hide_empty' => false,
+            )
+        );
+
+        if ( is_wp_error( $terms ) ) {
+            wp_send_json_error( array( 'message' => $terms->get_error_message() ) );
+        }
+
+        $formatted_terms = array();
+
+        foreach ( $terms as $term ) {
+            $formatted_terms[] = array(
+                'term_id' => $term->term_id,
+                'slug'    => $term->slug,
+                'name'    => $term->name,
+            );
+        }
+
+        wp_send_json_success( array_values( $formatted_terms ) );
     }
 
     public function search_posts_callback() {
