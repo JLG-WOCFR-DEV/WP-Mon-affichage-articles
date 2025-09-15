@@ -22,6 +22,7 @@ class My_Articles_Enqueue {
 
     public function register_plugin_styles_scripts() {
         wp_register_style('swiper-css', 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css');
+        wp_register_style('my-articles-styles', MY_ARTICLES_PLUGIN_URL . 'assets/css/styles.css', [], MY_ARTICLES_VERSION);
         wp_register_script('swiper-js', 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js', [], null, true);
     }
 }
