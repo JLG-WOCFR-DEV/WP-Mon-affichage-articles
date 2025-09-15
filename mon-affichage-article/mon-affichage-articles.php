@@ -142,8 +142,8 @@ final class Mon_Affichage_Articles {
             }
         }
         
-        if ( (!$pinned_query || !$pinned_query->have_posts()) && (!$articles_query || !$articles_query->have_posts()) ) {
-            echo '<p style="text-align: center; width: 100%; padding: 20px;">' . __('Aucun article trouvé dans cette catégorie.', 'mon-articles') . '</p>';
+        if ( ( ! $pinned_query || ! $pinned_query->have_posts() ) && ( ! $articles_query || ! $articles_query->have_posts() ) ) {
+            echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
         }
         
         wp_reset_postdata();
