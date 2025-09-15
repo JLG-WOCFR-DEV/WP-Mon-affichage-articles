@@ -172,6 +172,10 @@ final class Mon_Affichage_Articles {
     public function search_posts_callback() {
         check_ajax_referer( 'my_articles_select2_nonce', 'security' );
 
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+
         $search_term = isset( $_GET['search'] ) ? sanitize_text_field( $_GET['search'] ) : '';
         $results = [];
 
