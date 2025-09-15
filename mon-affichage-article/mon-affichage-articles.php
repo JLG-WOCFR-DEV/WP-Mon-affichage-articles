@@ -191,9 +191,10 @@ final class Mon_Affichage_Articles {
                         'text' => get_the_title(),
                     ];
                 }
+                wp_reset_postdata();
             }
         }
-        
+
         wp_send_json_success($results);
     }
 
