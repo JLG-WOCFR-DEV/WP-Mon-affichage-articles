@@ -245,11 +245,11 @@ class My_Articles_Metaboxes {
             $sanitized['pinned_posts'] = array_map('absint', $input['pinned_posts']);
         }
         $sanitized['pinned_posts_ignore_filter'] = isset( $input['pinned_posts_ignore_filter'] ) ? 1 : 0;
-        $sanitized['pinned_border_color'] = $this->sanitize_color($input['pinned_border_color'] ?? '', '#eab308');
+        $sanitized['pinned_border_color'] = my_articles_sanitize_color($input['pinned_border_color'] ?? '', '#eab308');
         $sanitized['pinned_show_badge'] = isset( $input['pinned_show_badge'] ) ? 1 : 0;
         $sanitized['pinned_badge_text'] = isset( $input['pinned_badge_text'] ) ? sanitize_text_field($input['pinned_badge_text']) : 'Épinglé';
-        $sanitized['pinned_badge_bg_color'] = $this->sanitize_color($input['pinned_badge_bg_color'] ?? '', '#eab308');
-        $sanitized['pinned_badge_text_color'] = $this->sanitize_color($input['pinned_badge_text_color'] ?? '', '#ffffff');
+        $sanitized['pinned_badge_bg_color'] = my_articles_sanitize_color($input['pinned_badge_bg_color'] ?? '', '#eab308');
+        $sanitized['pinned_badge_text_color'] = my_articles_sanitize_color($input['pinned_badge_text_color'] ?? '', '#ffffff');
         
         if (isset($input['exclude_posts'])) {
             $cleaned_ids = preg_replace('/[^0-9,]/', '', $input['exclude_posts']);
@@ -286,24 +286,19 @@ class My_Articles_Metaboxes {
         $sanitized['excerpt_length'] = isset( $input['excerpt_length'] ) ? absint($input['excerpt_length']) : 25;
         $sanitized['excerpt_more_text'] = isset( $input['excerpt_more_text'] ) ? sanitize_text_field($input['excerpt_more_text']) : 'Lire la suite';
         $sanitized['excerpt_font_size'] = isset( $input['excerpt_font_size'] ) ? absint($input['excerpt_font_size']) : 14;
-        $sanitized['excerpt_color'] = $this->sanitize_color($input['excerpt_color'] ?? '', '#4b5563');
+        $sanitized['excerpt_color'] = my_articles_sanitize_color($input['excerpt_color'] ?? '', '#4b5563');
 
-        $sanitized['module_bg_color'] = $this->sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
-        $sanitized['vignette_bg_color'] = $this->sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
-        $sanitized['title_wrapper_bg_color'] = $this->sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
-        $sanitized['title_color'] = $this->sanitize_color($input['title_color'] ?? '', '#333333');
-        $sanitized['meta_color'] = $this->sanitize_color($input['meta_color'] ?? '', '#6b7280');
-        $sanitized['meta_color_hover'] = $this->sanitize_color($input['meta_color_hover'] ?? '', '#000000');
-        $sanitized['pagination_color'] = $this->sanitize_color($input['pagination_color'] ?? '', '#333333');
-        $sanitized['shadow_color'] = $this->sanitize_color($input['shadow_color'] ?? '', 'rgba(0,0,0,0.07)');
-        $sanitized['shadow_color_hover'] = $this->sanitize_color($input['shadow_color_hover'] ?? '', 'rgba(0,0,0,0.12)');
+        $sanitized['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
+        $sanitized['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
+        $sanitized['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
+        $sanitized['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
+        $sanitized['meta_color'] = my_articles_sanitize_color($input['meta_color'] ?? '', '#6b7280');
+        $sanitized['meta_color_hover'] = my_articles_sanitize_color($input['meta_color_hover'] ?? '', '#000000');
+        $sanitized['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
+        $sanitized['shadow_color'] = my_articles_sanitize_color($input['shadow_color'] ?? '', 'rgba(0,0,0,0.07)');
+        $sanitized['shadow_color_hover'] = my_articles_sanitize_color($input['shadow_color_hover'] ?? '', 'rgba(0,0,0,0.12)');
 
         update_post_meta( $post_id, $this->option_key, $sanitized );
     }
 
-    private function sanitize_color( $color, $default = '' ) {
-        if ( preg_match('/^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d*(?:\.\d+)?)\)$/', $color) ) { return $color; }
-        if ( sanitize_hex_color( $color ) ) { return sanitize_hex_color( $color ); }
-        return $default;
-    }
 }
