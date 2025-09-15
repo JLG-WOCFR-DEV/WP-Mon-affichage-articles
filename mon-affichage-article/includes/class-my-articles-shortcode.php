@@ -309,9 +309,9 @@ class My_Articles_Shortcode {
             <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
             <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
                 <div class="article-meta">
-                    <?php if ($options['show_category']) echo '<span class="article-category">' . get_the_term_list(get_the_ID(), $taxonomy, '', ', ') . '</span>'; ?>
-                    <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . get_the_author() . '</a></span>'; ?>
-                    <?php if ($options['show_date']) echo '<span class="article-date">' . get_the_date() . '</span>'; ?>
+                    <?php if ($options['show_category']) echo '<span class="article-category">' . wp_kses_post(get_the_term_list(get_the_ID(), $taxonomy, '', ', ')) . '</span>'; ?>
+                    <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . esc_html(get_the_author()) . '</a></span>'; ?>
+                    <?php if ($options['show_date']) echo '<span class="article-date">' . esc_html(get_the_date()) . '</span>'; ?>
                 </div>
             <?php endif; ?>
             <?php if (!empty($options['show_excerpt'])): ?>
