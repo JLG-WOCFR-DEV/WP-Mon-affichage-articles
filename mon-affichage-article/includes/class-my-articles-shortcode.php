@@ -306,7 +306,7 @@ class My_Articles_Shortcode {
             </div>
         </a>
         <div class="<?php echo esc_attr($wrapper_class); ?>">
-            <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+            <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php echo esc_html(get_the_title()); ?></a></h2>
             <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
                 <div class="article-meta">
                     <?php if ($options['show_category']) echo '<span class="article-category">' . wp_kses_post(get_the_term_list(get_the_ID(), $taxonomy, '', ', ')) . '</span>'; ?>
@@ -316,7 +316,7 @@ class My_Articles_Shortcode {
             <?php endif; ?>
             <?php if (!empty($options['show_excerpt'])): ?>
                 <div class="my-article-excerpt">
-                    <?php echo wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], $excerpt_more); ?>
+                    <?php echo wp_kses_post(wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], $excerpt_more)); ?>
                     <?php if (!empty($options['excerpt_more_text'])): ?>
                         <a href="<?php the_permalink(); ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
                     <?php endif; ?>
