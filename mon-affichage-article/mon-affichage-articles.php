@@ -199,8 +199,38 @@ final class Mon_Affichage_Articles {
     }
 
     public function register_post_type() {
-        $labels = array('name' => _x( 'Affichages Articles', 'Post Type General Name', 'mon-articles' ), 'singular_name' => _x( 'Affichage Articles', 'Post Type Singular Name', 'mon-articles' ), 'menu_name' => __( 'Mes Affichages', 'mon-articles' ), 'name_admin_bar' => __( 'Affichage Articles', 'mon-articles' ), 'all_items' => __( 'Tous les Affichages', 'mon-articles' ), 'add_new_item' => __( 'Ajouter un nouvel Affichage', 'mon-articles' ), 'add_new' => __( 'Ajouter', 'mon-articles' ), 'new_item' => __( 'Nouvel Affichage', 'mon-articles' ), 'edit_item' => __( 'Modifier l\'Affichage', 'mon-articles' ), 'update_item' => __( 'Mettre à jour l\'Affichage', 'mon-articles' ),);
-        $args = array('label' => __( 'Affichage Articles', 'mon-articles' ), 'description' => __( 'Configurations pour le shortcode d\'affichage d\'articles.', 'mon-articles' ), 'labels' => $labels, 'supports' => array( 'title' ), 'hierarchical' => false, 'public' => false, 'show_ui' => true, 'show_in_menu' => true, 'menu_position' => 26, 'menu_icon' => 'dashicons-layout', 'show_in_admin_bar' => true, 'show_in_nav_menus' => false, 'can_export' => true, 'has_archive' => false, 'exclude_from_search' => true, 'publicly_queryable' => false, 'capability_type' => 'post', 'show_in_rest' => false,);
+        $labels = [
+            'name' => _x( 'Affichages Articles', 'Post Type General Name', 'mon-articles' ),
+            'singular_name' => _x( 'Affichage Articles', 'Post Type Singular Name', 'mon-articles' ),
+            'menu_name' => __( 'Mes Affichages', 'mon-articles' ),
+            'name_admin_bar' => __( 'Affichage Articles', 'mon-articles' ),
+            'all_items' => __( 'Tous les Affichages', 'mon-articles' ),
+            'add_new_item' => __( 'Ajouter un nouvel Affichage', 'mon-articles' ),
+            'add_new' => __( 'Ajouter', 'mon-articles' ),
+            'new_item' => __( 'Nouvel Affichage', 'mon-articles' ),
+            'edit_item' => __( 'Modifier l\'Affichage', 'mon-articles' ),
+            'update_item' => __( 'Mettre à jour l\'Affichage', 'mon-articles' ),
+        ];
+        $args = [
+            'label' => __( 'Affichage Articles', 'mon-articles' ),
+            'description' => __( 'Configurations pour le shortcode d\'affichage d\'articles.', 'mon-articles' ),
+            'labels' => $labels,
+            'supports' => [ 'title' ],
+            'hierarchical' => false,
+            'public' => false,
+            'show_ui' => true,
+            'show_in_menu' => true,
+            'menu_position' => 26,
+            'menu_icon' => 'dashicons-layout',
+            'show_in_admin_bar' => true,
+            'show_in_nav_menus' => false,
+            'can_export' => true,
+            'has_archive' => false,
+            'exclude_from_search' => true,
+            'publicly_queryable' => false,
+            'capability_type' => 'post',
+            'show_in_rest' => false,
+        ];
         register_post_type( 'mon_affichage', $args );
     }
 
