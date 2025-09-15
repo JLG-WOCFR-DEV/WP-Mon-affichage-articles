@@ -72,6 +72,11 @@ final class Mon_Affichage_Articles {
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
         $display_mode = $options['display_mode'] ?? 'grid';
+        $post_type = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
+        $taxonomy = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
+        if ( empty( $taxonomy ) && 'post' === $post_type && taxonomy_exists( 'category' ) ) {
+            $taxonomy = 'category';
+        }
         
         $pinned_ids = array();
         $pinned_query = null;
@@ -95,14 +100,24 @@ final class Mon_Affichage_Articles {
         
         if ($regular_posts_needed > 0) {
             $query_args = [
-                'post_type' => 'post',
+                'post_type' => $post_type,
                 'post_status' => 'publish',
                 'posts_per_page' => $regular_posts_needed,
                 'post__not_in' => $pinned_ids,
             ];
-    
+
             if ( !empty($category_slug) && $category_slug !== 'all' ) {
-                $query_args['category_name'] = $category_slug;
+                if ( ! empty( $taxonomy ) ) {
+                    $query_args['tax_query'] = [
+                        [
+                            'taxonomy' => $taxonomy,
+                            'field'    => 'slug',
+                            'terms'    => $category_slug,
+                        ],
+                    ];
+                } else {
+                    $query_args['category_name'] = $category_slug;
+                }
             }
             $articles_query = new WP_Query($query_args);
         }
@@ -149,16 +164,34 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $post_type = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
+        $taxonomy = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
+        if ( empty( $taxonomy ) && 'post' === $post_type && taxonomy_exists( 'category' ) ) {
+            $taxonomy = 'category';
+        }
         $pinned_ids = !empty($pinned_ids_str) ? array_map('absint', explode(',', $pinned_ids_str)) : array();
 
         $query_args = [
-            'post_type' => 'post',
+            'post_type' => $post_type,
             'post_status' => 'publish',
             'posts_per_page' => $options['posts_per_page'] ?? 10,
             'post__not_in' => $pinned_ids,
             'paged' => $paged,
-            'category_name' => $category
         ];
+
+        if ( !empty($category) && $category !== 'all' ) {
+            if ( ! empty( $taxonomy ) ) {
+                $query_args['tax_query'] = [
+                    [
+                        'taxonomy' => $taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category,
+                    ],
+                ];
+            } else {
+                $query_args['category_name'] = $category;
+            }
+        }
 
         $query = new WP_Query($query_args);
 
