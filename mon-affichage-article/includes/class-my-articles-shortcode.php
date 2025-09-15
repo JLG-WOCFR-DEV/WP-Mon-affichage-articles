@@ -151,6 +151,8 @@ class My_Articles_Shortcode {
         
         if ($options['display_mode'] === 'slideshow') { $this->enqueue_swiper_scripts($options, $id); }
 
+        wp_enqueue_style('my-articles-styles');
+
         ob_start();
         $this->render_inline_styles($options, $id);
         
@@ -341,8 +343,6 @@ class My_Articles_Shortcode {
     }
 
     private function render_inline_styles($options, $id) {
-        wp_enqueue_style('my-articles-styles');
-
         $dynamic_css = "
         #my-articles-wrapper-{$id} {
             --my-articles-cols-mobile: " . intval($options['columns_mobile']) . ";
@@ -379,6 +379,6 @@ class My_Articles_Shortcode {
         #my-articles-wrapper-{$id} .my-articles-list .my-article-item .article-content-wrapper { background-color: " . esc_attr($options['title_wrapper_bg_color']) . "; }
         ";
 
-        echo '<style>' . $dynamic_css . '</style>';
+        wp_add_inline_style( 'my-articles-styles', $dynamic_css );
     }
 }
