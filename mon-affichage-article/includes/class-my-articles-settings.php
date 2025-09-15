@@ -98,28 +98,22 @@ class My_Articles_Settings {
         $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] ) ? absint( $input['mobile_columns'] ) : 1;
         $sanitized_input['gap_size'] = isset( $input['gap_size'] ) ? absint( $input['gap_size'] ) : 25;
         $sanitized_input['border_radius'] = isset( $input['border_radius'] ) ? absint( $input['border_radius'] ) : 12;
-        $sanitized_input['title_color'] = $this->sanitize_color($input['title_color'] ?? '', '#333333');
+        $sanitized_input['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
         $sanitized_input['title_font_size'] = isset( $input['title_font_size'] ) ? absint( $input['title_font_size'] ) : 16;
         $sanitized_input['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
         $sanitized_input['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
         $sanitized_input['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
         $sanitized_input['meta_font_size'] = isset( $input['meta_font_size'] ) ? absint( $input['meta_font_size'] ) : 12;
-        $sanitized_input['meta_color'] = $this->sanitize_color($input['meta_color'] ?? '', '#6b7280');
-        $sanitized_input['meta_color_hover'] = $this->sanitize_color($input['meta_color_hover'] ?? '', '#000000');
-        $sanitized_input['module_bg_color'] = $this->sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
-        $sanitized_input['vignette_bg_color'] = $this->sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
-        $sanitized_input['title_wrapper_bg_color'] = $this->sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
+        $sanitized_input['meta_color'] = my_articles_sanitize_color($input['meta_color'] ?? '', '#6b7280');
+        $sanitized_input['meta_color_hover'] = my_articles_sanitize_color($input['meta_color_hover'] ?? '', '#000000');
+        $sanitized_input['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
+        $sanitized_input['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
+        $sanitized_input['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
         $sanitized_input['module_margin_left'] = isset( $input['module_margin_left'] ) ? absint( $input['module_margin_left'] ) : 0;
         $sanitized_input['module_margin_right'] = isset( $input['module_margin_right'] ) ? absint( $input['module_margin_right'] ) : 0;
-        $sanitized_input['pagination_color'] = $this->sanitize_color($input['pagination_color'] ?? '', '#333333');
+        $sanitized_input['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
 
         return $sanitized_input;
-    }
-
-    private function sanitize_color( $color, $default = '' ) {
-        if ( preg_match( '/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/', $color ) ) { return sanitize_hex_color( $color ); }
-        if ( preg_match('/^rgba\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3}),\s*(\d*(?:\.\d+)?)\)$/', $color) ) { return $color; }
-        return $default;
     }
 
     // Callbacks
