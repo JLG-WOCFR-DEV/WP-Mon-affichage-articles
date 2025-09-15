@@ -272,78 +272,51 @@ class My_Articles_Shortcode {
         $enable_lazy_load = !empty($options['enable_lazy_load']);
         ?>
         <div class="<?php echo esc_attr($item_classes); ?>">
-            <?php if ($display_mode === 'list'): ?>
-                <a href="<?php the_permalink(); ?>" class="article-thumbnail-link">
-                    <div class="article-thumbnail-wrapper">
-                        <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
-                        <?php if (has_post_thumbnail()):
-                            $image_id = get_post_thumbnail_id();
-                            $image_src = wp_get_attachment_image_url($image_id, 'large');
-                            $image_srcset = wp_get_attachment_image_srcset($image_id, 'large');
-                            $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                            if ($enable_lazy_load) {
-                                echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . esc_attr(get_the_title()) . '" sizes="auto" />';
-                            } else {
-                                the_post_thumbnail('large');
-                            }
-                        else: ?>
-                            <img src="https://via.placeholder.com/800x450.png?text=Image" alt="Image non disponible">
-                        <?php endif; ?>
-                    </div>
-                </a>
-                <div class="article-content-wrapper">
-                    <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
-                    <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
-                        <div class="article-meta">
-                            <?php if ($options['show_category']) echo '<span class="article-category">' . get_the_term_list(get_the_ID(), $taxonomy, '', ', ') . '</span>'; ?>
-                            <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . get_the_author() . '</a></span>'; ?>
-                            <?php if ($options['show_date']) echo '<span class="article-date">' . get_the_date() . '</span>'; ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($options['show_excerpt'])): ?>
-                        <div class="my-article-excerpt">
-                            <?php echo wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], '...'); ?>
-                            <?php if (!empty($options['excerpt_more_text'])): ?>
-                                <a href="<?php the_permalink(); ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
-                            <?php endif; ?>
-                        </div>
-                    <?php endif; ?>
+            <?php
+            if ($display_mode === 'list') {
+                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', '...');
+            } else {
+                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '');
+            }
+            ?>
+        </div>
+        <?php
+    }
+
+    private function render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more) {
+        ?>
+        <a href="<?php the_permalink(); ?>" class="article-thumbnail-link">
+            <div class="article-thumbnail-wrapper">
+                <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
+                <?php if (has_post_thumbnail()):
+                    $image_id = get_post_thumbnail_id();
+                    $image_src = wp_get_attachment_image_url($image_id, 'large');
+                    $image_srcset = wp_get_attachment_image_srcset($image_id, 'large');
+                    $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    if ($enable_lazy_load) {
+                        echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . esc_attr(get_the_title()) . '" sizes="auto" />';
+                    } else {
+                        the_post_thumbnail('large');
+                    }
+                else: ?>
+                    <img src="https://via.placeholder.com/800x450.png?text=Image" alt="Image non disponible">
+                <?php endif; ?>
+            </div>
+        </a>
+        <div class="<?php echo esc_attr($wrapper_class); ?>">
+            <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
+            <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
+                <div class="article-meta">
+                    <?php if ($options['show_category']) echo '<span class="article-category">' . get_the_term_list(get_the_ID(), $taxonomy, '', ', ') . '</span>'; ?>
+                    <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . get_the_author() . '</a></span>'; ?>
+                    <?php if ($options['show_date']) echo '<span class="article-date">' . get_the_date() . '</span>'; ?>
                 </div>
-            <?php else: ?>
-                <a href="<?php the_permalink(); ?>" class="article-thumbnail-link">
-                    <div class="article-thumbnail-wrapper">
-                        <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
-                        <?php if (has_post_thumbnail()):
-                            $image_id = get_post_thumbnail_id();
-                            $image_src = wp_get_attachment_image_url($image_id, 'large');
-                            $image_srcset = wp_get_attachment_image_srcset($image_id, 'large');
-                            $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                            if ($enable_lazy_load) {
-                                echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . esc_attr(get_the_title()) . '" sizes="auto" />';
-                            } else {
-                                the_post_thumbnail('large');
-                            }
-                        else: ?>
-                            <img src="https://via.placeholder.com/800x450.png?text=Image" alt="Image non disponible">
-                        <?php endif; ?>
-                    </div>
-                </a>
-                <div class="article-title-wrapper">
-                   <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php the_title(); ?></a></h2>
-                   <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
-                        <div class="article-meta">
-                            <?php if ($options['show_category']) echo '<span class="article-category">' . get_the_term_list(get_the_ID(), $taxonomy, '', ', ') . '</span>'; ?>
-                            <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . get_the_author() . '</a></span>'; ?>
-                            <?php if ($options['show_date']) echo '<span class="article-date">' . get_the_date() . '</span>'; ?>
-                        </div>
-                    <?php endif; ?>
-                    <?php if (!empty($options['show_excerpt'])): ?>
-                        <div class="my-article-excerpt">
-                            <?php echo wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], ''); ?>
-                            <?php if (!empty($options['excerpt_more_text'])): ?>
-                                <a href="<?php the_permalink(); ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
-                            <?php endif; ?>
-                        </div>
+            <?php endif; ?>
+            <?php if (!empty($options['show_excerpt'])): ?>
+                <div class="my-article-excerpt">
+                    <?php echo wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], $excerpt_more); ?>
+                    <?php if (!empty($options['excerpt_more_text'])): ?>
+                        <a href="<?php the_permalink(); ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
