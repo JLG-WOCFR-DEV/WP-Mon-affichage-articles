@@ -79,18 +79,37 @@ final class Mon_Affichage_Articles {
         }
         
         $pinned_ids = array();
+        if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
+            $pinned_ids = array_map( 'absint', $options['pinned_posts'] );
+        }
+
         $pinned_query = null;
         $pinned_posts_found = 0;
 
-        if ( !empty($options['pinned_posts_ignore_filter']) && !empty($options['pinned_posts']) && is_array($options['pinned_posts']) ) {
-            $pinned_ids = $options['pinned_posts'];
-            $pinned_query = new WP_Query([
-                'post_type' => 'any',
-                'post_status' => 'publish',
-                'post__in' => $pinned_ids,
-                'orderby' => 'post__in',
-                'posts_per_page' => count($pinned_ids),
-            ]);
+        if ( ! empty( $pinned_ids ) ) {
+            $pinned_query_args = [
+                'post_type'      => 'any',
+                'post_status'    => 'publish',
+                'post__in'       => $pinned_ids,
+                'orderby'        => 'post__in',
+                'posts_per_page' => count( $pinned_ids ),
+            ];
+
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && ! empty( $category_slug ) && 'all' !== $category_slug ) {
+                if ( ! empty( $taxonomy ) ) {
+                    $pinned_query_args['tax_query'] = [
+                        [
+                            'taxonomy' => $taxonomy,
+                            'field'    => 'slug',
+                            'terms'    => $category_slug,
+                        ],
+                    ];
+                } else {
+                    $pinned_query_args['category_name'] = $category_slug;
+                }
+            }
+
+            $pinned_query = new WP_Query( $pinned_query_args );
             $pinned_posts_found = $pinned_query->post_count;
         }
 
