@@ -62,8 +62,8 @@ final class Mon_Affichage_Articles {
     public function filter_articles_callback() {
         check_ajax_referer( 'my_articles_filter_nonce', 'security' );
 
-        $instance_id = isset( $_POST['instance_id'] ) ? absint( $_POST['instance_id'] ) : 0;
-        $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( $_POST['category'] ) : '';
+        $instance_id = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
+        $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
 
         if ( !$instance_id ) {
             wp_send_json_error( 'ID d\'instance manquant.' );
