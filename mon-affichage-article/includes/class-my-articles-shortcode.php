@@ -187,15 +187,32 @@ class My_Articles_Shortcode {
         }
         
         if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
-            $total_query_args = [
-                'post_type' => $options['post_type'], 'post_status' => 'publish', 'posts_per_page' => -1,
-                'post__not_in' => $all_excluded_ids, 'ignore_sticky_posts' => (int)$options['ignore_native_sticky'], 'fields' => 'ids',
-            ];
-            if (!empty($options['taxonomy']) && !empty($options['term'])) {
-                $total_query_args['tax_query'] = [[ 'taxonomy' => $options['taxonomy'], 'field' => 'slug', 'terms' => $options['term'] ]];
+            $total_regular_posts = 0;
+
+            if ($articles_query instanceof WP_Query) {
+                $total_regular_posts = (int) $articles_query->found_posts;
+            } else {
+                $count_query_args = [
+                    'post_type' => $options['post_type'],
+                    'post_status' => 'publish',
+                    'posts_per_page' => 1,
+                    'post__not_in' => $all_excluded_ids,
+                    'ignore_sticky_posts' => (int) $options['ignore_native_sticky'],
+                    'fields' => 'ids',
+                ];
+
+                if (!empty($options['taxonomy']) && !empty($options['term'])) {
+                    $count_query_args['tax_query'] = [[
+                        'taxonomy' => $options['taxonomy'],
+                        'field'    => 'slug',
+                        'terms'    => $options['term'],
+                    ]];
+                }
+
+                $count_query = new WP_Query($count_query_args);
+                $total_regular_posts = (int) $count_query->found_posts;
             }
-            $total_query = new WP_Query($total_query_args);
-            $total_regular_posts = $total_query->post_count;
+
             $total_posts = $pinned_posts_found + $total_regular_posts;
             $total_pages = $posts_per_page > 0 ? ceil($total_posts / $posts_per_page) : 0;
 
