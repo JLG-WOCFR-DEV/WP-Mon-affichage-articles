@@ -284,7 +284,7 @@ final class Mon_Affichage_Articles {
             wp_send_json_error( 'Unauthorized', 403 );
         }
 
-        $search_term = isset( $_GET['search'] ) ? sanitize_text_field( $_GET['search'] ) : '';
+        $search_term = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
         $post_type   = 'post';
 
         if ( isset( $_GET['post_type'] ) ) {
@@ -313,7 +313,7 @@ final class Mon_Affichage_Articles {
                     $query->the_post();
                     $results[] = [
                         'id' => get_the_ID(),
-                        'text' => get_the_title(),
+                        'text' => wp_strip_all_tags( get_the_title() ),
                     ];
                 }
                 wp_reset_postdata();

@@ -89,7 +89,7 @@ class My_Articles_Shortcode {
         }
 
         $paged_var = 'paged_' . $id;
-        $paged = isset($_GET[$paged_var]) ? absint($_GET[$paged_var]) : 1;
+        $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
         $posts_per_page = (int)($options['posts_per_page'] ?? 10);
 
         if ($options['counting_behavior'] === 'auto_fill' && ($options['display_mode'] === 'grid' || $options['display_mode'] === 'slideshow')) {
