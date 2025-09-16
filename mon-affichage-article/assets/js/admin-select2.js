@@ -4,10 +4,11 @@
 
     $(function () {
         var $selectField = $('.my-articles-post-selector');
+        var select2Settings = (typeof myArticlesSelect2 !== 'undefined') ? myArticlesSelect2 : {};
 
         if ($selectField.length) {
             $selectField.select2({
-                placeholder: 'Rechercher un contenu par son titre...',
+                placeholder: select2Settings.placeholder || '',
                 minimumInputLength: 3,
                 ajax: {
                     url: ajaxurl,
@@ -17,7 +18,7 @@
                     data: function (params) {
                         return {
                             action: 'search_posts_for_select2',
-                            security: myArticlesSelect2.nonce,
+                            security: select2Settings.nonce || '',
                             search: params.term,
                             post_type: $('#post_type_selector').val() // On envoie le type de contenu sélectionné
                         };

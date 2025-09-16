@@ -33,8 +33,22 @@ class My_Articles_Metaboxes {
             wp_enqueue_script( 'my-articles-admin-options', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-options.js', array('jquery'), MY_ARTICLES_VERSION, true );
             wp_enqueue_script( 'my-articles-dynamic-fields', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-dynamic-fields.js', array('jquery'), MY_ARTICLES_VERSION, true );
 
-            wp_localize_script('my-articles-admin-select2', 'myArticlesSelect2', [ 'nonce' => wp_create_nonce('my_articles_select2_nonce') ]);
-            wp_localize_script('my-articles-dynamic-fields', 'myArticlesAdmin', [ 'nonce' => wp_create_nonce('my_articles_admin_nonce') ]);
+            wp_localize_script(
+                'my-articles-admin-select2',
+                'myArticlesSelect2',
+                [
+                    'nonce'       => wp_create_nonce('my_articles_select2_nonce'),
+                    'placeholder' => __( 'Rechercher un contenu par son titre...', 'mon-articles' ),
+                ]
+            );
+            wp_localize_script(
+                'my-articles-dynamic-fields',
+                'myArticlesAdmin',
+                [
+                    'nonce'             => wp_create_nonce('my_articles_admin_nonce'),
+                    'allCategoriesText' => __( 'Toutes les catégories', 'mon-articles' ),
+                ]
+            );
         }
     }
 

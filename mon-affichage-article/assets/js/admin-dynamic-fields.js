@@ -1,6 +1,8 @@
 (function ($) {
     'use strict';
 
+    var adminSettings = (typeof myArticlesAdmin !== 'undefined') ? myArticlesAdmin : {};
+
     function updateTaxonomySelector() {
         var $postTypeSelector = $('#post_type_selector');
         var $taxonomyWrapper = $('#taxonomy_selector_wrapper');
@@ -18,7 +20,7 @@
             type: 'POST',
             data: {
                 action: 'get_post_type_taxonomies',
-                security: myArticlesAdmin.nonce,
+                security: adminSettings.nonce || '',
                 post_type: selectedPostType
             },
             beforeSend: function() {
@@ -64,7 +66,7 @@
             type: 'POST',
             data: {
                 action: 'get_taxonomy_terms',
-                security: myArticlesAdmin.nonce,
+                security: adminSettings.nonce || '',
                 taxonomy: selectedTaxonomy
             },
             beforeSend: function() {
@@ -76,7 +78,7 @@
                     var currentTerm = $termSelect.data('current');
                     $termSelect.empty();
                     
-                    $termSelect.append($('<option>', { value: '', text: 'Toutes les catégories' }));
+                    $termSelect.append($('<option>', { value: '', text: adminSettings.allCategoriesText || '' }));
 
                     $.each(response.data, function (index, term) {
                         $termSelect.append($('<option>', {
