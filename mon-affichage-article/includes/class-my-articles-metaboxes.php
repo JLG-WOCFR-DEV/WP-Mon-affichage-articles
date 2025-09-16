@@ -219,7 +219,7 @@ class My_Articles_Metaboxes {
     }
 
     public function save_meta_data( $post_id ) {
-        if ( !isset($_POST['my_articles_meta_box_nonce']) || !wp_verify_nonce($_POST['my_articles_meta_box_nonce'], 'my_articles_save_meta_box_data') || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || !current_user_can('edit_post', $post_id) ) {
+        if ( !isset($_POST['my_articles_meta_box_nonce']) || !wp_verify_nonce( wp_unslash( $_POST['my_articles_meta_box_nonce'] ), 'my_articles_save_meta_box_data') || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) || !current_user_can('edit_post', $post_id) ) {
             return;
         }
 
