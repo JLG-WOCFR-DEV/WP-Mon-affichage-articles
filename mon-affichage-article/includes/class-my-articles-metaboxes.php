@@ -23,7 +23,7 @@ class My_Articles_Metaboxes {
     }
 
     public function enqueue_admin_scripts( $hook ) {
-        if ( ('post.php' == $hook || 'post-new.php' == $hook) && 'mon_affichage' === get_post_type() ) {
+        if ( ('post.php' === $hook || 'post-new.php' === $hook) && 'mon_affichage' === get_post_type() ) {
             wp_enqueue_style( 'wp-color-picker' );
             wp_enqueue_style( 'select2-css', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0' );
             
@@ -53,7 +53,7 @@ class My_Articles_Metaboxes {
     }
 
     public function render_shortcode_metabox( $post ) {
-        if ( $post->ID && $post->post_status != 'auto-draft' ) {
+        if ( $post->ID && 'auto-draft' !== $post->post_status ) {
             echo '<p>' . __( 'Copiez ce shortcode dans vos pages ou articles :', 'mon-articles' ) . '</p>';
             echo '<input type="text" value="[mon_affichage_articles id=&quot;' . esc_attr( $post->ID ) . '&quot;]" readonly style="width: 100%; padding: 8px; text-align: center;">';
         } else {
