@@ -66,7 +66,7 @@ final class Mon_Affichage_Articles {
         $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
 
         if ( !$instance_id ) {
-            wp_send_json_error( 'ID d\'instance manquant.' );
+            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
         }
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
@@ -281,7 +281,7 @@ final class Mon_Affichage_Articles {
         check_ajax_referer( 'my_articles_select2_nonce', 'security' );
 
         if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_send_json_error( 'Unauthorized', 403 );
+            wp_send_json_error( __( 'Unauthorized', 'mon-articles' ), 403 );
         }
 
         $search_term = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
