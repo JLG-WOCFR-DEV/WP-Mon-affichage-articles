@@ -84,7 +84,7 @@ class My_Articles_Shortcode {
         }
 
         if ( !empty($options['enable_lazy_load']) && !self::$lazysizes_enqueued ) {
-            add_action('wp_footer', array($this, 'print_lazysizes_script'), 20);
+            wp_enqueue_script('lazysizes');
             self::$lazysizes_enqueued = true;
         }
 
@@ -239,10 +239,6 @@ class My_Articles_Shortcode {
         return ob_get_clean();
     }
     
-    public function print_lazysizes_script() {
-        echo '<script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js" async></script>';
-    }
-
     private function render_list($pinned_query, $regular_query, $options) {
         echo '<div class="my-articles-list-content">';
         if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); } }
@@ -301,7 +297,8 @@ class My_Articles_Shortcode {
                         the_post_thumbnail('large');
                     }
                 else: ?>
-                    <img src="https://via.placeholder.com/800x450.png?text=Image" alt="Image non disponible">
+                    <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
+                    <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
                 <?php endif; ?>
             </div>
         </a>

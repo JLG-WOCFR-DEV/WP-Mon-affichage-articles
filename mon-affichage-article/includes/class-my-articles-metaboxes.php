@@ -25,10 +25,10 @@ class My_Articles_Metaboxes {
     public function enqueue_admin_scripts( $hook ) {
         if ( ('post.php' == $hook || 'post-new.php' == $hook) && 'mon_affichage' === get_post_type() ) {
             wp_enqueue_style( 'wp-color-picker' );
-            wp_enqueue_style( 'select2-css', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' );
+            wp_enqueue_style( 'select2-css', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0' );
             
             wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
-            wp_enqueue_script( 'select2-js', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', array('jquery'), null, true );
+            wp_enqueue_script( 'select2-js', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.js', array('jquery'), '4.1.0-rc.0', true );
             wp_enqueue_script( 'my-articles-admin-select2', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-select2.js', array('select2-js', 'jquery-ui-sortable'), MY_ARTICLES_VERSION, true );
             wp_enqueue_script( 'my-articles-admin-options', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-options.js', array('jquery'), MY_ARTICLES_VERSION, true );
             wp_enqueue_script( 'my-articles-dynamic-fields', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-dynamic-fields.js', array('jquery'), MY_ARTICLES_VERSION, true );
