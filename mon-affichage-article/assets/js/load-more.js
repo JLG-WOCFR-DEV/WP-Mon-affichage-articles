@@ -2,6 +2,8 @@
 (function ($) {
     'use strict';
 
+    var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
+
     $(document).on('click', '.my-articles-load-more-btn', function (e) {
         e.preventDefault();
 
@@ -17,25 +19,25 @@
         var category = button.data('category');
 
         $.ajax({
-            url: myArticlesLoadMore.ajax_url,
+            url: loadMoreSettings.ajax_url,
             type: 'POST',
             data: {
                 action: 'load_more_articles',
-                security: myArticlesLoadMore.nonce,
+                security: loadMoreSettings.nonce || '',
                 instance_id: instanceId,
                 paged: paged,
                 pinned_ids: pinnedIds,
                 category: category
             },
             beforeSend: function () {
-                button.text('Chargement...');
+                button.text(loadMoreSettings.loadingText || button.text());
                 button.prop('disabled', true);
             },
             success: function (response) {
                 if (response.success) {
                     // Ajoute les nouveaux articles à la suite des anciens
                     contentArea.append(response.data.html);
-                    
+
                     var newPage = paged + 1;
                     button.data('paged', newPage);
 
@@ -43,7 +45,7 @@
                         // S'il n'y a plus de page, on cache le bouton
                         button.hide();
                     } else {
-                        button.text('Charger plus');
+                        button.text(loadMoreSettings.loadMoreText || button.text());
                         button.prop('disabled', false);
                     }
                 } else {
@@ -53,7 +55,7 @@
             },
             error: function () {
                 button.hide();
-                console.error('Erreur AJAX.');
+                console.error(loadMoreSettings.errorText || 'AJAX error.');
             }
         });
     });

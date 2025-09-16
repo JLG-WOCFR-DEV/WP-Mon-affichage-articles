@@ -2,6 +2,8 @@
 (function ($) {
     'use strict';
 
+    var filterSettings = (typeof myArticlesFilter !== 'undefined') ? myArticlesFilter : {};
+
     $(document).on('click', '.my-articles-filter-nav a', function (e) {
         e.preventDefault();
 
@@ -19,11 +21,11 @@
         filterLink.parent().addClass('active');
 
         $.ajax({
-            url: myArticlesFilter.ajax_url,
+            url: filterSettings.ajax_url,
             type: 'POST',
             data: {
                 action: 'filter_articles',
-                security: myArticlesFilter.nonce,
+                security: filterSettings.nonce || '',
                 instance_id: instanceId,
                 category: categorySlug,
             },
@@ -80,7 +82,8 @@
             },
             error: function () {
                 contentArea.css('opacity', 1);
-                console.error('Erreur AJAX.');
+                var errorMessage = filterSettings.errorText || 'AJAX error.';
+                console.error(errorMessage);
             }
         });
     });
