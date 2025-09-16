@@ -29,7 +29,7 @@ class My_Articles_Settings {
     }
 
     public function enqueue_admin_scripts( $hook ) {
-        if ( $hook != $this->plugin_page_hook ) { return; }
+        if ( $hook !== $this->plugin_page_hook ) { return; }
         wp_enqueue_style( 'wp-color-picker' );
         wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
     }
