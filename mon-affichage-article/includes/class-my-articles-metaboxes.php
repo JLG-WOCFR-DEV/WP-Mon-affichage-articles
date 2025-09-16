@@ -223,12 +223,12 @@ class My_Articles_Metaboxes {
             return;
         }
 
-        $input = $_POST[$this->option_key] ?? [];
+        $input = isset( $_POST[$this->option_key] ) ? wp_unslash( $_POST[$this->option_key] ) : [];
         $sanitized = [];
         
         $sanitized['post_type'] = isset($input['post_type']) ? sanitize_key($input['post_type']) : 'post';
         $sanitized['taxonomy'] = isset($input['taxonomy']) ? sanitize_key($input['taxonomy']) : '';
-        $sanitized['term'] = isset($input['term']) ? sanitize_text_field($input['term']) : '';
+        $sanitized['term'] = isset($input['term']) ? sanitize_text_field( wp_unslash( $input['term'] ) ) : '';
         $sanitized['counting_behavior'] = isset($input['counting_behavior']) && in_array($input['counting_behavior'], ['exact', 'auto_fill']) ? $input['counting_behavior'] : 'exact';
         $sanitized['posts_per_page'] = isset( $input['posts_per_page'] ) ? absint( $input['posts_per_page'] ) : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';
@@ -247,12 +247,12 @@ class My_Articles_Metaboxes {
         $sanitized['pinned_posts_ignore_filter'] = isset( $input['pinned_posts_ignore_filter'] ) ? 1 : 0;
         $sanitized['pinned_border_color'] = my_articles_sanitize_color($input['pinned_border_color'] ?? '', '#eab308');
         $sanitized['pinned_show_badge'] = isset( $input['pinned_show_badge'] ) ? 1 : 0;
-        $sanitized['pinned_badge_text'] = isset( $input['pinned_badge_text'] ) ? sanitize_text_field($input['pinned_badge_text']) : 'Épinglé';
+        $sanitized['pinned_badge_text'] = isset( $input['pinned_badge_text'] ) ? sanitize_text_field( wp_unslash( $input['pinned_badge_text'] ) ) : 'Épinglé';
         $sanitized['pinned_badge_bg_color'] = my_articles_sanitize_color($input['pinned_badge_bg_color'] ?? '', '#eab308');
         $sanitized['pinned_badge_text_color'] = my_articles_sanitize_color($input['pinned_badge_text_color'] ?? '', '#ffffff');
         
         if (isset($input['exclude_posts'])) {
-            $cleaned_ids = preg_replace('/[^0-9,]/', '', $input['exclude_posts']);
+            $cleaned_ids = preg_replace('/[^0-9,]/', '', wp_unslash( $input['exclude_posts'] ) );
             $id_array = array_filter(array_map('absint', explode(',', $cleaned_ids)));
             $sanitized['exclude_posts'] = implode(',', $id_array);
         } else {
@@ -284,7 +284,7 @@ class My_Articles_Metaboxes {
 
         $sanitized['show_excerpt'] = isset( $input['show_excerpt'] ) ? 1 : 0;
         $sanitized['excerpt_length'] = isset( $input['excerpt_length'] ) ? absint($input['excerpt_length']) : 25;
-        $sanitized['excerpt_more_text'] = isset( $input['excerpt_more_text'] ) ? sanitize_text_field($input['excerpt_more_text']) : 'Lire la suite';
+        $sanitized['excerpt_more_text'] = isset( $input['excerpt_more_text'] ) ? sanitize_text_field( wp_unslash( $input['excerpt_more_text'] ) ) : 'Lire la suite';
         $sanitized['excerpt_font_size'] = isset( $input['excerpt_font_size'] ) ? absint($input['excerpt_font_size']) : 14;
         $sanitized['excerpt_color'] = my_articles_sanitize_color($input['excerpt_color'] ?? '', '#4b5563');
 
