@@ -1,0 +1,72 @@
+/* Simplified Swiper styles for offline use */
+.swiper-container {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+.swiper-wrapper {
+    display: flex;
+    transition: transform 0.3s ease;
+    will-change: transform;
+}
+.swiper-slide {
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+.swiper-button-next,
+.swiper-button-prev {
+    position: absolute;
+    top: 50%;
+    width: 40px;
+    height: 40px;
+    margin-top: -20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+}
+.swiper-button-next::after,
+.swiper-button-prev::after {
+    font-size: 18px;
+    font-weight: bold;
+    line-height: 1;
+}
+.swiper-button-next::after {
+    content: '\203A';
+}
+.swiper-button-prev::after {
+    content: '\2039';
+}
+.swiper-button-next {
+    right: 10px;
+}
+.swiper-button-prev {
+    left: 10px;
+}
+.swiper-pagination {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    z-index: 5;
+}
+.swiper-pagination-bullet {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    opacity: 0.6;
+}
+.swiper-pagination-bullet-active {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.9);
+}

@@ -21,8 +21,14 @@ class My_Articles_Enqueue {
     }
 
     public function register_plugin_styles_scripts() {
-        wp_register_style('swiper-css', 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css');
+        $vendor_url = MY_ARTICLES_PLUGIN_URL . 'assets/vendor/';
+
+        wp_register_style('swiper-css', $vendor_url . 'swiper/swiper-bundle.min.css', [], '11.0.0');
         wp_register_style('my-articles-styles', MY_ARTICLES_PLUGIN_URL . 'assets/css/styles.css', [], MY_ARTICLES_VERSION);
-        wp_register_script('swiper-js', 'https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js', [], null, true);
+        wp_register_script('swiper-js', $vendor_url . 'swiper/swiper-bundle.min.js', [], '11.0.0', true);
+        wp_register_script('lazysizes', $vendor_url . 'lazysizes/lazysizes.min.js', [], '5.3.2', true);
+        if (function_exists('wp_script_add_data')) {
+            wp_script_add_data('lazysizes', 'async', true);
+        }
     }
 }
