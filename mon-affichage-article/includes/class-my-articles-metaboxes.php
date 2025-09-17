@@ -90,7 +90,13 @@ class My_Articles_Metaboxes {
         $this->render_field('pagination_mode', __('Type de pagination', 'mon-articles'), 'select', $opts, [ 'default' => 'none', 'options' => [ 'none' => 'Aucune', 'load_more' => 'Bouton "Charger plus"', 'numbered' => 'Liens numérotés' ], 'description' => 'Ne s\'applique pas au mode Diaporama.' ]);
         $this->render_field('show_category_filter', __('Afficher le filtre de catégories', 'mon-articles'), 'checkbox', $opts, ['default' => 0]);
         $this->render_field('filter_alignment', __('Alignement du filtre', 'mon-articles'), 'select', $opts, [ 'default' => 'right', 'options' => ['left' => 'Gauche', 'center' => 'Centre', 'right' => 'Droite'] ]);
-        $this->render_field('filter_categories', __('Catégories à inclure dans le filtre', 'mon-articles'), 'category_checklist', $opts);
+        $this->render_field(
+            'filter_categories',
+            __('Catégories à inclure dans le filtre', 'mon-articles'),
+            'category_checklist',
+            $opts,
+            [ 'taxonomy' => $opts['taxonomy'] ?? '' ]
+        );
         
         echo '<hr><h3>' . __('Articles Épinglés', 'mon-articles') . '</h3>';
         $this->render_field('pinned_posts', __('Choisir les articles à épingler', 'mon-articles'), 'select2_ajax', $opts);
@@ -205,14 +211,33 @@ class My_Articles_Metaboxes {
                 }
                 break;
             case 'category_checklist':
-                $saved_cats = is_array($value) ? $value : array();
-                $all_cats = get_categories(['hide_empty' => false]);
-                echo '<div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fff;">';
-                foreach ($all_cats as $cat) {
-                    $checked = in_array($cat->term_id, $saved_cats) ? 'checked' : '';
-                    echo '<label style="display: block;"><input type="checkbox" name="' . $name . '[]" value="' . esc_attr($cat->term_id) . '" ' . $checked . '> ' . esc_html($cat->name) . '</label>';
+                $saved_cats = is_array($value) ? array_map('absint', $value) : array();
+                $selected_taxonomy = isset($args['taxonomy']) ? sanitize_key($args['taxonomy']) : '';
+                if (empty($selected_taxonomy) || !taxonomy_exists($selected_taxonomy)) {
+                    $selected_taxonomy = taxonomy_exists('category') ? 'category' : '';
                 }
-                echo '</div><p class="description">' . __('Si aucune catégorie n\'est cochée, toutes seront affichées.', 'mon-articles') . '</p>';
+
+                if (!empty($selected_taxonomy)) {
+                    $terms = get_terms([
+                        'taxonomy'   => $selected_taxonomy,
+                        'hide_empty' => false,
+                    ]);
+
+                    if (!is_wp_error($terms) && !empty($terms)) {
+                        echo '<div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fff;">';
+                        foreach ($terms as $term) {
+                            $checked = in_array($term->term_id, $saved_cats, true) ? 'checked' : '';
+                            echo '<label style="display: block;"><input type="checkbox" name="' . $name . '[]" value="' . esc_attr($term->term_id) . '" ' . $checked . '> ' . esc_html($term->name) . '</label>';
+                        }
+                        echo '</div>';
+                    } else {
+                        echo '<p class="description">' . esc_html__('Aucun terme disponible pour cette taxonomie.', 'mon-articles') . '</p>';
+                    }
+                } else {
+                    echo '<p class="description">' . esc_html__('Aucune taxonomie valide disponible.', 'mon-articles') . '</p>';
+                }
+
+                echo '<p class="description">' . __('Si aucune catégorie n\'est cochée, toutes seront affichées.', 'mon-articles') . '</p>';
                 break;
             case 'post_type_select':
                 $post_types = get_post_types(['public' => true], 'objects');
