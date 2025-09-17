@@ -270,6 +270,7 @@ final class Mon_Affichage_Articles {
         }
 
         $pinned_ids = array_unique( array_merge( $pinned_ids, $request_pinned_ids ) );
+        $displayed_pinned_count = count( $request_pinned_ids );
 
         $exclude_ids = array();
         if ( ! empty( $options['exclude_posts'] ) ) {
@@ -280,12 +281,17 @@ final class Mon_Affichage_Articles {
 
         $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
 
+        $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        $first_page_regular_count = max( 0, $posts_per_page - $displayed_pinned_count );
+        $additional_pages_displayed = max( 0, $paged - 2 );
+        $manual_offset = $first_page_regular_count + ( $additional_pages_displayed * $posts_per_page );
+
         $query_args = [
             'post_type' => $post_type,
             'post_status' => 'publish',
-            'posts_per_page' => $options['posts_per_page'] ?? 10,
+            'posts_per_page' => $posts_per_page,
             'post__not_in' => $all_excluded_ids,
-            'paged' => $paged,
+            'offset' => $manual_offset,
             'ignore_sticky_posts' => $ignore_sticky_posts,
         ];
 
