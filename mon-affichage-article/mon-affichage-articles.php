@@ -79,6 +79,13 @@ final class Mon_Affichage_Articles {
         }
         
         $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        if ( ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
+            $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
+            if ( $master_columns > 0 ) {
+                $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
+                $posts_per_page = $rows_needed * $master_columns;
+            }
+        }
         $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
 
         $pinned_ids = array();
@@ -254,6 +261,7 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $display_mode = $options['display_mode'] ?? 'grid';
         $post_type = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
         $taxonomy = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
         if ( empty( $taxonomy ) && 'post' === $post_type && taxonomy_exists( 'category' ) ) {
@@ -280,10 +288,19 @@ final class Mon_Affichage_Articles {
 
         $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
 
+        $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        if ( ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
+            $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
+            if ( $master_columns > 0 ) {
+                $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
+                $posts_per_page = $rows_needed * $master_columns;
+            }
+        }
+
         $query_args = [
             'post_type' => $post_type,
             'post_status' => 'publish',
-            'posts_per_page' => $options['posts_per_page'] ?? 10,
+            'posts_per_page' => $posts_per_page,
             'post__not_in' => $all_excluded_ids,
             'paged' => $paged,
             'ignore_sticky_posts' => $ignore_sticky_posts,
