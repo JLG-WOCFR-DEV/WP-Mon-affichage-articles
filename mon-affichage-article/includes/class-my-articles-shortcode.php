@@ -213,23 +213,39 @@ class My_Articles_Shortcode {
         echo '<div id="my-articles-wrapper-' . esc_attr($id) . '" class="' . esc_attr($wrapper_class) . '" data-instance-id="' . esc_attr($id) . '">';
 
         if ( !empty($options['show_category_filter']) ) {
-            $get_cats_args = ['hide_empty' => true];
-            if ( !empty($options['filter_categories']) && is_array($options['filter_categories']) ) { $get_cats_args['include'] = $options['filter_categories']; }
-            $categories = get_categories( $get_cats_args );
+            $active_taxonomy = '';
+            if ( !empty($options['taxonomy']) && taxonomy_exists($options['taxonomy']) ) {
+                $active_taxonomy = $options['taxonomy'];
+            } elseif ( 'post' === $options['post_type'] && taxonomy_exists('category') ) {
+                $active_taxonomy = 'category';
+            }
 
-            if (!is_wp_error($categories) && count($categories) > 0) {
-                $alignment_class = 'filter-align-' . esc_attr($options['filter_alignment']);
-                echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
-                $default_cat = $options['term'] ?? '';
-                $is_all_active = empty($default_cat) || $default_cat === 'all';
-                echo '<li class="' . ($is_all_active ? 'active' : '') . '"><a href="#" data-category="all">' . __('Tout', 'mon-articles') . '</a></li>';
-                foreach ($categories as $category) {
-                    echo '<li class="' . ($default_cat === $category->slug ? 'active' : '') . '"><a href="#" data-category="' . esc_attr($category->slug) . '">' . esc_html($category->name) . '</a></li>';
+            if ( !empty($active_taxonomy) ) {
+                $get_terms_args = [
+                    'taxonomy'   => $active_taxonomy,
+                    'hide_empty' => true,
+                ];
+
+                if ( !empty($options['filter_categories']) && is_array($options['filter_categories']) ) {
+                    $get_terms_args['include'] = array_map('absint', $options['filter_categories']);
+                    $get_terms_args['orderby'] = 'include';
                 }
-                echo '</ul></nav>';
+
+                $categories = get_terms( $get_terms_args );
+
+                if (!is_wp_error($categories) && count($categories) > 0) {
+                    $alignment_class = 'filter-align-' . esc_attr($options['filter_alignment']);
+                    echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
+                    $default_cat = $options['term'] ?? '';
+                    $is_all_active = empty($default_cat) || $default_cat === 'all';
+                    echo '<li class="' . ($is_all_active ? 'active' : '') . '"><a href="#" data-category="all">' . __('Tout', 'mon-articles') . '</a></li>';
+                    foreach ($categories as $category) {
+                        echo '<li class="' . ($default_cat === $category->slug ? 'active' : '') . '"><a href="#" data-category="' .esc_attr($category->slug) . '">' . esc_html($category->name) . '</a></li>';
+                    }
+                    echo '</ul></nav>';
+                }
             }
         }
-
         if ($options['display_mode'] === 'slideshow') {
             $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page);
         } else if ($options['display_mode'] === 'list') {
