@@ -261,12 +261,22 @@ final class Mon_Affichage_Articles {
         }
         $pinned_ids = !empty($pinned_ids_str) ? array_map('absint', explode(',', $pinned_ids_str)) : array();
 
+        $exclude_ids = array();
+        if ( ! empty( $options['exclude_posts'] ) ) {
+            $exclude_ids = array_map( 'absint', explode( ',', $options['exclude_posts'] ) );
+        }
+
+        $all_excluded_ids = array_unique( array_merge( $pinned_ids, $exclude_ids ) );
+
+        $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
+
         $query_args = [
             'post_type' => $post_type,
             'post_status' => 'publish',
             'posts_per_page' => $options['posts_per_page'] ?? 10,
-            'post__not_in' => $pinned_ids,
+            'post__not_in' => $all_excluded_ids,
             'paged' => $paged,
+            'ignore_sticky_posts' => $ignore_sticky_posts,
         ];
 
         if ( !empty($category) && $category !== 'all' ) {
