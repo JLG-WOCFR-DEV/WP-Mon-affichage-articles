@@ -273,16 +273,12 @@ final class Mon_Affichage_Articles {
 
         $exclude_ids = array();
         if ( ! empty( $options['exclude_posts'] ) ) {
-            if ( is_array( $options['exclude_posts'] ) ) {
-                $exclude_ids = array_map( 'absint', $options['exclude_posts'] );
-            } else {
-                $exclude_ids = array_map( 'absint', array_filter( array_map( 'trim', explode( ',', $options['exclude_posts'] ) ) ) );
-            }
+            $exclude_ids = array_map( 'absint', explode( ',', $options['exclude_posts'] ) );
         }
 
-        $all_excluded_ids = array_filter( array_unique( array_merge( $pinned_ids, $exclude_ids ) ) );
+        $all_excluded_ids = array_unique( array_merge( $pinned_ids, $exclude_ids ) );
 
-        $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] );
+        $ignore_sticky_posts = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
 
         $query_args = [
             'post_type' => $post_type,
