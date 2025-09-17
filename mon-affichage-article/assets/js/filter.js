@@ -11,7 +11,7 @@
         var categorySlug = filterLink.data('category');
         var wrapper = filterLink.closest('.my-articles-wrapper');
         var instanceId = wrapper.data('instance-id');
-        var contentArea = wrapper.find('.my-articles-grid-content, .swiper-wrapper');
+        var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
         
         if (filterLink.parent().hasClass('active')) {
             return; // Ne rien faire si on clique sur le filtre déjà actif
