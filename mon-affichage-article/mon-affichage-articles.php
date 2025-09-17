@@ -272,9 +272,12 @@ final class Mon_Affichage_Articles {
             $pinned_ids = array_map( 'absint', $options['pinned_posts'] );
         }
 
-        $request_pinned_ids = array();
+        $request_pinned_ids    = array();
+        $displayed_pinned_count = 0;
         if ( ! empty( $pinned_ids_str ) ) {
             $request_pinned_ids = array_map( 'absint', array_filter( array_map( 'trim', explode( ',', $pinned_ids_str ) ) ) );
+            $request_pinned_ids = array_values( array_unique( array_filter( $request_pinned_ids ) ) );
+            $displayed_pinned_count = count( $request_pinned_ids );
         }
 
         $pinned_ids = array_unique( array_merge( $pinned_ids, $request_pinned_ids ) );
@@ -297,12 +300,18 @@ final class Mon_Affichage_Articles {
             }
         }
 
+        $regular_posts_on_page_1 = max( 0, $posts_per_page - $displayed_pinned_count );
+        $offset = 0;
+        if ( $paged > 1 ) {
+            $offset = $regular_posts_on_page_1 + ( ( $paged - 2 ) * $posts_per_page );
+        }
+
         $query_args = [
             'post_type' => $post_type,
             'post_status' => 'publish',
             'posts_per_page' => $posts_per_page,
             'post__not_in' => $all_excluded_ids,
-            'paged' => $paged,
+            'offset' => $offset,
             'ignore_sticky_posts' => $ignore_sticky_posts,
         ];
 
