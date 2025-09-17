@@ -110,6 +110,13 @@ class My_Articles_Shortcode {
         $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
         $posts_per_page = (int)($options['posts_per_page'] ?? 10);
 
+        $post_type = (!empty($options['post_type']) && post_type_exists($options['post_type'])) ? $options['post_type'] : 'post';
+        $taxonomy = (!empty($options['taxonomy']) && taxonomy_exists($options['taxonomy'])) ? $options['taxonomy'] : '';
+        if (empty($taxonomy) && 'post' === $post_type && taxonomy_exists('category')) {
+            $taxonomy = 'category';
+        }
+        $initial_term = isset($options['term']) ? $options['term'] : '';
+
         if ($options['counting_behavior'] === 'auto_fill' && ($options['display_mode'] === 'grid' || $options['display_mode'] === 'slideshow')) {
             $master_columns = (int)($options['columns_ultrawide'] ?? 4);
             if ($master_columns > 0) {
@@ -118,22 +125,42 @@ class My_Articles_Shortcode {
             }
         }
 
-        $pinned_ids = !empty($options['pinned_posts']) && is_array($options['pinned_posts']) ? $options['pinned_posts'] : array();
+        $pinned_ids = !empty($options['pinned_posts']) && is_array($options['pinned_posts']) ? array_filter(array_map('absint', $options['pinned_posts'])) : array();
         $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
         $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
-        
+
         $pinned_query = null;
         $pinned_posts_found = 0;
+        $rendered_pinned_ids = array();
         if ($paged === 1 && !empty($pinned_ids)) {
-            $pinned_query = new WP_Query([
+            $pinned_query_args = [
                 'post_type' => 'any',
                 'post_status' => 'publish',
                 'post__in' => $pinned_ids,
                 'orderby' => 'post__in',
                 'posts_per_page' => count($pinned_ids),
                 'post__not_in' => $exclude_ids,
-            ]);
+            ];
+
+            if (empty($options['pinned_posts_ignore_filter']) && !empty($initial_term) && 'all' !== $initial_term) {
+                if (!empty($taxonomy)) {
+                    $pinned_query_args['tax_query'] = [
+                        [
+                            'taxonomy' => $taxonomy,
+                            'field'    => 'slug',
+                            'terms'    => $initial_term,
+                        ],
+                    ];
+                } else {
+                    $pinned_query_args['category_name'] = $initial_term;
+                }
+            }
+
+            $pinned_query = new WP_Query($pinned_query_args);
             $pinned_posts_found = $pinned_query->post_count;
+            if ($pinned_query->have_posts()) {
+                $rendered_pinned_ids = wp_list_pluck($pinned_query->posts, 'ID');
+            }
         }
 
         $regular_posts_on_page_1 = $posts_per_page - $pinned_posts_found;
@@ -143,20 +170,20 @@ class My_Articles_Shortcode {
         $articles_query = null;
         if ($posts_to_fetch > 0) {
             $regular_query_args = [
-                'post_type' => $options['post_type'],
+                'post_type' => $post_type,
                 'post_status' => 'publish',
                 'posts_per_page' => $posts_to_fetch,
                 'offset' => $offset,
                 'post__not_in' => $all_excluded_ids,
                 'ignore_sticky_posts' => (int)$options['ignore_native_sticky'],
             ];
-    
-            if (!empty($options['taxonomy']) && !empty($options['term'])) {
+
+            if (!empty($taxonomy) && !empty($initial_term) && 'all' !== $initial_term) {
                 $regular_query_args['tax_query'] = [
                     [
-                        'taxonomy' => $options['taxonomy'],
+                        'taxonomy' => $taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $options['term'],
+                        'terms'    => $initial_term,
                     ],
                 ];
             }
@@ -211,7 +238,7 @@ class My_Articles_Shortcode {
                 $total_regular_posts = (int) $articles_query->found_posts;
             } else {
                 $count_query_args = [
-                    'post_type' => $options['post_type'],
+                    'post_type' => $post_type,
                     'post_status' => 'publish',
                     'posts_per_page' => 1,
                     'post__not_in' => $all_excluded_ids,
@@ -219,11 +246,11 @@ class My_Articles_Shortcode {
                     'fields' => 'ids',
                 ];
 
-                if (!empty($options['taxonomy']) && !empty($options['term'])) {
+                if (!empty($taxonomy) && !empty($initial_term) && 'all' !== $initial_term) {
                     $count_query_args['tax_query'] = [[
-                        'taxonomy' => $options['taxonomy'],
+                        'taxonomy' => $taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $options['term'],
+                        'terms'    => $initial_term,
                     ]];
                 }
 
@@ -236,7 +263,8 @@ class My_Articles_Shortcode {
 
             if ($options['pagination_mode'] === 'load_more') {
                 if ( $total_pages > 1 && $paged < $total_pages) {
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="2" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . __('Charger plus', 'mon-articles') . '</button></div>';
+                    $pinned_ids_for_button = !empty($rendered_pinned_ids) ? implode(',', array_map('absint', $rendered_pinned_ids)) : '';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="2" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr($pinned_ids_for_button) . '" data-category="' . esc_attr($options['term']) . '">' . __('Charger plus', 'mon-articles') . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $this->render_numbered_pagination($total_pages, $paged, $paged_var);
