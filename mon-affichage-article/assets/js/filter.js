@@ -37,6 +37,31 @@
                     contentArea.html(response.data.html);
                     contentArea.css('opacity', 1);
 
+                    var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
+                    if (loadMoreBtn.length) {
+                        var totalPages = parseInt(response.data.total_pages, 10);
+                        if (isNaN(totalPages)) {
+                            totalPages = 0;
+                        }
+
+                        var nextPage = parseInt(response.data.next_page, 10);
+                        if (isNaN(nextPage) || nextPage < 2) {
+                            nextPage = 2;
+                        }
+
+                        loadMoreBtn.data('category', categorySlug || '');
+                        loadMoreBtn.data('paged', nextPage);
+                        loadMoreBtn.data('total-pages', totalPages);
+                        loadMoreBtn.data('pinned-ids', response.data.pinned_ids || '');
+
+                        if (totalPages > 1) {
+                            loadMoreBtn.show();
+                            loadMoreBtn.prop('disabled', false);
+                        } else {
+                            loadMoreBtn.hide();
+                        }
+                    }
+
                     if (wrapper.hasClass('my-articles-slideshow')) {
                         if (typeof window.mySwiperInstances !== 'undefined' && window.mySwiperInstances[instanceId]) {
                             window.mySwiperInstances[instanceId].destroy(true, true);
