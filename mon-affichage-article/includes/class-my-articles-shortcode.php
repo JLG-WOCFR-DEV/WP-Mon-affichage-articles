@@ -170,12 +170,15 @@ class My_Articles_Shortcode {
             }
         }
 
-        $regular_posts_on_page_1_raw = $posts_per_page - $pinned_posts_found;
-        $regular_posts_on_page_1 = max( 0, $regular_posts_on_page_1_raw );
-        $offset = ($paged > 1)
-            ? $regular_posts_on_page_1 + (($paged - 2) * $posts_per_page)
-            : 0;
-        $posts_to_fetch = ($paged === 1) ? $regular_posts_on_page_1 : $posts_per_page;
+        $regular_posts_on_page_1 = max( 0, $posts_per_page - $pinned_posts_found );
+
+        if ( $paged > 1 ) {
+            $offset = $regular_posts_on_page_1 + ( max( 0, $paged - 2 ) * $posts_per_page );
+            $posts_to_fetch = $posts_per_page;
+        } else {
+            $offset = 0;
+            $posts_to_fetch = $regular_posts_on_page_1;
+        }
         
         $articles_query = null;
         if ($posts_to_fetch > 0) {
