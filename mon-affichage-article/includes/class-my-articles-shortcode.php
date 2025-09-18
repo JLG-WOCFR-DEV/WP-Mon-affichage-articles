@@ -170,9 +170,9 @@ class My_Articles_Shortcode {
             }
         }
 
-        $regular_posts_on_page_1 = $posts_per_page - $pinned_posts_found;
-        $offset = ($paged > 1) ? $regular_posts_on_page_1 + (($paged - 2) * $posts_per_page) : 0;
-        $posts_to_fetch = ($paged === 1) ? $regular_posts_on_page_1 : $posts_per_page;
+        $regular_posts_on_page_1 = max( 0, $posts_per_page - $pinned_posts_found );
+        $offset = ( $paged > 1 ) ? $regular_posts_on_page_1 + ( ( $paged - 2 ) * $posts_per_page ) : 0;
+        $posts_to_fetch = ( $paged === 1 ) ? $regular_posts_on_page_1 : $posts_per_page;
         
         $articles_query = null;
         if ($posts_to_fetch > 0) {
