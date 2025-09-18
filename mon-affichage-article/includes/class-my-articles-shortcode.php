@@ -424,13 +424,11 @@ class My_Articles_Shortcode {
         global $wp;
         $current_url = home_url( add_query_arg( array(), $wp->request ) );
 
-        $query_args = array();
         if ( ! empty( $_GET ) ) {
-            $query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
-        }
-
-        if ( ! empty( $query_args ) ) {
-            $current_url = add_query_arg( $query_args, $current_url );
+            $sanitized_query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
+            if ( ! empty( $sanitized_query_args ) ) {
+                $current_url = add_query_arg( $sanitized_query_args, $current_url );
+            }
         }
 
         $base_url = remove_query_arg( $paged_var, $current_url );
