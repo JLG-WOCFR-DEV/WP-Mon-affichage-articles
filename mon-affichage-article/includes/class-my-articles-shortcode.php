@@ -420,6 +420,26 @@ class My_Articles_Shortcode {
         if ($total_pages <= 1) { return; }
         global $wp;
         $current_url = home_url( add_query_arg( array(), $wp->request ) );
+
+        $query_args = array();
+        if ( ! empty( $_GET ) ) {
+            $query_args = wp_unslash( $_GET );
+            $query_args = array_map(
+                static function ( $value ) {
+                    if ( is_array( $value ) ) {
+                        return array_map( 'sanitize_text_field', $value );
+                    }
+
+                    return sanitize_text_field( $value );
+                },
+                $query_args
+            );
+        }
+
+        if ( ! empty( $query_args ) ) {
+            $current_url = add_query_arg( $query_args, $current_url );
+        }
+
         $base_url = remove_query_arg( $paged_var, $current_url );
         $pagination_links = paginate_links(['base' => $base_url . '%_%', 'format' => (strpos($base_url, '?') ? '&' : '?') . $paged_var . '=%#%', 'current' => max( 1, $paged ), 'total' => $total_pages, 'prev_text' => __('&laquo; Précédent'), 'next_text' => __('Suivant &raquo;')]);
         if ($pagination_links) { echo '<nav class="my-articles-pagination">' . $pagination_links . '</nav>'; }
