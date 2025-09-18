@@ -423,17 +423,7 @@ class My_Articles_Shortcode {
 
         $query_args = array();
         if ( ! empty( $_GET ) ) {
-            $query_args = wp_unslash( $_GET );
-            $query_args = array_map(
-                static function ( $value ) {
-                    if ( is_array( $value ) ) {
-                        return array_map( 'sanitize_text_field', $value );
-                    }
-
-                    return sanitize_text_field( $value );
-                },
-                $query_args
-            );
+            $query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
         }
 
         if ( ! empty( $query_args ) ) {
