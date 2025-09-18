@@ -169,6 +169,8 @@ final class Mon_Affichage_Articles {
 
         ob_start();
 
+        $displayed_posts_count = $pinned_posts_found;
+
         if ( $pinned_query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() ) {
                 $pinned_query->the_post();
@@ -185,9 +187,12 @@ final class Mon_Affichage_Articles {
                 $shortcode_instance->render_article_item($options, false);
                 if ($display_mode === 'slideshow') echo '</div>';
             }
+            $displayed_posts_count += (int) $articles_query->post_count;
+        } elseif ( $articles_query instanceof WP_Query ) {
+            $displayed_posts_count += (int) $articles_query->post_count;
         }
-        
-        if ( ( ! $pinned_query || ! $pinned_query->have_posts() ) && ( ! $articles_query || ! $articles_query->have_posts() ) ) {
+
+        if ( 0 === $displayed_posts_count ) {
             echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
         }
         
