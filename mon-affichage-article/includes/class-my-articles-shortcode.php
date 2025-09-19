@@ -131,13 +131,12 @@ class My_Articles_Shortcode {
         $pinned_query = null;
         $pinned_posts_found = 0;
         $effective_pinned_ids = array();
-        if ($paged === 1 && !empty($pinned_ids)) {
+        if ( ! empty( $pinned_ids ) ) {
             $pinned_query_args = [
-                'post_type' => 'any',
-                'post_status' => 'publish',
-                'post__in' => $pinned_ids,
-                'orderby' => 'post__in',
-                'posts_per_page' => count($pinned_ids),
+                'post_type'    => 'any',
+                'post_status'  => 'publish',
+                'post__in'     => $pinned_ids,
+                'orderby'      => 'post__in',
                 'post__not_in' => $exclude_ids,
             ];
 
@@ -158,10 +157,21 @@ class My_Articles_Shortcode {
                 }
             }
 
-            $pinned_query = new WP_Query($pinned_query_args);
-            $pinned_posts_found = $pinned_query->post_count;
-            if ( $pinned_query->have_posts() ) {
-                $effective_pinned_ids = wp_list_pluck( $pinned_query->posts, 'ID' );
+            if ( $paged === 1 ) {
+                $pinned_query_args['posts_per_page'] = count( $pinned_ids );
+                $pinned_query                        = new WP_Query( $pinned_query_args );
+                $pinned_posts_found                  = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
+
+                if ( $pinned_query->have_posts() ) {
+                    $effective_pinned_ids = wp_list_pluck( $pinned_query->posts, 'ID' );
+                }
+            } else {
+                $count_query_args = $pinned_query_args;
+                $count_query_args['posts_per_page'] = 1;
+                $count_query_args['fields']         = 'ids';
+
+                $count_query       = new WP_Query( $count_query_args );
+                $pinned_posts_found = (int) $count_query->found_posts;
             }
         }
 
