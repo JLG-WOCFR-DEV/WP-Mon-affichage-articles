@@ -114,7 +114,7 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && ! empty( $category_slug ) && 'all' !== $category_slug ) {
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category_slug && 'all' !== $category_slug ) {
                 if ( ! empty( $taxonomy ) ) {
                     $pinned_query_args['tax_query'] = [
                         [
@@ -147,7 +147,7 @@ final class Mon_Affichage_Articles {
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
 
-            if ( !empty($category_slug) && $category_slug !== 'all' ) {
+            if ( '' !== $category_slug && 'all' !== $category_slug ) {
                 if ( ! empty( $taxonomy ) ) {
                     $query_args['tax_query'] = [
                         [
@@ -213,7 +213,7 @@ final class Mon_Affichage_Articles {
                 'fields'              => 'ids',
             ];
 
-            if ( ! empty( $category_slug ) && 'all' !== $category_slug ) {
+            if ( '' !== $category_slug && 'all' !== $category_slug ) {
                 if ( ! empty( $taxonomy ) ) {
                     $count_query_args['tax_query'] = [
                         [
@@ -317,7 +317,7 @@ final class Mon_Affichage_Articles {
             'ignore_sticky_posts' => $ignore_sticky_posts,
         ];
 
-        if ( !empty($category) && $category !== 'all' ) {
+        if ( '' !== $category && 'all' !== $category ) {
             if ( ! empty( $taxonomy ) ) {
                 $query_args['tax_query'] = [
                     [

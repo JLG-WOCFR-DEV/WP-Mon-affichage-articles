@@ -37,6 +37,14 @@ mon-affichage-article/
 - `load_more_articles`
 - `search_posts_for_select2`
 
+## Tests manuels
+
+Pour vérifier la prise en charge d'un slug de taxonomie égal à `"0"` :
+
+1. Créez ou identifiez une catégorie (ou tout terme de la taxonomie utilisée) dont le slug vaut exactement `0`.
+2. Configurez un module **Tuiles – LCV** afin qu'il utilise ce terme comme valeur par défaut et activez, si besoin, le filtre de catégories en frontal.
+3. Affichez le module côté public et vérifiez que les articles associés au terme `0` apparaissent bien, que le filtre est sélectionné et que la pagination/chargement additionnel respecte ce terme.
+
 ## Crédits
 
 Développé par LCV.
