@@ -40,18 +40,13 @@
                     var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
                     if (loadMoreBtn.length) {
                         var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
-                        var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 2;
+                        totalPages = isNaN(totalPages) ? 0 : totalPages;
+                        var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 0;
+                        nextPage = isNaN(nextPage) ? 0 : nextPage;
                         var pinnedIds = (response.data && typeof response.data.pinned_ids !== 'undefined') ? response.data.pinned_ids : '';
-
-                        if (isNaN(nextPage) || nextPage < 2) {
-                            nextPage = 2;
-                        }
 
                         loadMoreBtn.data('category', categorySlug);
                         loadMoreBtn.attr('data-category', categorySlug);
-
-                        loadMoreBtn.data('paged', nextPage);
-                        loadMoreBtn.attr('data-paged', nextPage);
 
                         loadMoreBtn.data('total-pages', totalPages);
                         loadMoreBtn.attr('data-total-pages', totalPages);
@@ -60,10 +55,18 @@
                         loadMoreBtn.attr('data-pinned-ids', pinnedIds);
 
                         if (totalPages > 1) {
+                            if (nextPage < 2) {
+                                nextPage = 2;
+                            }
+                            loadMoreBtn.data('paged', nextPage);
+                            loadMoreBtn.attr('data-paged', nextPage);
                             loadMoreBtn.show();
                             loadMoreBtn.prop('disabled', false);
                         } else {
+                            loadMoreBtn.data('paged', nextPage);
+                            loadMoreBtn.attr('data-paged', nextPage);
                             loadMoreBtn.hide();
+                            loadMoreBtn.prop('disabled', false);
                         }
                     }
 

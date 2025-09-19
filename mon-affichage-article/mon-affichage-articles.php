@@ -233,13 +233,11 @@ final class Mon_Affichage_Articles {
         }
 
         $total_posts = $pinned_posts_found + $total_regular_posts;
-        $total_pages = 0;
-
-        if ( $total_posts_needed > 0 && $total_posts > 0 ) {
-            $total_pages = (int) ceil( $total_posts / $total_posts_needed );
-        } elseif ( 0 === $total_posts_needed && $total_posts > 0 ) {
-            $total_pages = 1;
-        }
+        $regular_first_page_capacity = $total_posts_needed > 0 ? max( 0, $total_posts_needed - $pinned_posts_found ) : 0;
+        $regular_on_first_page = min( $total_regular_posts, $regular_first_page_capacity );
+        $remaining_regular_posts = max( 0, $total_regular_posts - $regular_on_first_page );
+        $additional_regular_pages = $posts_per_page > 0 ? (int) ceil( $remaining_regular_posts / $posts_per_page ) : 0;
+        $total_pages = $total_posts > 0 ? 1 + $additional_regular_pages : 0;
 
         $next_page = $total_pages > 1 ? 2 : 0;
         $pinned_ids_string = ! empty( $effective_pinned_ids ) ? implode( ',', array_map( 'absint', $effective_pinned_ids ) ) : '';
