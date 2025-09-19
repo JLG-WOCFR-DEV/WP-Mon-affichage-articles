@@ -131,14 +131,15 @@ class My_Articles_Shortcode {
         $pinned_query = null;
         $pinned_posts_found = 0;
         $effective_pinned_ids = array();
-        if ($paged === 1 && !empty($pinned_ids)) {
+        if ( ! empty( $pinned_ids ) ) {
             $pinned_query_args = [
                 'post_type' => 'any',
                 'post_status' => 'publish',
                 'post__in' => $pinned_ids,
                 'orderby' => 'post__in',
-                'posts_per_page' => count($pinned_ids),
+                'posts_per_page' => count( $pinned_ids ),
                 'post__not_in' => $exclude_ids,
+                'no_found_rows' => true,
             ];
 
             $default_term = isset( $options['term'] ) ? sanitize_text_field( $options['term'] ) : '';
@@ -158,14 +159,20 @@ class My_Articles_Shortcode {
                 }
             }
 
-            $pinned_query = new WP_Query($pinned_query_args);
-            $pinned_posts_found = $pinned_query->post_count;
-            if ( $pinned_query->have_posts() ) {
-                $effective_pinned_ids = wp_list_pluck( $pinned_query->posts, 'ID' );
+            if ( $paged === 1 ) {
+                $pinned_query = new WP_Query( $pinned_query_args );
+                $pinned_posts_found = (int) $pinned_query->post_count;
+                if ( $pinned_query->have_posts() ) {
+                    $effective_pinned_ids = wp_list_pluck( $pinned_query->posts, 'ID' );
+                }
+            } else {
+                $pinned_query_args['fields'] = 'ids';
+                $pinned_count_query = new WP_Query( $pinned_query_args );
+                $pinned_posts_found = (int) $pinned_count_query->post_count;
             }
         }
 
-        $regular_posts_on_page_1 = max( 0, $posts_per_page - $pinned_posts_found );
+        $regular_posts_on_page_1 = max( 0, min( $posts_per_page, $posts_per_page - $pinned_posts_found ) );
 
         if ( $paged > 1 ) {
             $offset = $regular_posts_on_page_1 + ( max( 0, $paged - 2 ) * $posts_per_page );
