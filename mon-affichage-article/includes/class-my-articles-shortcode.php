@@ -203,10 +203,6 @@ class My_Articles_Shortcode {
             $articles_query = new WP_Query($regular_query_args);
         }
         
-        if ( (!$pinned_query || !$pinned_query->have_posts()) && (!$articles_query || !$articles_query->have_posts()) && empty($options['show_category_filter']) ) {
-            return '';
-        }
-        
         if ($options['display_mode'] === 'slideshow') { $this->enqueue_swiper_scripts($options, $id); }
 
         wp_enqueue_style('my-articles-styles');
@@ -259,7 +255,7 @@ class My_Articles_Shortcode {
         } else {
             $this->render_grid($pinned_query, $articles_query, $options);
         }
-        
+
         if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
             $total_regular_posts = 0;
 
@@ -332,17 +328,27 @@ class My_Articles_Shortcode {
     }
     
     private function render_list($pinned_query, $regular_query, $options) {
+        $has_rendered_posts = false;
         echo '<div class="my-articles-list-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); } }
+        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); $has_rendered_posts = true; } }
+        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); $has_rendered_posts = true; } }
         echo '</div>';
+
+        if ( !$has_rendered_posts ) {
+            $this->render_empty_state_message();
+        }
     }
-    
+
     private function render_grid($pinned_query, $regular_query, $options) {
+        $has_rendered_posts = false;
         echo '<div class="my-articles-grid-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); } }
+        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); $has_rendered_posts = true; } }
+        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); $has_rendered_posts = true; } }
         echo '</div>';
+
+        if ( !$has_rendered_posts ) {
+            $this->render_empty_state_message();
+        }
     }
 
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
@@ -352,6 +358,14 @@ class My_Articles_Shortcode {
         if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) { $pinned_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, true); echo '</div>'; $post_count++; } }
         if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) { $regular_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, false); echo '</div>'; $post_count++; } }
         echo '</div><div class="swiper-pagination"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div>';
+
+        if ( 0 === $post_count ) {
+            $this->render_empty_state_message();
+        }
+    }
+
+    private function render_empty_state_message() {
+        echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
     }
 
     public function render_article_item($options, $is_pinned = false) {
