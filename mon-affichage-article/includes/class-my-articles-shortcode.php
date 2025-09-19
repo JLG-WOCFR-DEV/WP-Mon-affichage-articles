@@ -271,12 +271,12 @@ class My_Articles_Shortcode {
                 $total_regular_posts = (int) $count_query->found_posts;
             }
 
-            $total_posts = $pinned_posts_found + $total_regular_posts;
-            $regular_first_page_capacity = $posts_per_page > 0 ? max( 0, $posts_per_page - $pinned_posts_found ) : 0;
-            $regular_on_first_page = min( $total_regular_posts, $regular_first_page_capacity );
-            $remaining_regular_posts = max( 0, $total_regular_posts - $regular_on_first_page );
-            $additional_regular_pages = $posts_per_page > 0 ? (int) ceil( $remaining_regular_posts / $posts_per_page ) : 0;
-            $total_pages = $total_posts > 0 ? 1 + $additional_regular_pages : 0;
+            $pagination_totals = my_articles_calculate_total_pages(
+                $pinned_posts_found,
+                $total_regular_posts,
+                $posts_per_page
+            );
+            $total_pages = $pagination_totals['total_pages'];
 
             if ($options['pagination_mode'] === 'load_more') {
                 if ( $total_pages > 1 && $paged < $total_pages) {
