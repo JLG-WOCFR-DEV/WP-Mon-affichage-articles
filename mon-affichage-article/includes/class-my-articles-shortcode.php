@@ -69,6 +69,9 @@ class My_Articles_Shortcode {
         ];
         $options = wp_parse_args($options, $defaults);
 
+        $resolved_taxonomy = $this->resolve_taxonomy( $options );
+        $options['resolved_taxonomy'] = $resolved_taxonomy;
+
         if ( !empty($options['show_category_filter']) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
@@ -139,15 +142,7 @@ class My_Articles_Shortcode {
             ];
 
             $default_term = isset( $options['term'] ) ? sanitize_text_field( $options['term'] ) : '';
-            $taxonomy = '';
-            if ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) {
-                $taxonomy = $options['taxonomy'];
-            } elseif ( empty( $options['taxonomy'] ) ) {
-                $post_type = ! empty( $options['post_type'] ) ? $options['post_type'] : 'post';
-                if ( 'post' === $post_type && taxonomy_exists( 'category' ) ) {
-                    $taxonomy = 'category';
-                }
-            }
+            $taxonomy = $resolved_taxonomy;
 
             if ( empty( $options['pinned_posts_ignore_filter'] ) && ! empty( $default_term ) && 'all' !== $default_term ) {
                 if ( ! empty( $taxonomy ) ) {
@@ -190,11 +185,11 @@ class My_Articles_Shortcode {
                 'post__not_in' => $all_excluded_ids,
                 'ignore_sticky_posts' => (int)$options['ignore_native_sticky'],
             ];
-    
-            if (!empty($options['taxonomy']) && !empty($options['term'])) {
+
+            if ( ! empty( $resolved_taxonomy ) && ! empty( $options['term'] ) ) {
                 $regular_query_args['tax_query'] = [
                     [
-                        'taxonomy' => $options['taxonomy'],
+                        'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
                         'terms'    => $options['term'],
                     ],
@@ -219,16 +214,9 @@ class My_Articles_Shortcode {
         echo '<div id="my-articles-wrapper-' . esc_attr($id) . '" class="' . esc_attr($wrapper_class) . '" data-instance-id="' . esc_attr($id) . '">';
 
         if ( !empty($options['show_category_filter']) ) {
-            $active_taxonomy = '';
-            if ( !empty($options['taxonomy']) && taxonomy_exists($options['taxonomy']) ) {
-                $active_taxonomy = $options['taxonomy'];
-            } elseif ( 'post' === $options['post_type'] && taxonomy_exists('category') ) {
-                $active_taxonomy = 'category';
-            }
-
-            if ( !empty($active_taxonomy) ) {
+            if ( !empty( $resolved_taxonomy ) ) {
                 $get_terms_args = [
-                    'taxonomy'   => $active_taxonomy,
+                    'taxonomy'   => $resolved_taxonomy,
                     'hide_empty' => true,
                 ];
 
@@ -275,9 +263,9 @@ class My_Articles_Shortcode {
                     'fields' => 'ids',
                 ];
 
-                if (!empty($options['taxonomy']) && !empty($options['term'])) {
+                if ( ! empty( $resolved_taxonomy ) && ! empty( $options['term'] ) ) {
                     $count_query_args['tax_query'] = [[
-                        'taxonomy' => $options['taxonomy'],
+                        'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
                         'terms'    => $options['term'],
                     ]];
@@ -358,7 +346,7 @@ class My_Articles_Shortcode {
         $item_classes = 'my-article-item';
         if ($is_pinned) { $item_classes .= ' is-pinned'; }
         $display_mode = $options['display_mode'] ?? 'grid';
-        $taxonomy = $options['taxonomy'] ?? 'category';
+        $taxonomy = $options['resolved_taxonomy'] ?? $this->resolve_taxonomy( $options );
         $enable_lazy_load = !empty($options['enable_lazy_load']);
         ?>
         <div class="<?php echo esc_attr($item_classes); ?>">
@@ -398,7 +386,7 @@ class My_Articles_Shortcode {
             <h2 class="article-title"><a href="<?php the_permalink(); ?>"><?php echo esc_html(get_the_title()); ?></a></h2>
             <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
                 <div class="article-meta">
-                    <?php if ($options['show_category']) echo '<span class="article-category">' . wp_kses_post(get_the_term_list(get_the_ID(), $taxonomy, '', ', ')) . '</span>'; ?>
+                    <?php if ($options['show_category'] && !empty($taxonomy)) echo '<span class="article-category">' . wp_kses_post(get_the_term_list(get_the_ID(), $taxonomy, '', ', ')) . '</span>'; ?>
                     <?php if ($options['show_author']) echo '<span class="article-author">par <a href="' . esc_url(get_author_posts_url(get_the_author_meta('ID'))) . '">' . esc_html(get_the_author()) . '</a></span>'; ?>
                     <?php if ($options['show_date']) echo '<span class="article-date">' . esc_html(get_the_date()) . '</span>'; ?>
                 </div>
@@ -477,5 +465,19 @@ class My_Articles_Shortcode {
         ";
 
         wp_add_inline_style( 'my-articles-styles', $dynamic_css );
+    }
+
+    private function resolve_taxonomy( $options ) {
+        $post_type = ! empty( $options['post_type'] ) ? $options['post_type'] : 'post';
+
+        if ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) && is_object_in_taxonomy( $post_type, $options['taxonomy'] ) ) {
+            return $options['taxonomy'];
+        }
+
+        if ( 'post' === $post_type && taxonomy_exists( 'category' ) && is_object_in_taxonomy( 'post', 'category' ) ) {
+            return 'category';
+        }
+
+        return '';
     }
 }
