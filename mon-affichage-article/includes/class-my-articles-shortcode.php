@@ -144,7 +144,7 @@ class My_Articles_Shortcode {
             $default_term = isset( $options['term'] ) ? sanitize_text_field( $options['term'] ) : '';
             $taxonomy = $resolved_taxonomy;
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && ! empty( $default_term ) && 'all' !== $default_term ) {
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $default_term && 'all' !== $default_term ) {
                 if ( ! empty( $taxonomy ) ) {
                     $pinned_query_args['tax_query'] = [
                         [
@@ -186,7 +186,7 @@ class My_Articles_Shortcode {
                 'ignore_sticky_posts' => (int)$options['ignore_native_sticky'],
             ];
 
-            if ( ! empty( $resolved_taxonomy ) && ! empty( $options['term'] ) ) {
+            if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {
                 $regular_query_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
@@ -227,7 +227,7 @@ class My_Articles_Shortcode {
                     $alignment_class = 'filter-align-' . esc_attr($options['filter_alignment']);
                     echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
                     $default_cat = $options['term'] ?? '';
-                    $is_all_active = empty($default_cat) || $default_cat === 'all';
+                    $is_all_active = '' === $default_cat || 'all' === $default_cat;
                     echo '<li class="' . ($is_all_active ? 'active' : '') . '"><a href="#" data-category="all">' . __('Tout', 'mon-articles') . '</a></li>';
                     foreach ($categories as $category) {
                         echo '<li class="' . ($default_cat === $category->slug ? 'active' : '') . '"><a href="#" data-category="' .esc_attr($category->slug) . '">' . esc_html($category->name) . '</a></li>';
@@ -259,7 +259,7 @@ class My_Articles_Shortcode {
                     'fields' => 'ids',
                 ];
 
-                if ( ! empty( $resolved_taxonomy ) && ! empty( $options['term'] ) ) {
+                if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {
                     $count_query_args['tax_query'] = [[
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
