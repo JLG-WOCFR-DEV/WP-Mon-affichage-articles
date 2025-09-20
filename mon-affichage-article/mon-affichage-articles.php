@@ -98,6 +98,8 @@ final class Mon_Affichage_Articles {
         $ignore_sticky_posts        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
         $options['ignore_native_sticky'] = $ignore_sticky_posts;
 
+        $render_limit = max( 0, (int) $posts_per_page );
+
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
             $pinned_ids = array_map( 'absint', $options['pinned_posts'] );
@@ -116,12 +118,18 @@ final class Mon_Affichage_Articles {
         $displayed_pinned_ids = array();
 
         if ( ! empty( $pinned_ids ) ) {
+            $pinned_posts_per_page = count( $pinned_ids );
+
+            if ( 'slideshow' === $display_mode && $render_limit > 0 ) {
+                $pinned_posts_per_page = min( $pinned_posts_per_page, $render_limit );
+            }
+
             $pinned_query_args = [
                 'post_type'      => 'any',
                 'post_status'    => 'publish',
                 'post__in'       => $pinned_ids,
                 'orderby'        => 'post__in',
-                'posts_per_page' => count( $pinned_ids ),
+                'posts_per_page' => $pinned_posts_per_page,
                 'post__not_in'   => $exclude_ids,
             ];
 
@@ -143,8 +151,7 @@ final class Mon_Affichage_Articles {
         }
 
         $displayed_posts_count = 0;
-        $render_limit           = max( 0, (int) $posts_per_page );
-        $should_limit_display   = ( 'slideshow' !== $display_mode && $render_limit > 0 );
+        $should_limit_display   = ( $render_limit > 0 );
 
         $projected_pinned_display = 0;
         if ( $pinned_query instanceof WP_Query ) {
