@@ -138,7 +138,8 @@ class My_Articles_Shortcode {
         $pinned_query = null;
         $pinned_posts_found = 0;
         $first_page_projected_pinned = 0;
-        $displayed_pinned_ids = array();
+        $total_matching_pinned      = 0;
+        $displayed_pinned_ids       = array();
         if ( ! empty( $pinned_ids ) ) {
             $pinned_query_args = [
                 'post_type'    => 'any',
@@ -168,8 +169,8 @@ class My_Articles_Shortcode {
             if ( $paged === 1 ) {
                 $pinned_query_args['posts_per_page'] = count( $pinned_ids );
                 $pinned_query                        = new WP_Query( $pinned_query_args );
-                $pinned_posts_found                  = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
-                $first_page_projected_pinned         = $pinned_posts_found;
+                $total_matching_pinned               = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
+                $first_page_projected_pinned         = $total_matching_pinned;
 
                 if ( $should_limit_display ) {
                     $first_page_projected_pinned = min( $first_page_projected_pinned, $render_limit );
@@ -180,8 +181,8 @@ class My_Articles_Shortcode {
                 $count_query_args['fields']         = 'ids';
 
                 $count_query        = new WP_Query( $count_query_args );
-                $pinned_posts_found = (int) $count_query->found_posts;
-                $first_page_projected_pinned = $pinned_posts_found;
+                $total_matching_pinned = (int) $count_query->found_posts;
+                $first_page_projected_pinned = $total_matching_pinned;
 
                 if ( $should_limit_display ) {
                     $first_page_projected_pinned = min( $first_page_projected_pinned, $render_limit );
@@ -269,8 +270,10 @@ class My_Articles_Shortcode {
         }
 
         if ( $paged === 1 ) {
-            $pinned_posts_found = count( $displayed_pinned_ids );
-            $first_page_projected_pinned = $pinned_posts_found;
+            $first_page_projected_pinned = count( $displayed_pinned_ids );
+            if ( 0 === $total_matching_pinned && ! empty( $displayed_pinned_ids ) ) {
+                $total_matching_pinned = count( $displayed_pinned_ids );
+            }
         }
 
         if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
@@ -301,7 +304,7 @@ class My_Articles_Shortcode {
             }
 
             $pagination_totals = my_articles_calculate_total_pages(
-                $first_page_projected_pinned,
+                $total_matching_pinned,
                 $total_regular_posts,
                 $posts_per_page
             );
