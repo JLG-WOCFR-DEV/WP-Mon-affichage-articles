@@ -44,6 +44,12 @@
                     // Ajoute les nouveaux articles à la suite des anciens
                     contentArea.append(response.data.html);
 
+                    if (response.data && typeof response.data.pinned_ids !== 'undefined') {
+                        var updatedPinnedIds = response.data.pinned_ids;
+                        button.data('pinned-ids', updatedPinnedIds);
+                        button.attr('data-pinned-ids', updatedPinnedIds);
+                    }
+
                     var newPage = paged + 1;
                     button.data('paged', newPage);
                     button.attr('data-paged', newPage);

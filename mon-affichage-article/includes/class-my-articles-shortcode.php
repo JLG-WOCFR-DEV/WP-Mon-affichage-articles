@@ -132,9 +132,13 @@ class My_Articles_Shortcode {
         $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
         $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
 
+        $render_limit = max(0, (int) $posts_per_page);
+        $should_limit_display = ( $options['display_mode'] !== 'slideshow' && $render_limit > 0 );
+
         $pinned_query = null;
         $pinned_posts_found = 0;
-        $effective_pinned_ids = array();
+        $first_page_projected_pinned = 0;
+        $displayed_pinned_ids = array();
         if ( ! empty( $pinned_ids ) ) {
             $pinned_query_args = [
                 'post_type'    => 'any',
@@ -165,21 +169,27 @@ class My_Articles_Shortcode {
                 $pinned_query_args['posts_per_page'] = count( $pinned_ids );
                 $pinned_query                        = new WP_Query( $pinned_query_args );
                 $pinned_posts_found                  = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
+                $first_page_projected_pinned         = $pinned_posts_found;
 
-                if ( $pinned_query->have_posts() ) {
-                    $effective_pinned_ids = wp_list_pluck( $pinned_query->posts, 'ID' );
+                if ( $should_limit_display ) {
+                    $first_page_projected_pinned = min( $first_page_projected_pinned, $render_limit );
                 }
             } else {
                 $count_query_args = $pinned_query_args;
                 $count_query_args['posts_per_page'] = 1;
                 $count_query_args['fields']         = 'ids';
 
-                $count_query       = new WP_Query( $count_query_args );
+                $count_query        = new WP_Query( $count_query_args );
                 $pinned_posts_found = (int) $count_query->found_posts;
+                $first_page_projected_pinned = $pinned_posts_found;
+
+                if ( $should_limit_display ) {
+                    $first_page_projected_pinned = min( $first_page_projected_pinned, $render_limit );
+                }
             }
         }
 
-        $regular_posts_on_page_1 = max( 0, $posts_per_page - $pinned_posts_found );
+        $regular_posts_on_page_1 = max( 0, $posts_per_page - $first_page_projected_pinned );
 
         if ( $paged > 1 ) {
             $offset = $regular_posts_on_page_1 + ( max( 0, $paged - 2 ) * $posts_per_page );
@@ -253,9 +263,14 @@ class My_Articles_Shortcode {
         if ($options['display_mode'] === 'slideshow') {
             $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page);
         } else if ($options['display_mode'] === 'list') {
-            $this->render_list($pinned_query, $articles_query, $options, $posts_per_page);
+            $displayed_pinned_ids = $this->render_list($pinned_query, $articles_query, $options, $posts_per_page);
         } else {
-            $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page);
+            $displayed_pinned_ids = $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page);
+        }
+
+        if ( $paged === 1 ) {
+            $pinned_posts_found = count( $displayed_pinned_ids );
+            $first_page_projected_pinned = $pinned_posts_found;
         }
 
         if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
@@ -286,7 +301,7 @@ class My_Articles_Shortcode {
             }
 
             $pagination_totals = my_articles_calculate_total_pages(
-                $pinned_posts_found,
+                $first_page_projected_pinned,
                 $total_regular_posts,
                 $posts_per_page
             );
@@ -294,7 +309,7 @@ class My_Articles_Shortcode {
 
             if ($options['pagination_mode'] === 'load_more') {
                 if ( $total_pages > 1 && $paged < $total_pages) {
-                    $load_more_pinned_ids = ! empty( $effective_pinned_ids ) ? array_map( 'absint', $effective_pinned_ids ) : array();
+                    $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
                     echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="2" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . __('Charger plus', 'mon-articles') . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
@@ -338,6 +353,7 @@ class My_Articles_Shortcode {
         $render_limit = max(0, (int) $posts_per_page);
         $should_limit = $render_limit > 0;
         $rendered_count = 0;
+        $displayed_pinned_ids = array();
         echo '<div class="my-articles-list-content">';
         if ( $pinned_query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
@@ -345,6 +361,7 @@ class My_Articles_Shortcode {
                 $this->render_article_item($options, true);
                 $has_rendered_posts = true;
                 $rendered_count++;
+                $displayed_pinned_ids[] = get_the_ID();
             }
         }
         if ( $regular_query && $regular_query->have_posts() ) {
@@ -360,6 +377,8 @@ class My_Articles_Shortcode {
         if ( !$has_rendered_posts ) {
             $this->render_empty_state_message();
         }
+
+        return $displayed_pinned_ids;
     }
 
     private function render_grid($pinned_query, $regular_query, $options, $posts_per_page) {
@@ -367,6 +386,7 @@ class My_Articles_Shortcode {
         $render_limit = max(0, (int) $posts_per_page);
         $should_limit = $render_limit > 0;
         $rendered_count = 0;
+        $displayed_pinned_ids = array();
         echo '<div class="my-articles-grid-content">';
         if ( $pinned_query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
@@ -374,6 +394,7 @@ class My_Articles_Shortcode {
                 $this->render_article_item($options, true);
                 $has_rendered_posts = true;
                 $rendered_count++;
+                $displayed_pinned_ids[] = get_the_ID();
             }
         }
         if ( $regular_query && $regular_query->have_posts() ) {
@@ -389,6 +410,8 @@ class My_Articles_Shortcode {
         if ( !$has_rendered_posts ) {
             $this->render_empty_state_message();
         }
+
+        return $displayed_pinned_ids;
     }
 
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
