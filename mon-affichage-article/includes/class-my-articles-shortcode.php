@@ -451,7 +451,7 @@ class My_Articles_Shortcode {
         }
 
         $base_url = remove_query_arg( $paged_var, $current_url );
-        $pagination_links = paginate_links(['base' => $base_url . '%_%', 'format' => (strpos($base_url, '?') ? '&' : '?') . $paged_var . '=%#%', 'current' => max( 1, $paged ), 'total' => $total_pages, 'prev_text' => __('&laquo; Précédent'), 'next_text' => __('Suivant &raquo;')]);
+        $pagination_links = paginate_links(['base' => $base_url . '%_%', 'format' => (strpos($base_url, '?') ? '&' : '?') . $paged_var . '=%#%', 'current' => max( 1, $paged ), 'total' => $total_pages, 'prev_text' => __('&laquo; Précédent', 'mon-articles'), 'next_text' => __('Suivant &raquo;', 'mon-articles')]);
         if ($pagination_links) { echo '<nav class="my-articles-pagination">' . $pagination_links . '</nav>'; }
     }
 
