@@ -338,7 +338,7 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( '' !== $category && 'all' !== $category ) {
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category && 'all' !== $category ) {
                 if ( ! empty( $taxonomy ) ) {
                     $pinned_lookup_args['tax_query'] = [
                         [
