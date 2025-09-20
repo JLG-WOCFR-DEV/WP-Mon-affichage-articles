@@ -253,9 +253,9 @@ class My_Articles_Shortcode {
         if ($options['display_mode'] === 'slideshow') {
             $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page);
         } else if ($options['display_mode'] === 'list') {
-            $this->render_list($pinned_query, $articles_query, $options);
+            $this->render_list($pinned_query, $articles_query, $options, $posts_per_page);
         } else {
-            $this->render_grid($pinned_query, $articles_query, $options);
+            $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page);
         }
 
         if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
@@ -333,26 +333,84 @@ class My_Articles_Shortcode {
         return ob_get_clean();
     }
     
-    private function render_list($pinned_query, $regular_query, $options) {
+    private function render_list($pinned_query, $regular_query, $options, $posts_per_page) {
         $has_rendered_posts = false;
+        $rendered_count      = 0;
+        $limit               = (int) $posts_per_page;
+        $enforce_limit       = ( $limit > 0 );
+
         echo '<div class="my-articles-list-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); $has_rendered_posts = true; } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); $has_rendered_posts = true; } }
+
+        if ( $pinned_query && $pinned_query->have_posts() ) {
+            while ( $pinned_query->have_posts() ) {
+                if ( $enforce_limit && $rendered_count >= $limit ) {
+                    break;
+                }
+
+                $pinned_query->the_post();
+                $this->render_article_item( $options, true );
+                $has_rendered_posts = true;
+                $rendered_count++;
+            }
+        }
+
+        if ( $regular_query && $regular_query->have_posts() ) {
+            while ( $regular_query->have_posts() ) {
+                if ( $enforce_limit && $rendered_count >= $limit ) {
+                    break;
+                }
+
+                $regular_query->the_post();
+                $this->render_article_item( $options, false );
+                $has_rendered_posts = true;
+                $rendered_count++;
+            }
+        }
+
         echo '</div>';
 
-        if ( !$has_rendered_posts ) {
+        if ( ! $has_rendered_posts ) {
             $this->render_empty_state_message();
         }
     }
 
-    private function render_grid($pinned_query, $regular_query, $options) {
+    private function render_grid($pinned_query, $regular_query, $options, $posts_per_page) {
         $has_rendered_posts = false;
+        $rendered_count      = 0;
+        $limit               = (int) $posts_per_page;
+        $enforce_limit       = ( $limit > 0 );
+
         echo '<div class="my-articles-grid-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() ) { $pinned_query->the_post(); $this->render_article_item($options, true); $has_rendered_posts = true; } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() ) { $regular_query->the_post(); $this->render_article_item($options, false); $has_rendered_posts = true; } }
+
+        if ( $pinned_query && $pinned_query->have_posts() ) {
+            while ( $pinned_query->have_posts() ) {
+                if ( $enforce_limit && $rendered_count >= $limit ) {
+                    break;
+                }
+
+                $pinned_query->the_post();
+                $this->render_article_item( $options, true );
+                $has_rendered_posts = true;
+                $rendered_count++;
+            }
+        }
+
+        if ( $regular_query && $regular_query->have_posts() ) {
+            while ( $regular_query->have_posts() ) {
+                if ( $enforce_limit && $rendered_count >= $limit ) {
+                    break;
+                }
+
+                $regular_query->the_post();
+                $this->render_article_item( $options, false );
+                $has_rendered_posts = true;
+                $rendered_count++;
+            }
+        }
+
         echo '</div>';
 
-        if ( !$has_rendered_posts ) {
+        if ( ! $has_rendered_posts ) {
             $this->render_empty_state_message();
         }
     }

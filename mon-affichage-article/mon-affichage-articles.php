@@ -180,27 +180,52 @@ final class Mon_Affichage_Articles {
 
         ob_start();
 
-        $displayed_posts_count = $pinned_posts_found;
+        $displayed_posts_count = 0;
+        $limit                 = (int) $posts_per_page;
+        $enforce_limit         = ( 'slideshow' !== $display_mode && $limit > 0 );
 
         if ( $pinned_query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() ) {
+                if ( $enforce_limit && $displayed_posts_count >= $limit ) {
+                    break;
+                }
+
                 $pinned_query->the_post();
-                if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
-                $shortcode_instance->render_article_item($options, true);
-                if ($display_mode === 'slideshow') echo '</div>';
+
+                if ( $display_mode === 'slideshow' ) {
+                    echo '<div class="swiper-slide">';
+                }
+
+                $shortcode_instance->render_article_item( $options, true );
+
+                if ( $display_mode === 'slideshow' ) {
+                    echo '</div>';
+                }
+
+                $displayed_posts_count++;
             }
         }
 
         if ( $articles_query && $articles_query->have_posts() ) {
             while ( $articles_query->have_posts() ) {
+                if ( $enforce_limit && $displayed_posts_count >= $limit ) {
+                    break;
+                }
+
                 $articles_query->the_post();
-                if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
-                $shortcode_instance->render_article_item($options, false);
-                if ($display_mode === 'slideshow') echo '</div>';
+
+                if ( $display_mode === 'slideshow' ) {
+                    echo '<div class="swiper-slide">';
+                }
+
+                $shortcode_instance->render_article_item( $options, false );
+
+                if ( $display_mode === 'slideshow' ) {
+                    echo '</div>';
+                }
+
+                $displayed_posts_count++;
             }
-            $displayed_posts_count += (int) $articles_query->post_count;
-        } elseif ( $articles_query instanceof WP_Query ) {
-            $displayed_posts_count += (int) $articles_query->post_count;
         }
 
         if ( 0 === $displayed_posts_count ) {
