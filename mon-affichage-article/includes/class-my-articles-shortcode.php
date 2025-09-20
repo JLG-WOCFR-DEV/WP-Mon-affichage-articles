@@ -19,6 +19,48 @@ class My_Articles_Shortcode {
         add_shortcode( 'mon_affichage_articles', array( $this, 'render_shortcode' ) );
     }
 
+    public static function get_default_options() {
+        return [
+            'post_type' => 'post',
+            'taxonomy' => '',
+            'term' => '',
+            'counting_behavior' => 'exact',
+            'posts_per_page' => 10,
+            'pagination_mode' => 'none',
+            'show_category_filter' => 0,
+            'filter_alignment' => 'right',
+            'filter_categories' => array(),
+            'pinned_posts' => array(),
+            'pinned_border_color' => '#eab308',
+            'pinned_posts_ignore_filter' => 0,
+            'pinned_show_badge' => 0,
+            'pinned_badge_text' => 'Épinglé',
+            'pinned_badge_bg_color' => '#eab308',
+            'pinned_badge_text_color' => '#ffffff',
+            'exclude_posts' => '',
+            'ignore_native_sticky' => 1,
+            'enable_lazy_load' => 1,
+            'enable_debug_mode' => 0,
+            'display_mode' => 'grid',
+            'columns_mobile' => 1, 'columns_tablet' => 2, 'columns_desktop' => 3, 'columns_ultrawide' => 4,
+            'module_padding_left' => 0, 'module_padding_right' => 0,
+            'gap_size' => 25, 'list_item_gap' => 25,
+            'list_content_padding_top' => 0, 'list_content_padding_right' => 0,
+            'list_content_padding_bottom' => 0, 'list_content_padding_left' => 0,
+            'border_radius' => 12, 'title_font_size' => 16,
+            'meta_font_size' => 12, 'show_category' => 1, 'show_author' => 1, 'show_date' => 1,
+            'show_excerpt' => 0,
+            'excerpt_length' => 25,
+            'excerpt_more_text' => 'Lire la suite',
+            'excerpt_font_size' => 14,
+            'excerpt_color' => '#4b5563',
+            'module_bg_color' => 'rgba(255,255,255,0)', 'vignette_bg_color' => '#ffffff',
+            'title_wrapper_bg_color' => '#ffffff', 'title_color' => '#333333',
+            'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
+            'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
+        ];
+    }
+
     public function render_shortcode( $atts ) {
         $atts = shortcode_atts( ['id' => 0], $atts, 'mon_affichage_articles' );
         $id = absint($atts['id']);
@@ -28,45 +70,7 @@ class My_Articles_Shortcode {
         }
 
         $options = (array) get_post_meta( $id, '_my_articles_settings', true );
-        $defaults = [
-            'post_type' => 'post',
-            'taxonomy' => '',
-            'term' => '',
-            'counting_behavior' => 'exact',
-            'posts_per_page' => 10,
-            'pagination_mode' => 'none',
-            'show_category_filter' => 0, 
-            'filter_alignment' => 'right', 
-            'filter_categories' => array(),
-            'pinned_posts' => array(), 
-            'pinned_border_color' => '#eab308',
-            'pinned_posts_ignore_filter' => 0,
-            'pinned_show_badge' => 0, 
-            'pinned_badge_text' => 'Épinglé',
-            'pinned_badge_bg_color' => '#eab308', 
-            'pinned_badge_text_color' => '#ffffff',
-            'exclude_posts' => '', 
-            'ignore_native_sticky' => 1,
-            'enable_lazy_load' => 1,
-            'enable_debug_mode' => 0,
-            'display_mode' => 'grid',
-            'columns_mobile' => 1, 'columns_tablet' => 2, 'columns_desktop' => 3, 'columns_ultrawide' => 4,
-            'module_padding_left' => 0, 'module_padding_right' => 0, 
-            'gap_size' => 25, 'list_item_gap' => 25, 
-            'list_content_padding_top' => 0, 'list_content_padding_right' => 0,
-            'list_content_padding_bottom' => 0, 'list_content_padding_left' => 0,
-            'border_radius' => 12, 'title_font_size' => 16, 
-            'meta_font_size' => 12, 'show_category' => 1, 'show_author' => 1, 'show_date' => 1, 
-            'show_excerpt' => 0,
-            'excerpt_length' => 25,
-            'excerpt_more_text' => 'Lire la suite',
-            'excerpt_font_size' => 14,
-            'excerpt_color' => '#4b5563',
-            'module_bg_color' => 'rgba(255,255,255,0)', 'vignette_bg_color' => '#ffffff', 
-            'title_wrapper_bg_color' => '#ffffff', 'title_color' => '#333333', 
-            'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
-            'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
-        ];
+        $defaults = self::get_default_options();
         $options = wp_parse_args($options, $defaults);
 
         $resolved_taxonomy = $this->resolve_taxonomy( $options );
