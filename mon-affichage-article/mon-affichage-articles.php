@@ -113,8 +113,8 @@ final class Mon_Affichage_Articles {
 
         $all_excluded_ids = array_unique( array_merge( $pinned_ids, $exclude_ids ) );
 
-        $pinned_query = null;
-        $pinned_posts_found = 0;
+        $pinned_query         = null;
+        $total_pinned_posts   = 0;
         $displayed_pinned_ids = array();
 
         if ( ! empty( $pinned_ids ) ) {
@@ -147,7 +147,9 @@ final class Mon_Affichage_Articles {
                 }
             }
             $pinned_query = new WP_Query( $pinned_query_args );
-            $pinned_posts_found = $pinned_query->post_count;
+            if ( $pinned_query instanceof WP_Query ) {
+                $total_pinned_posts = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
+            }
         }
 
         $displayed_posts_count = 0;
@@ -220,7 +222,6 @@ final class Mon_Affichage_Articles {
         wp_reset_postdata();
         $html = ob_get_clean();
 
-        $pinned_posts_found = count( $displayed_pinned_ids );
         $total_regular_posts = 0;
 
         if ( $articles_query instanceof WP_Query ) {
@@ -254,8 +255,12 @@ final class Mon_Affichage_Articles {
             wp_reset_postdata();
         }
 
+        if ( 0 === $total_pinned_posts && ! empty( $displayed_pinned_ids ) ) {
+            $total_pinned_posts = count( $displayed_pinned_ids );
+        }
+
         $pagination_totals = my_articles_calculate_total_pages(
-            $pinned_posts_found,
+            $total_pinned_posts,
             $total_regular_posts,
             $posts_per_page
         );
