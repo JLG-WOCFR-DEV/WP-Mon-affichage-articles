@@ -519,7 +519,7 @@ class My_Articles_Shortcode {
                     $image_srcset = wp_get_attachment_image_srcset($image_id, 'large');
                     $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
                     if ($enable_lazy_load) {
-                        echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . esc_attr(get_the_title()) . '" sizes="auto" />';
+                        echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . esc_attr(get_the_title()) . '" data-sizes="auto" />';
                     } else {
                         the_post_thumbnail('large');
                     }
