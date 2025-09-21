@@ -97,7 +97,7 @@ final class Mon_Affichage_Articles {
                 );
 
                 if ( ! is_wp_error( $allowed_terms ) && ! empty( $allowed_terms ) ) {
-                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ) ) );
+                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ), 'strlen' ) );
                 }
             }
         }
@@ -348,7 +348,7 @@ final class Mon_Affichage_Articles {
                 );
 
                 if ( ! is_wp_error( $allowed_terms ) && ! empty( $allowed_terms ) ) {
-                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ) ) );
+                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ), 'strlen' ) );
                 }
             }
         }
