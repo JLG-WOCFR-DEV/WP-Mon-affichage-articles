@@ -70,6 +70,21 @@
                         }
                     }
 
+                    if (response.data && typeof response.data.pagination_html !== 'undefined') {
+                        var paginationHtml = response.data.pagination_html;
+                        var paginationElement = wrapper.find('.my-articles-pagination').first();
+
+                        if (typeof paginationHtml === 'string' && paginationHtml.trim().length > 0) {
+                            if (paginationElement.length) {
+                                paginationElement.replaceWith(paginationHtml);
+                            } else if (contentArea.length) {
+                                contentArea.after(paginationHtml);
+                            }
+                        } else if (paginationElement.length) {
+                            paginationElement.remove();
+                        }
+                    }
+
                     if (wrapper.hasClass('my-articles-slideshow')) {
                         if (typeof window.mySwiperInstances !== 'undefined' && window.mySwiperInstances[instanceId]) {
                             window.mySwiperInstances[instanceId].destroy(true, true);
