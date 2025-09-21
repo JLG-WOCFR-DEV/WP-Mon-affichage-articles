@@ -81,6 +81,35 @@ final class Mon_Affichage_Articles {
             $taxonomy = 'category';
         }
 
+        $default_term = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
+        $allowed_slugs = array();
+
+        if ( ! empty( $taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
+            $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
+
+            if ( ! empty( $allowed_term_ids ) ) {
+                $allowed_terms = get_terms(
+                    array(
+                        'taxonomy'   => $taxonomy,
+                        'include'    => $allowed_term_ids,
+                        'hide_empty' => false,
+                    )
+                );
+
+                if ( ! is_wp_error( $allowed_terms ) && ! empty( $allowed_terms ) ) {
+                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ) ) );
+                }
+            }
+        }
+
+        if ( ! empty( $allowed_slugs ) ) {
+            $valid_slugs = array_unique( array_merge( array( '', 'all', $default_term ), $allowed_slugs ) );
+
+            if ( ! in_array( $category_slug, $valid_slugs, true ) ) {
+                wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
+            }
+        }
+
         $options['display_mode'] = $display_mode;
         $options['post_type']    = $post_type;
         $options['taxonomy']     = $taxonomy;
