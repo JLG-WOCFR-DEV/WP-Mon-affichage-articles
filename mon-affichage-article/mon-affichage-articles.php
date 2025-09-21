@@ -41,7 +41,7 @@ final class Mon_Affichage_Articles {
     private function add_hooks() {
         add_action( 'init', array( $this, 'register_post_type' ) );
         add_action( 'plugins_loaded', array( $this, 'load_textdomain' ) );
-        
+
         add_action( 'wp_ajax_filter_articles', array( $this, 'filter_articles_callback' ) );
         add_action( 'wp_ajax_nopriv_filter_articles', array( $this, 'filter_articles_callback' ) );
 
@@ -58,7 +58,17 @@ final class Mon_Affichage_Articles {
         My_Articles_Shortcode::get_instance();
         My_Articles_Enqueue::get_instance();
     }
-    
+
+    private function assert_valid_instance_post_type( $instance_id ) {
+        $post_type = get_post_type( $instance_id );
+
+        if ( 'mon_affichage' !== $post_type ) {
+            wp_send_json_error( __( 'Type de contenu invalide pour cette instance.', 'mon-articles' ), 400 );
+        }
+
+        return $post_type;
+    }
+
     public function filter_articles_callback() {
         check_ajax_referer( 'my_articles_filter_nonce', 'security' );
 
@@ -89,9 +99,11 @@ final class Mon_Affichage_Articles {
             $referer_url = $sanitize_referer( wp_get_referer() );
         }
 
-        if ( !$instance_id ) {
+        if ( ! $instance_id ) {
             wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
         }
+
+        $this->assert_valid_instance_post_type( $instance_id );
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
@@ -363,7 +375,11 @@ final class Mon_Affichage_Articles {
         $pinned_ids_str = isset( $_POST['pinned_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['pinned_ids'] ) ) : '';
         $category = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
 
-        if (!$instance_id) { wp_send_json_error(); }
+        if ( ! $instance_id ) {
+            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
+        }
+
+        $this->assert_valid_instance_post_type( $instance_id );
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
