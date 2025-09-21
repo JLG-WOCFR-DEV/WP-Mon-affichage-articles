@@ -160,15 +160,20 @@ class My_Articles_Shortcode {
 
         $paged_var = 'paged_' . $id;
         $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
-        $posts_per_page = (int)($options['posts_per_page'] ?? 10);
 
-        if ($options['counting_behavior'] === 'auto_fill' && ($options['display_mode'] === 'grid' || $options['display_mode'] === 'slideshow')) {
+        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        $is_unlimited = $raw_posts_per_page <= 0;
+        $posts_per_page = $is_unlimited ? -1 : $raw_posts_per_page;
+
+        if ( ! $is_unlimited && $options['counting_behavior'] === 'auto_fill' && ($options['display_mode'] === 'grid' || $options['display_mode'] === 'slideshow')) {
             $master_columns = (int)($options['columns_ultrawide'] ?? 4);
             if ($master_columns > 0) {
                 $rows_needed = ceil($posts_per_page / $master_columns);
                 $posts_per_page = $rows_needed * $master_columns;
             }
         }
+
+        $options['posts_per_page'] = $posts_per_page;
 
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
@@ -177,8 +182,8 @@ class My_Articles_Shortcode {
         $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
         $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
 
-        $render_limit = max(0, (int) $posts_per_page);
-        $should_limit_display = ( $options['display_mode'] !== 'slideshow' && $render_limit > 0 );
+        $render_limit = $is_unlimited ? 0 : max(0, (int) $posts_per_page);
+        $should_limit_display = ( $options['display_mode'] !== 'slideshow' && ! $is_unlimited && $render_limit > 0 );
 
         $pinned_query              = null;
         $pinned_posts_found        = 0;
@@ -228,7 +233,7 @@ class My_Articles_Shortcode {
             $total_matching_pinned = (int) ( $pinned_lookup_query->found_posts ?? count( $matching_pinned_ids ) );
             wp_reset_postdata();
 
-            if ( $posts_per_page > 0 ) {
+            if ( ! $is_unlimited ) {
                 $pinned_offset = min( $total_matching_pinned, max( 0, ( $paged - 1 ) * $posts_per_page ) );
                 $slice_length  = $posts_per_page;
             } else {
@@ -249,7 +254,7 @@ class My_Articles_Shortcode {
                 $pinned_posts_found = $pinned_query->post_count;
             }
 
-            if ( $posts_per_page > 0 ) {
+            if ( ! $is_unlimited ) {
                 $first_page_projected_pinned = min( $total_matching_pinned, $posts_per_page );
             } else {
                 $first_page_projected_pinned = $total_matching_pinned;
@@ -257,26 +262,25 @@ class My_Articles_Shortcode {
         }
 
         $pinned_render_count = count( $pinned_ids_for_page );
-        $max_items_before_current_page = ( $posts_per_page > 0 ) ? max( 0, ( $paged - 1 ) * $posts_per_page ) : 0;
-        $regular_posts_already_displayed = max( 0, $max_items_before_current_page - $pinned_offset );
+        $max_items_before_current_page = $is_unlimited ? 0 : max( 0, ( $paged - 1 ) * $posts_per_page );
+        $regular_posts_already_displayed = $is_unlimited ? 0 : max( 0, $max_items_before_current_page - $pinned_offset );
 
         $offset = $regular_posts_already_displayed;
-        if ( $posts_per_page > 0 ) {
-            $posts_to_fetch = max( 0, $posts_per_page - $pinned_render_count );
-        } else {
-            $posts_to_fetch = $posts_per_page;
-        }
-        
+        $posts_to_fetch = $is_unlimited ? -1 : max( 0, $posts_per_page - $pinned_render_count );
+
         $articles_query = null;
-        if ($posts_to_fetch > 0) {
+        if ( $is_unlimited || $posts_to_fetch > 0 ) {
             $regular_query_args = [
                 'post_type' => $options['post_type'],
                 'post_status' => 'publish',
-                'posts_per_page' => $posts_to_fetch,
-                'offset' => $offset,
+                'posts_per_page' => $is_unlimited ? -1 : $posts_to_fetch,
                 'post__not_in' => $all_excluded_ids,
                 'ignore_sticky_posts' => (int)$options['ignore_native_sticky'],
             ];
+
+            if ( $offset > 0 ) {
+                $regular_query_args['offset'] = $offset;
+            }
 
             if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {
                 $regular_query_args['tax_query'] = [
@@ -477,11 +481,38 @@ class My_Articles_Shortcode {
     }
 
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
-        $total_posts_needed = $posts_per_page;
+        $total_posts_needed = (int) $posts_per_page;
+
+        if ( $total_posts_needed < 0 ) {
+            $total_posts_needed = 0;
+            if ( $pinned_query instanceof WP_Query ) {
+                $total_posts_needed += (int) $pinned_query->post_count;
+            }
+            if ( $regular_query instanceof WP_Query ) {
+                $total_posts_needed += (int) $regular_query->post_count;
+            }
+        }
+
         echo '<div class="swiper-container"><div class="swiper-wrapper">';
         $post_count = 0;
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) { $pinned_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, true); echo '</div>'; $post_count++; } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) { $regular_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, false); echo '</div>'; $post_count++; } }
+        if ( $pinned_query && $pinned_query->have_posts() ) {
+            while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) {
+                $pinned_query->the_post();
+                echo '<div class="swiper-slide">';
+                $this->render_article_item($options, true);
+                echo '</div>';
+                $post_count++;
+            }
+        }
+        if ( $regular_query && $regular_query->have_posts() ) {
+            while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) {
+                $regular_query->the_post();
+                echo '<div class="swiper-slide">';
+                $this->render_article_item($options, false);
+                echo '</div>';
+                $post_count++;
+            }
+        }
         echo '</div><div class="swiper-pagination"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div>';
 
         if ( 0 === $post_count ) {

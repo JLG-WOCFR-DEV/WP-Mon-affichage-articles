@@ -150,8 +150,11 @@ final class Mon_Affichage_Articles {
         $options['post_type']    = $post_type;
         $options['taxonomy']     = $taxonomy;
 
-        $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
-        if ( ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
+        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        $is_unlimited       = $raw_posts_per_page <= 0;
+        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
+
+        if ( ! $is_unlimited && ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
             $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
             if ( $master_columns > 0 ) {
                 $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
@@ -163,7 +166,7 @@ final class Mon_Affichage_Articles {
         $ignore_sticky_posts        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
         $options['ignore_native_sticky'] = $ignore_sticky_posts;
 
-        $render_limit = max( 0, (int) $posts_per_page );
+        $render_limit = $is_unlimited ? 0 : max( 0, (int) $posts_per_page );
 
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
@@ -185,7 +188,7 @@ final class Mon_Affichage_Articles {
         if ( ! empty( $pinned_ids ) ) {
             $pinned_posts_per_page = count( $pinned_ids );
 
-            if ( 'slideshow' === $display_mode && $render_limit > 0 ) {
+            if ( ! $is_unlimited && 'slideshow' === $display_mode && $render_limit > 0 ) {
                 $pinned_posts_per_page = min( $pinned_posts_per_page, $render_limit );
             }
 
@@ -218,7 +221,7 @@ final class Mon_Affichage_Articles {
         }
 
         $displayed_posts_count = 0;
-        $should_limit_display   = ( $render_limit > 0 );
+        $should_limit_display   = ( ! $is_unlimited && $render_limit > 0 );
 
         $projected_pinned_display = 0;
         if ( $pinned_query instanceof WP_Query ) {
@@ -228,15 +231,14 @@ final class Mon_Affichage_Articles {
             }
         }
 
-        $total_posts_needed = $posts_per_page;
-        $regular_posts_needed = max( 0, $total_posts_needed - $projected_pinned_display );
+        $regular_posts_needed = $is_unlimited ? -1 : max( 0, $posts_per_page - $projected_pinned_display );
         $articles_query = null;
 
-        if ($regular_posts_needed > 0) {
+        if ( $is_unlimited || $regular_posts_needed > 0 ) {
             $query_args = [
                 'post_type' => $post_type,
                 'post_status' => 'publish',
-                'posts_per_page' => $regular_posts_needed,
+                'posts_per_page' => $is_unlimited ? -1 : $regular_posts_needed,
                 'post__not_in' => $all_excluded_ids,
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
@@ -444,8 +446,11 @@ final class Mon_Affichage_Articles {
         $ignore_sticky_posts        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
         $options['ignore_native_sticky'] = $ignore_sticky_posts;
 
-        $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
-        if ( ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
+        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
+        $is_unlimited       = $raw_posts_per_page <= 0;
+        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
+
+        if ( ! $is_unlimited && ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
             $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
             if ( $master_columns > 0 ) {
                 $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
@@ -453,6 +458,16 @@ final class Mon_Affichage_Articles {
             }
         }
         $options['posts_per_page'] = $posts_per_page;
+
+        if ( $is_unlimited ) {
+            $pinned_ids_string = ! empty( $seen_pinned_ids ) ? implode( ',', array_map( 'absint', $seen_pinned_ids ) ) : '';
+            wp_send_json_success(
+                [
+                    'html'       => '',
+                    'pinned_ids' => $pinned_ids_string,
+                ]
+            );
+        }
         $matching_pinned_ids = array();
         if ( ! empty( $configured_pinned_ids ) ) {
             $pinned_lookup_args = [
