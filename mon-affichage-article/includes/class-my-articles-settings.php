@@ -42,7 +42,7 @@ class My_Articles_Settings {
                 <p style="margin: 0;"><strong>Auteur :</strong> LCV</p>
                 <p style="margin: 0;"><strong>Version :</strong> <?php echo esc_html( MY_ARTICLES_VERSION ); ?></p>
             </div>
-            <p><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles categorie="slug-de-votre-categorie"] pour afficher les articles.', 'mon-articles' ); ?></p>
+            <p><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
             
             <form method="post" action="options.php">
                 <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
