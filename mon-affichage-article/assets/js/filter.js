@@ -28,6 +28,7 @@
                 security: filterSettings.nonce || '',
                 instance_id: instanceId,
                 category: categorySlug,
+                current_url: window.location && window.location.href ? window.location.href : ''
             },
             beforeSend: function () {
                 contentArea.css('opacity', 0.5);

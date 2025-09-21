@@ -62,8 +62,32 @@ final class Mon_Affichage_Articles {
     public function filter_articles_callback() {
         check_ajax_referer( 'my_articles_filter_nonce', 'security' );
 
-        $instance_id = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
+        $instance_id   = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
+        $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
+
+        $sanitize_referer = static function ( $url ) {
+            if ( ! is_string( $url ) || '' === $url ) {
+                return '';
+            }
+
+            $clean_url = esc_url_raw( $url );
+            if ( '' === $clean_url ) {
+                return '';
+            }
+
+            $hash_position = strpos( $clean_url, '#' );
+            if ( false !== $hash_position ) {
+                $clean_url = substr( $clean_url, 0, $hash_position );
+            }
+
+            return $clean_url;
+        };
+
+        $referer_url = $sanitize_referer( $raw_current_url );
+        if ( '' === $referer_url ) {
+            $referer_url = $sanitize_referer( wp_get_referer() );
+        }
 
         if ( !$instance_id ) {
             wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
@@ -309,14 +333,6 @@ final class Mon_Affichage_Articles {
 
             if ( '' !== $current_filter_slug ) {
                 $pagination_query_args[ $category_query_var ] = $current_filter_slug;
-            }
-
-            $referer_url = wp_get_referer();
-            if ( $referer_url ) {
-                $referer_url = esc_url_raw( $referer_url );
-                $referer_url = strtok( $referer_url, '#' );
-            } else {
-                $referer_url = '';
             }
 
             $pagination_html = $shortcode_instance->get_numbered_pagination_html(
