@@ -560,6 +560,18 @@ class My_Articles_Shortcode {
         wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, [ 'columns_mobile' => $options['columns_mobile'], 'columns_tablet' => $options['columns_tablet'], 'columns_desktop' => $options['columns_desktop'], 'columns_ultrawide' => $options['columns_ultrawide'], 'gap_size' => $options['gap_size'], 'container_selector' => '#my-articles-wrapper-' . $instance_id . ' .swiper-container' ]);
     }
     
+    /**
+     * Builds the HTML markup for numbered pagination links.
+     *
+     * @param int    $total_pages            Total number of pages available.
+     * @param int    $paged                  Current page number.
+     * @param string $paged_var              Query variable used for the pagination links.
+     * @param array  $additional_query_args  Additional query arguments to preserve when generating links.
+     * @param string $base_url               Base URL to use when generating the pagination links. When empty, the
+     *                                       current request derived from $wp->request is used as a fallback.
+     *
+     * @return string HTML markup for the pagination component or an empty string if no pagination is needed.
+     */
     public function get_numbered_pagination_html( $total_pages, $paged, $paged_var, $additional_query_args = array(), $base_url = '' ) {
         if ( $total_pages <= 1 ) {
             return '';
