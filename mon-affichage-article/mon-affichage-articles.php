@@ -297,12 +297,44 @@ final class Mon_Affichage_Articles {
         $next_page   = $pagination_totals['next_page'];
         $pinned_ids_string = ! empty( $displayed_pinned_ids ) ? implode( ',', array_map( 'absint', $displayed_pinned_ids ) ) : '';
 
+        $pagination_html = '';
+        if ( 'numbered' === ( $options['pagination_mode'] ?? '' ) ) {
+            $pagination_query_args = array();
+            $category_query_var    = 'my_articles_cat_' . $instance_id;
+            $current_filter_slug   = $category_slug;
+
+            if ( '' === $current_filter_slug ) {
+                $current_filter_slug = $default_term;
+            }
+
+            if ( '' !== $current_filter_slug ) {
+                $pagination_query_args[ $category_query_var ] = $current_filter_slug;
+            }
+
+            $referer_url = wp_get_referer();
+            if ( $referer_url ) {
+                $referer_url = esc_url_raw( $referer_url );
+                $referer_url = strtok( $referer_url, '#' );
+            } else {
+                $referer_url = '';
+            }
+
+            $pagination_html = $shortcode_instance->get_numbered_pagination_html(
+                $total_pages,
+                1,
+                'paged_' . $instance_id,
+                $pagination_query_args,
+                $referer_url
+            );
+        }
+
         wp_send_json_success(
             [
-                'html'         => $html,
-                'total_pages'  => $total_pages,
-                'next_page'    => $next_page,
-                'pinned_ids'   => $pinned_ids_string,
+                'html'             => $html,
+                'total_pages'      => $total_pages,
+                'next_page'        => $next_page,
+                'pinned_ids'       => $pinned_ids_string,
+                'pagination_html'  => $pagination_html,
             ]
         );
     }

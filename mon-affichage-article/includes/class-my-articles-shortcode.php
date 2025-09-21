@@ -76,6 +76,51 @@ class My_Articles_Shortcode {
         $resolved_taxonomy = $this->resolve_taxonomy( $options );
         $options['resolved_taxonomy'] = $resolved_taxonomy;
 
+        $options['term'] = sanitize_title( $options['term'] ?? '' );
+
+        $category_query_var = 'my_articles_cat_' . $id;
+        $requested_category = '';
+        if ( isset( $_GET[ $category_query_var ] ) ) {
+            $requested_category = sanitize_title( wp_unslash( $_GET[ $category_query_var ] ) );
+        }
+
+        $should_collect_terms = ! empty( $options['show_category_filter'] ) || '' !== $requested_category || ( ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) );
+        $available_categories = array();
+        $available_category_slugs = array();
+
+        if ( $should_collect_terms && ! empty( $resolved_taxonomy ) ) {
+            $get_terms_args = [
+                'taxonomy'   => $resolved_taxonomy,
+                'hide_empty' => true,
+            ];
+
+            if ( ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
+                $get_terms_args['include'] = array_map( 'absint', $options['filter_categories'] );
+                $get_terms_args['orderby'] = 'include';
+            }
+
+            $terms = get_terms( $get_terms_args );
+
+            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                $available_categories     = $terms;
+                $available_category_slugs = array_values( array_filter( wp_list_pluck( $terms, 'slug' ), 'strlen' ) );
+            }
+        }
+
+        $active_category = $options['term'];
+
+        if ( '' !== $requested_category ) {
+            if ( 'all' === $requested_category ) {
+                $active_category = 'all';
+            } elseif ( in_array( $requested_category, $available_category_slugs, true ) ) {
+                $active_category = $requested_category;
+            } elseif ( empty( $available_category_slugs ) ) {
+                $active_category = $requested_category;
+            }
+        }
+
+        $options['term'] = $active_category;
+
         if ( !empty($options['show_category_filter']) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
@@ -256,32 +301,19 @@ class My_Articles_Shortcode {
         
         echo '<div id="my-articles-wrapper-' . esc_attr($id) . '" class="' . esc_attr($wrapper_class) . '" data-instance-id="' . esc_attr($id) . '">';
 
-        if ( !empty($options['show_category_filter']) ) {
-            if ( !empty( $resolved_taxonomy ) ) {
-                $get_terms_args = [
-                    'taxonomy'   => $resolved_taxonomy,
-                    'hide_empty' => true,
-                ];
+        if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
+            $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
+            echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
+            $default_cat   = $options['term'] ?? '';
+            $is_all_active = '' === $default_cat || 'all' === $default_cat;
+            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><a href="#" data-category="all">' . __( 'Tout', 'mon-articles' ) . '</a></li>';
 
-                if ( !empty($options['filter_categories']) && is_array($options['filter_categories']) ) {
-                    $get_terms_args['include'] = array_map('absint', $options['filter_categories']);
-                    $get_terms_args['orderby'] = 'include';
-                }
-
-                $categories = get_terms( $get_terms_args );
-
-                if (!is_wp_error($categories) && count($categories) > 0) {
-                    $alignment_class = 'filter-align-' . esc_attr($options['filter_alignment']);
-                    echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
-                    $default_cat = $options['term'] ?? '';
-                    $is_all_active = '' === $default_cat || 'all' === $default_cat;
-                    echo '<li class="' . ($is_all_active ? 'active' : '') . '"><a href="#" data-category="all">' . __('Tout', 'mon-articles') . '</a></li>';
-                    foreach ($categories as $category) {
-                        echo '<li class="' . ($default_cat === $category->slug ? 'active' : '') . '"><a href="#" data-category="' .esc_attr($category->slug) . '">' . esc_html($category->name) . '</a></li>';
-                    }
-                    echo '</ul></nav>';
-                }
+            foreach ( $available_categories as $category ) {
+                $is_active = ( $default_cat === $category->slug );
+                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><a href="#" data-category="' . esc_attr( $category->slug ) . '">' . esc_html( $category->name ) . '</a></li>';
             }
+
+            echo '</ul></nav>';
         }
         if ($options['display_mode'] === 'slideshow') {
             $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page);
@@ -338,7 +370,11 @@ class My_Articles_Shortcode {
                     echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="2" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . __('Charger plus', 'mon-articles') . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
-                $this->render_numbered_pagination($total_pages, $paged, $paged_var);
+                $pagination_query_args = array();
+                if ( '' !== $options['term'] ) {
+                    $pagination_query_args[ $category_query_var ] = $options['term'];
+                }
+                $this->render_numbered_pagination($total_pages, $paged, $paged_var, $pagination_query_args);
             }
         }
         
@@ -524,21 +560,97 @@ class My_Articles_Shortcode {
         wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, [ 'columns_mobile' => $options['columns_mobile'], 'columns_tablet' => $options['columns_tablet'], 'columns_desktop' => $options['columns_desktop'], 'columns_ultrawide' => $options['columns_ultrawide'], 'gap_size' => $options['gap_size'], 'container_selector' => '#my-articles-wrapper-' . $instance_id . ' .swiper-container' ]);
     }
     
-    private function render_numbered_pagination($total_pages, $paged, $paged_var) {
-        if ($total_pages <= 1) { return; }
-        global $wp;
-        $current_url = home_url( add_query_arg( array(), $wp->request ) );
+    public function get_numbered_pagination_html( $total_pages, $paged, $paged_var, $additional_query_args = array(), $base_url = '' ) {
+        if ( $total_pages <= 1 ) {
+            return '';
+        }
 
-        if ( ! empty( $_GET ) ) {
-            $sanitized_query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
-            if ( ! empty( $sanitized_query_args ) ) {
-                $current_url = add_query_arg( $sanitized_query_args, $current_url );
+        if ( empty( $base_url ) ) {
+            global $wp;
+            $base_url = home_url( add_query_arg( array(), $wp->request ) );
+
+            if ( ! empty( $_GET ) ) {
+                $sanitized_query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
+                if ( isset( $sanitized_query_args[ $paged_var ] ) ) {
+                    unset( $sanitized_query_args[ $paged_var ] );
+                }
+                if ( ! empty( $sanitized_query_args ) ) {
+                    $base_url = add_query_arg( $sanitized_query_args, $base_url );
+                }
             }
         }
 
-        $base_url = remove_query_arg( $paged_var, $current_url );
-        $pagination_links = paginate_links(['base' => $base_url . '%_%', 'format' => (strpos($base_url, '?') ? '&' : '?') . $paged_var . '=%#%', 'current' => max( 1, $paged ), 'total' => $total_pages, 'prev_text' => __('&laquo; Précédent', 'mon-articles'), 'next_text' => __('Suivant &raquo;', 'mon-articles')]);
-        if ($pagination_links) { echo '<nav class="my-articles-pagination">' . $pagination_links . '</nav>'; }
+        if ( empty( $base_url ) ) {
+            return '';
+        }
+
+        $base_url = strtok( $base_url, '#' );
+        $base_url = remove_query_arg( $paged_var, $base_url );
+
+        $existing_args = array();
+        $query_string  = wp_parse_url( $base_url, PHP_URL_QUERY );
+        if ( $query_string ) {
+            wp_parse_str( $query_string, $existing_args );
+            $existing_args = array_map( 'sanitize_text_field', $existing_args );
+
+            if ( ! empty( $existing_args ) ) {
+                $base_url = remove_query_arg( array_keys( $existing_args ), $base_url );
+            }
+        }
+
+        $clean_additional_args = array();
+        if ( ! empty( $additional_query_args ) && is_array( $additional_query_args ) ) {
+            foreach ( $additional_query_args as $key => $value ) {
+                $clean_key = sanitize_key( $key );
+                if ( '' === $clean_key ) {
+                    continue;
+                }
+
+                if ( is_array( $value ) ) {
+                    continue;
+                }
+
+                $value       = (string) $value;
+                $clean_value = sanitize_text_field( $value );
+
+                if ( '' === $clean_value && '0' !== $clean_value ) {
+                    continue;
+                }
+
+                $clean_additional_args[ $clean_key ] = $clean_value;
+            }
+        }
+
+        $query_args = array_merge( $existing_args, $clean_additional_args );
+
+        $base_without_query = rtrim( $base_url, '?' );
+        $format             = ( strpos( $base_without_query, '?' ) !== false ? '&' : '?' ) . $paged_var . '=%#%';
+
+        $pagination_links = paginate_links(
+            [
+                'base'      => $base_without_query . '%_%',
+                'format'    => $format,
+                'add_args'  => ! empty( $query_args ) ? $query_args : false,
+                'current'   => max( 1, (int) $paged ),
+                'total'     => max( 1, (int) $total_pages ),
+                'prev_text' => __( '&laquo; Précédent', 'mon-articles' ),
+                'next_text' => __( 'Suivant &raquo;', 'mon-articles' ),
+            ]
+        );
+
+        if ( empty( $pagination_links ) ) {
+            return '';
+        }
+
+        return '<nav class="my-articles-pagination">' . $pagination_links . '</nav>';
+    }
+
+    private function render_numbered_pagination( $total_pages, $paged, $paged_var, $additional_query_args = array(), $base_url = '' ) {
+        $pagination_html = $this->get_numbered_pagination_html( $total_pages, $paged, $paged_var, $additional_query_args, $base_url );
+
+        if ( ! empty( $pagination_html ) ) {
+            echo $pagination_html;
+        }
     }
 
     private function render_inline_styles($options, $id) {
