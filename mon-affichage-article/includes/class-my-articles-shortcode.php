@@ -73,6 +73,8 @@ class My_Articles_Shortcode {
         $defaults = self::get_default_options();
         $options = wp_parse_args($options, $defaults);
 
+        $options['post_type'] = my_articles_normalize_post_type( $options['post_type'] ?? '' );
+
         $resolved_taxonomy = self::resolve_taxonomy( $options );
         $options['resolved_taxonomy'] = $resolved_taxonomy;
 
@@ -714,7 +716,7 @@ class My_Articles_Shortcode {
     }
 
     public static function resolve_taxonomy( $options ) {
-        $post_type = ! empty( $options['post_type'] ) ? $options['post_type'] : 'post';
+        $post_type = my_articles_normalize_post_type( $options['post_type'] ?? 'post' );
 
         if ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) && is_object_in_taxonomy( $post_type, $options['taxonomy'] ) ) {
             return $options['taxonomy'];

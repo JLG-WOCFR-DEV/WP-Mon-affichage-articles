@@ -240,10 +240,20 @@ class My_Articles_Metaboxes {
                 echo '<p class="description">' . __('Si aucune catégorie n\'est cochée, toutes seront affichées.', 'mon-articles') . '</p>';
                 break;
             case 'post_type_select':
-                $post_types = get_post_types(['public' => true], 'objects');
+                $post_types = my_articles_get_selectable_post_types();
+
+                if ( empty( $post_types ) ) {
+                    $fallback_post_type = get_post_type_object( 'post' );
+                    if ( $fallback_post_type ) {
+                        $post_types = array( 'post' => $fallback_post_type );
+                    }
+                }
+
+                $value = my_articles_normalize_post_type( $value );
+
                 echo '<select id="post_type_selector" name="' . $name . '">';
-                foreach ($post_types as $post_type) {
-                    echo '<option value="' . esc_attr($post_type->name) . '" ' . selected($value, $post_type->name, false) . '>' . esc_html($post_type->labels->singular_name) . '</option>';
+                foreach ( $post_types as $post_type ) {
+                    echo '<option value="' . esc_attr( $post_type->name ) . '" ' . selected( $value, $post_type->name, false ) . '>' . esc_html( $post_type->labels->singular_name ) . '</option>';
                 }
                 echo '</select>';
                 break;
@@ -265,7 +275,7 @@ class My_Articles_Metaboxes {
         $input = isset( $_POST[$this->option_key] ) ? wp_unslash( $_POST[$this->option_key] ) : [];
         $sanitized = [];
         
-        $sanitized['post_type'] = isset($input['post_type']) ? sanitize_key($input['post_type']) : 'post';
+        $sanitized['post_type'] = my_articles_normalize_post_type( $input['post_type'] ?? '' );
         $sanitized['taxonomy'] = isset($input['taxonomy']) ? sanitize_key($input['taxonomy']) : '';
         $sanitized['term'] = isset($input['term']) ? sanitize_text_field( wp_unslash( $input['term'] ) ) : '';
         $sanitized['counting_behavior'] = isset($input['counting_behavior']) && in_array($input['counting_behavior'], ['exact', 'auto_fill']) ? $input['counting_behavior'] : 'exact';

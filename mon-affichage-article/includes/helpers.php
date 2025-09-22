@@ -49,6 +49,59 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_get_selectable_post_types' ) ) {
+    /**
+     * Retrieve the list of selectable post types for the plugin.
+     *
+     * Attachments are intentionally excluded because they do not represent
+     * regular content entries and would lead to unexpected behaviour in the
+     * module rendering.
+     *
+     * @return array<string, WP_Post_Type> Associative array of post type objects keyed by their name.
+     */
+    function my_articles_get_selectable_post_types() {
+        $post_types = get_post_types( [ 'public' => true ], 'objects' );
+
+        if ( ! is_array( $post_types ) ) {
+            $post_types = array();
+        }
+
+        unset( $post_types['attachment'] );
+
+        return $post_types;
+    }
+}
+
+if ( ! function_exists( 'my_articles_normalize_post_type' ) ) {
+    /**
+     * Ensure a post type is valid for the plugin and provide a safe fallback.
+     *
+     * @param string $post_type Raw post type value.
+     *
+     * @return string A valid post type value supported by the plugin.
+     */
+    function my_articles_normalize_post_type( $post_type ) {
+        $post_type = sanitize_key( (string) $post_type );
+
+        $available_post_types = my_articles_get_selectable_post_types();
+
+        if ( isset( $available_post_types[ $post_type ] ) ) {
+            return $post_type;
+        }
+
+        if ( isset( $available_post_types['post'] ) ) {
+            return 'post';
+        }
+
+        $available_post_type_keys = array_keys( $available_post_types );
+        if ( ! empty( $available_post_type_keys ) ) {
+            return (string) reset( $available_post_type_keys );
+        }
+
+        return post_type_exists( 'post' ) ? 'post' : $post_type;
+    }
+}
+
 if ( ! function_exists( 'my_articles_calculate_total_pages' ) ) {
     /**
      * Calculate the total number of pages required when pinned posts appear on the first page.
