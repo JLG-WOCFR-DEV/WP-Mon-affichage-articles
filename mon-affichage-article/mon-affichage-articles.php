@@ -113,20 +113,24 @@ final class Mon_Affichage_Articles {
         $display_mode = $options['display_mode'] ?? 'grid';
         $post_type    = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
         $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
-        if ( empty( $taxonomy ) && 'post' === $post_type && taxonomy_exists( 'category' ) ) {
-            $taxonomy = 'category';
-        }
 
         $default_term = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
         $allowed_slugs = array();
 
-        if ( ! empty( $taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
+        $options['display_mode'] = $display_mode;
+        $options['post_type']    = $post_type;
+        $options['taxonomy']     = $taxonomy;
+
+        $resolved_taxonomy = My_Articles_Shortcode::resolve_taxonomy( $options );
+        $options['resolved_taxonomy'] = $resolved_taxonomy;
+
+        if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
             $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
 
             if ( ! empty( $allowed_term_ids ) ) {
                 $allowed_terms = get_terms(
                     array(
-                        'taxonomy'   => $taxonomy,
+                        'taxonomy'   => $resolved_taxonomy,
                         'include'    => $allowed_term_ids,
                         'hide_empty' => false,
                     )
@@ -145,10 +149,6 @@ final class Mon_Affichage_Articles {
                 wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
             }
         }
-
-        $options['display_mode'] = $display_mode;
-        $options['post_type']    = $post_type;
-        $options['taxonomy']     = $taxonomy;
 
         $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
         $is_unlimited       = $raw_posts_per_page <= 0;
@@ -200,18 +200,14 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category_slug && 'all' !== $category_slug ) {
-                if ( ! empty( $taxonomy ) ) {
-                    $pinned_query_args['tax_query'] = [
-                        [
-                            'taxonomy' => $taxonomy,
-                            'field'    => 'slug',
-                            'terms'    => $category_slug,
-                        ],
-                    ];
-                } else {
-                    $pinned_query_args['category_name'] = $category_slug;
-                }
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+                $pinned_query_args['tax_query'] = [
+                    [
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category_slug,
+                    ],
+                ];
             }
             $pinned_query = new WP_Query( $pinned_query_args );
             if ( $pinned_query instanceof WP_Query ) {
@@ -243,18 +239,14 @@ final class Mon_Affichage_Articles {
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
 
-            if ( '' !== $category_slug && 'all' !== $category_slug ) {
-                if ( ! empty( $taxonomy ) ) {
-                    $query_args['tax_query'] = [
-                        [
-                            'taxonomy' => $taxonomy,
-                            'field'    => 'slug',
-                            'terms'    => $category_slug,
-                        ],
-                    ];
-                } else {
-                    $query_args['category_name'] = $category_slug;
-                }
+            if ( '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+                $query_args['tax_query'] = [
+                    [
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category_slug,
+                    ],
+                ];
             }
             $articles_query = new WP_Query($query_args);
         }
@@ -303,18 +295,14 @@ final class Mon_Affichage_Articles {
                 'fields'              => 'ids',
             ];
 
-            if ( '' !== $category_slug && 'all' !== $category_slug ) {
-                if ( ! empty( $taxonomy ) ) {
-                    $count_query_args['tax_query'] = [
-                        [
-                            'taxonomy' => $taxonomy,
-                            'field'    => 'slug',
-                            'terms'    => $category_slug,
-                        ],
-                    ];
-                } else {
-                    $count_query_args['category_name'] = $category_slug;
-                }
+            if ( '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+                $count_query_args['tax_query'] = [
+                    [
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category_slug,
+                    ],
+                ];
             }
 
             $count_query = new WP_Query( $count_query_args );
@@ -391,23 +379,23 @@ final class Mon_Affichage_Articles {
         $display_mode = $options['display_mode'] ?? 'grid';
         $post_type    = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
         $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
-        if ( empty( $taxonomy ) && 'post' === $post_type && taxonomy_exists( 'category' ) ) {
-            $taxonomy = 'category';
-        }
         $options['display_mode'] = $display_mode;
         $options['post_type']    = $post_type;
         $options['taxonomy']     = $taxonomy;
 
+        $resolved_taxonomy = My_Articles_Shortcode::resolve_taxonomy( $options );
+        $options['resolved_taxonomy'] = $resolved_taxonomy;
+
         $default_term  = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
         $allowed_slugs = array();
 
-        if ( ! empty( $taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
+        if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
             $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
 
             if ( ! empty( $allowed_term_ids ) ) {
                 $allowed_terms = get_terms(
                     array(
-                        'taxonomy'   => $taxonomy,
+                        'taxonomy'   => $resolved_taxonomy,
                         'include'    => $allowed_term_ids,
                         'hide_empty' => false,
                     )
@@ -479,18 +467,14 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category && 'all' !== $category ) {
-                if ( ! empty( $taxonomy ) ) {
-                    $pinned_lookup_args['tax_query'] = [
-                        [
-                            'taxonomy' => $taxonomy,
-                            'field'    => 'slug',
-                            'terms'    => $category,
-                        ],
-                    ];
-                } else {
-                    $pinned_lookup_args['category_name'] = $category;
-                }
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category && 'all' !== $category && '' !== $resolved_taxonomy ) {
+                $pinned_lookup_args['tax_query'] = [
+                    [
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category,
+                    ],
+                ];
             }
 
             $pinned_lookup_query = new WP_Query( $pinned_lookup_args );
@@ -560,18 +544,14 @@ final class Mon_Affichage_Articles {
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
 
-            if ( '' !== $category && 'all' !== $category ) {
-                if ( ! empty( $taxonomy ) ) {
-                    $query_args['tax_query'] = [
-                        [
-                            'taxonomy' => $taxonomy,
-                            'field'    => 'slug',
-                            'terms'    => $category,
-                        ],
-                    ];
-                } else {
-                    $query_args['category_name'] = $category;
-                }
+            if ( '' !== $category && 'all' !== $category && '' !== $resolved_taxonomy ) {
+                $query_args['tax_query'] = [
+                    [
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $category,
+                    ],
+                ];
             }
 
             $query = new WP_Query( $query_args );

@@ -73,7 +73,7 @@ class My_Articles_Shortcode {
         $defaults = self::get_default_options();
         $options = wp_parse_args($options, $defaults);
 
-        $resolved_taxonomy = $this->resolve_taxonomy( $options );
+        $resolved_taxonomy = self::resolve_taxonomy( $options );
         $options['resolved_taxonomy'] = $resolved_taxonomy;
 
         $options['term'] = sanitize_title( $options['term'] ?? '' );
@@ -504,7 +504,7 @@ class My_Articles_Shortcode {
         $item_classes = 'my-article-item';
         if ($is_pinned) { $item_classes .= ' is-pinned'; }
         $display_mode = $options['display_mode'] ?? 'grid';
-        $taxonomy = $options['resolved_taxonomy'] ?? $this->resolve_taxonomy( $options );
+        $taxonomy = $options['resolved_taxonomy'] ?? self::resolve_taxonomy( $options );
         $enable_lazy_load = !empty($options['enable_lazy_load']);
         ?>
         <div class="<?php echo esc_attr($item_classes); ?>">
@@ -713,7 +713,7 @@ class My_Articles_Shortcode {
         wp_add_inline_style( 'my-articles-styles', $dynamic_css );
     }
 
-    private function resolve_taxonomy( $options ) {
+    public static function resolve_taxonomy( $options ) {
         $post_type = ! empty( $options['post_type'] ) ? $options['post_type'] : 'post';
 
         if ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) && is_object_in_taxonomy( $post_type, $options['taxonomy'] ) ) {
