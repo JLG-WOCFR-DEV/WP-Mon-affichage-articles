@@ -94,8 +94,8 @@ class My_Articles_Settings {
         $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow']) ? $input['display_mode'] : 'grid';
         $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
         $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 1, absint( $input['posts_per_page'] ) ) : 10;
-        $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] ) ? absint( $input['desktop_columns'] ) : 3;
-        $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] ) ? absint( $input['mobile_columns'] ) : 1;
+        $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] ) ? max( 1, absint( $input['desktop_columns'] ) ) : 3;
+        $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] ) ? max( 1, absint( $input['mobile_columns'] ) ) : 1;
         $sanitized_input['gap_size'] = isset( $input['gap_size'] ) ? absint( $input['gap_size'] ) : 25;
         $sanitized_input['border_radius'] = isset( $input['border_radius'] ) ? absint( $input['border_radius'] ) : 12;
         $sanitized_input['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
