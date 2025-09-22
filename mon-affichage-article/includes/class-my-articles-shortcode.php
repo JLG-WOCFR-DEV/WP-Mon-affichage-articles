@@ -81,7 +81,18 @@ class My_Articles_Shortcode {
         $category_query_var = 'my_articles_cat_' . $id;
         $requested_category = '';
         if ( isset( $_GET[ $category_query_var ] ) ) {
-            $requested_category = sanitize_title( wp_unslash( $_GET[ $category_query_var ] ) );
+            $raw_requested_category = wp_unslash( $_GET[ $category_query_var ] );
+
+            if ( is_scalar( $raw_requested_category ) ) {
+                $requested_category = sanitize_title( (string) $raw_requested_category );
+            } elseif ( is_array( $raw_requested_category ) ) {
+                foreach ( $raw_requested_category as $raw_requested_category_value ) {
+                    if ( is_scalar( $raw_requested_category_value ) ) {
+                        $requested_category = sanitize_title( (string) $raw_requested_category_value );
+                        break;
+                    }
+                }
+            }
         }
 
         $should_collect_terms = ! empty( $options['show_category_filter'] ) || '' !== $requested_category || ( ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) );
