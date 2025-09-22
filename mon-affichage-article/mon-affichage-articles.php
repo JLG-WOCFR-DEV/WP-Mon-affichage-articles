@@ -111,7 +111,7 @@ final class Mon_Affichage_Articles {
         $options            = wp_parse_args( $options_meta, $defaults );
 
         $display_mode = $options['display_mode'] ?? 'grid';
-        $post_type    = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
+        $post_type    = my_articles_normalize_post_type( $options['post_type'] ?? '' );
         $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
 
         $default_term = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
@@ -377,7 +377,7 @@ final class Mon_Affichage_Articles {
         $options            = wp_parse_args( $options_meta, $defaults );
 
         $display_mode = $options['display_mode'] ?? 'grid';
-        $post_type    = ( ! empty( $options['post_type'] ) && post_type_exists( $options['post_type'] ) ) ? $options['post_type'] : 'post';
+        $post_type    = my_articles_normalize_post_type( $options['post_type'] ?? '' );
         $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
         $options['display_mode'] = $display_mode;
         $options['post_type']    = $post_type;
@@ -584,7 +584,7 @@ final class Mon_Affichage_Articles {
             wp_send_json_error( array( 'message' => __( 'Action non autorisée.', 'mon-articles' ) ) );
         }
 
-        $post_type = isset( $_POST['post_type'] ) ? sanitize_text_field( wp_unslash( $_POST['post_type'] ) ) : '';
+        $post_type = my_articles_normalize_post_type( $_POST['post_type'] ?? '' );
 
         if ( empty( $post_type ) || ! post_type_exists( $post_type ) ) {
             wp_send_json_error( array( 'message' => __( 'Type de contenu invalide.', 'mon-articles' ) ) );
@@ -654,15 +654,7 @@ final class Mon_Affichage_Articles {
         }
 
         $search_term = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
-        $post_type   = 'post';
-
-        if ( isset( $_GET['post_type'] ) ) {
-            $post_type = sanitize_key( wp_unslash( $_GET['post_type'] ) );
-        }
-
-        if ( empty( $post_type ) ) {
-            $post_type = 'post';
-        }
+        $post_type   = my_articles_normalize_post_type( $_GET['post_type'] ?? 'post' );
 
         if ( ! post_type_exists( $post_type ) ) {
             wp_send_json_error( __( 'Type de contenu invalide.', 'mon-articles' ), 400 );
