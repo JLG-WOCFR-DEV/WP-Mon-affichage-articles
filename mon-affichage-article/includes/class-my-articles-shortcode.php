@@ -200,7 +200,6 @@ class My_Articles_Shortcode {
         $pinned_posts_found        = 0;
         $first_page_projected_pinned = 0;
         $total_matching_pinned     = 0;
-        $displayed_pinned_ids      = array();
         $matching_pinned_ids       = array();
         $pinned_offset             = 0;
         $pinned_ids_for_page       = array();
@@ -323,12 +322,20 @@ class My_Articles_Shortcode {
 
             echo '</ul></nav>';
         }
+        $displayed_pinned_ids = array();
+
         if ($options['display_mode'] === 'slideshow') {
             $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page);
         } else if ($options['display_mode'] === 'list') {
             $displayed_pinned_ids = $this->render_list($pinned_query, $articles_query, $options, $posts_per_page);
+            if ( ! is_array( $displayed_pinned_ids ) ) {
+                $displayed_pinned_ids = array();
+            }
         } else {
             $displayed_pinned_ids = $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page);
+            if ( ! is_array( $displayed_pinned_ids ) ) {
+                $displayed_pinned_ids = array();
+            }
         }
 
         if ( $paged === 1 ) {
