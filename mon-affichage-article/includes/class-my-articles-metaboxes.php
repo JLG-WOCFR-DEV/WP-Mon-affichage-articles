@@ -312,10 +312,10 @@ class My_Articles_Metaboxes {
         $sanitized['enable_debug_mode'] = isset( $input['enable_debug_mode'] ) ? 1 : 0;
 
         $sanitized['display_mode'] = in_array($input['display_mode'] ?? 'grid', ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
-        $sanitized['columns_mobile'] = isset( $input['columns_mobile'] ) ? absint( $input['columns_mobile'] ) : 1;
-        $sanitized['columns_tablet'] = isset( $input['columns_tablet'] ) ? absint( $input['columns_tablet'] ) : 2;
-        $sanitized['columns_desktop'] = isset( $input['columns_desktop'] ) ? absint( $input['columns_desktop'] ) : 3;
-        $sanitized['columns_ultrawide'] = isset( $input['columns_ultrawide'] ) ? absint( $input['columns_ultrawide'] ) : 4;
+        $sanitized['columns_mobile'] = isset( $input['columns_mobile'] ) ? max( 1, absint( $input['columns_mobile'] ) ) : 1;
+        $sanitized['columns_tablet'] = isset( $input['columns_tablet'] ) ? max( 1, absint( $input['columns_tablet'] ) ) : 2;
+        $sanitized['columns_desktop'] = isset( $input['columns_desktop'] ) ? max( 1, absint( $input['columns_desktop'] ) ) : 3;
+        $sanitized['columns_ultrawide'] = isset( $input['columns_ultrawide'] ) ? max( 1, absint( $input['columns_ultrawide'] ) ) : 4;
         $sanitized['module_padding_left'] = isset( $input['module_padding_left'] ) ? absint( $input['module_padding_left'] ) : 0;
         $sanitized['module_padding_right'] = isset( $input['module_padding_right'] ) ? absint( $input['module_padding_right'] ) : 0;
         $sanitized['gap_size'] = isset( $input['gap_size'] ) ? absint( $input['gap_size'] ) : 25;
