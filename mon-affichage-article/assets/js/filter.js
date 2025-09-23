@@ -4,21 +4,53 @@
 
     var filterSettings = (typeof myArticlesFilter !== 'undefined') ? myArticlesFilter : {};
 
+    function getFeedbackElement(wrapper) {
+        var feedback = wrapper.find('.my-articles-feedback');
+
+        if (!feedback.length) {
+            feedback = $('<div class="my-articles-feedback" aria-live="polite"></div>').hide();
+
+            var nav = wrapper.find('.my-articles-filter-nav').first();
+            if (nav.length) {
+                nav.after(feedback);
+            } else {
+                wrapper.prepend(feedback);
+            }
+        }
+
+        return feedback;
+    }
+
+    function clearFeedback(wrapper) {
+        var feedback = wrapper.find('.my-articles-feedback');
+        if (feedback.length) {
+            feedback.removeClass('is-error').text('').hide();
+        }
+    }
+
+    function showError(wrapper, message) {
+        var feedback = getFeedbackElement(wrapper);
+        feedback.text(message).addClass('is-error').show();
+    }
+
     $(document).on('click', '.my-articles-filter-nav a', function (e) {
         e.preventDefault();
 
         var filterLink = $(this);
+        var filterItem = filterLink.parent();
+        var navList = filterItem.closest('ul');
+        var previousActiveItem = navList.find('li.active').first();
         var categorySlug = filterLink.data('category');
         var wrapper = filterLink.closest('.my-articles-wrapper');
         var instanceId = wrapper.data('instance-id');
         var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
-        
-        if (filterLink.parent().hasClass('active')) {
+
+        if (filterItem.hasClass('active')) {
             return; // Ne rien faire si on clique sur le filtre déjà actif
         }
 
-        filterLink.parent().siblings().removeClass('active');
-        filterLink.parent().addClass('active');
+        navList.find('li').removeClass('active');
+        filterItem.addClass('active');
 
         $.ajax({
             url: filterSettings.ajax_url,
@@ -32,11 +64,13 @@
             },
             beforeSend: function () {
                 contentArea.css('opacity', 0.5);
+                clearFeedback(wrapper);
             },
             success: function (response) {
                 if (response.success) {
                     contentArea.html(response.data.html);
                     contentArea.css('opacity', 1);
+                    clearFeedback(wrapper);
 
                     var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
                     if (loadMoreBtn.length) {
@@ -126,13 +160,37 @@
                         }
                     }
                 } else {
+                    filterItem.removeClass('active');
+                    if (previousActiveItem && previousActiveItem.length) {
+                        previousActiveItem.addClass('active');
+                    }
+
                     contentArea.css('opacity', 1);
+
+                    var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                    var responseMessage = (response.data && response.data.message) ? response.data.message : '';
+                    var message = responseMessage || fallbackMessage;
+                    showError(wrapper, message);
                 }
             },
-            error: function () {
+            error: function (jqXHR) {
+                filterItem.removeClass('active');
+                if (previousActiveItem && previousActiveItem.length) {
+                    previousActiveItem.addClass('active');
+                }
+
                 contentArea.css('opacity', 1);
-                var errorMessage = filterSettings.errorText || 'AJAX error.';
-                console.error(errorMessage);
+                var errorMessage = '';
+
+                if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                    errorMessage = jqXHR.responseJSON.data.message;
+                }
+
+                if (!errorMessage) {
+                    errorMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                }
+
+                showError(wrapper, errorMessage);
             }
         });
     });
