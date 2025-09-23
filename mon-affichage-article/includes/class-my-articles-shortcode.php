@@ -188,7 +188,14 @@ class My_Articles_Shortcode {
 
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $pinned_ids = array_map( 'absint', $options['pinned_posts'] );
+            $pinned_ids = array_values(
+                array_filter(
+                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
+                    static function ( $post_id ) use ( $options ) {
+                        return $post_id > 0 && get_post_type( $post_id ) === $options['post_type'];
+                    }
+                )
+            );
         }
         $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
         $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
@@ -206,7 +213,7 @@ class My_Articles_Shortcode {
 
         if ( ! empty( $pinned_ids ) ) {
             $pinned_query_args = [
-                'post_type'    => 'any',
+                'post_type'    => $options['post_type'],
                 'post_status'  => 'publish',
                 'post__in'     => $pinned_ids,
                 'orderby'      => 'post__in',
