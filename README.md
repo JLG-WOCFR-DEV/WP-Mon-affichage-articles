@@ -45,6 +45,12 @@ Pour vérifier la prise en charge d'un slug de taxonomie égal à `"0"` :
 2. Configurez un module **Tuiles – LCV** afin qu'il utilise ce terme comme valeur par défaut et activez, si besoin, le filtre de catégories en frontal.
 3. Affichez le module côté public et vérifiez que les articles associés au terme `0` apparaissent bien, que le filtre est sélectionné et que la pagination/chargement additionnel respecte ce terme.
 
+Pour valider la prise en compte des réglages globaux :
+
+1. Modifiez un ou plusieurs réglages dans le menu **Tuiles – LCV** (par exemple le mode d'affichage ou les couleurs).
+2. Créez un nouveau contenu de type **mon_affichage** sans surcharger ces options dans la metabox.
+3. Affichez le shortcode correspondant en frontal et vérifiez que le rendu reflète les réglages globaux enregistrés.
+
 Pour valider la gestion d'un identifiant d'instance invalide lors des appels AJAX :
 
 1. Déclenchez les actions `filter_articles` et `load_more_articles` avec un identifiant qui ne correspond pas à un contenu de type `mon_affichage`.
