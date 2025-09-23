@@ -61,6 +61,72 @@ class My_Articles_Shortcode {
         ];
     }
 
+    public static function normalize_instance_options( $raw_options ) {
+        $defaults = self::get_default_options();
+        $options  = wp_parse_args( (array) $raw_options, $defaults );
+
+        $allowed_display_modes = array( 'grid', 'list', 'slideshow' );
+        $display_mode          = $options['display_mode'] ?? $defaults['display_mode'];
+        if ( ! in_array( $display_mode, $allowed_display_modes, true ) ) {
+            $display_mode = $defaults['display_mode'];
+        }
+        $options['display_mode'] = $display_mode;
+
+        $options['post_type'] = my_articles_normalize_post_type( $options['post_type'] ?? '' );
+
+        $taxonomy = isset( $options['taxonomy'] ) ? sanitize_text_field( $options['taxonomy'] ) : '';
+        if ( empty( $taxonomy ) || ! taxonomy_exists( $taxonomy ) || ! is_object_in_taxonomy( $options['post_type'], $taxonomy ) ) {
+            $taxonomy = '';
+        }
+        $options['taxonomy'] = $taxonomy;
+
+        $options['term'] = sanitize_title( $options['term'] ?? '' );
+
+        $options['resolved_taxonomy'] = self::resolve_taxonomy( $options );
+
+        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : (int) $defaults['posts_per_page'];
+        $is_unlimited       = $raw_posts_per_page <= 0;
+        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
+
+        if ( ! $is_unlimited && ( $options['counting_behavior'] ?? $defaults['counting_behavior'] ) === 'auto_fill' && in_array( $options['display_mode'], array( 'grid', 'slideshow' ), true ) ) {
+            $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
+            if ( $master_columns > 0 ) {
+                $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
+                $posts_per_page = $rows_needed * $master_columns;
+            }
+        }
+
+        $options['posts_per_page'] = $posts_per_page;
+        $options['is_unlimited']   = $is_unlimited;
+
+        $ignore_native_sticky        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
+        $options['ignore_native_sticky'] = $ignore_native_sticky;
+
+        $pinned_ids = array();
+        if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
+            $pinned_ids = array_values(
+                array_filter(
+                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
+                    static function ( $post_id ) use ( $options ) {
+                        return $post_id > 0 && get_post_type( $post_id ) === $options['post_type'];
+                    }
+                )
+            );
+        }
+        $options['pinned_posts'] = $pinned_ids;
+
+        $exclude_post_ids = array();
+        if ( ! empty( $options['exclude_posts'] ) ) {
+            $raw_exclude_ids = is_array( $options['exclude_posts'] ) ? $options['exclude_posts'] : explode( ',', $options['exclude_posts'] );
+            $exclude_post_ids = array_values( array_filter( array_map( 'absint', $raw_exclude_ids ) ) );
+        }
+        $options['exclude_post_ids'] = $exclude_post_ids;
+
+        $options['all_excluded_ids'] = array_values( array_unique( array_merge( $pinned_ids, $exclude_post_ids ) ) );
+
+        return $options;
+    }
+
     public function render_shortcode( $atts ) {
         $atts = shortcode_atts( ['id' => 0], $atts, 'mon_affichage_articles' );
         $id = absint($atts['id']);
@@ -69,16 +135,10 @@ class My_Articles_Shortcode {
             return '';
         }
 
-        $options = (array) get_post_meta( $id, '_my_articles_settings', true );
-        $defaults = self::get_default_options();
-        $options = wp_parse_args($options, $defaults);
+        $options_meta = (array) get_post_meta( $id, '_my_articles_settings', true );
+        $options      = self::normalize_instance_options( $options_meta );
 
-        $options['post_type'] = my_articles_normalize_post_type( $options['post_type'] ?? '' );
-
-        $resolved_taxonomy = self::resolve_taxonomy( $options );
-        $options['resolved_taxonomy'] = $resolved_taxonomy;
-
-        $options['term'] = sanitize_title( $options['term'] ?? '' );
+        $resolved_taxonomy = $options['resolved_taxonomy'];
 
         $category_query_var = 'my_articles_cat_' . $id;
         $requested_category = '';
@@ -174,33 +234,13 @@ class My_Articles_Shortcode {
         $paged_var = 'paged_' . $id;
         $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
 
-        $raw_posts_per_page = (int) ( $options['posts_per_page'] ?? 10 );
-        $is_unlimited       = $raw_posts_per_page <= 0;
-        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
+        $posts_per_page = (int) $options['posts_per_page'];
+        $is_unlimited   = ! empty( $options['is_unlimited'] );
 
-        if ( ! $is_unlimited && $options['counting_behavior'] === 'auto_fill' && ($options['display_mode'] === 'grid' || $options['display_mode'] === 'slideshow')) {
-            $master_columns = (int)($options['columns_ultrawide'] ?? 4);
-            if ($master_columns > 0) {
-                $rows_needed = ceil($posts_per_page / $master_columns);
-                $posts_per_page = $rows_needed * $master_columns;
-            }
-        }
-
-        $pinned_ids = array();
+        $pinned_ids = $options['pinned_posts'];
         $post_type  = $options['post_type'];
-        if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $pinned_ids = array_values(
-                array_filter(
-                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
-                    static function ( $post_id ) use ( $post_type ) {
-                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
-                    }
-                )
-            );
-        }
-        $options['pinned_posts'] = $pinned_ids;
-        $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
-        $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
+        $exclude_ids = $options['exclude_post_ids'];
+        $all_excluded_ids = $options['all_excluded_ids'];
 
         $render_limit = max(0, (int) $posts_per_page);
         $should_limit_display = ( $options['display_mode'] !== 'slideshow' && $render_limit > 0 );
