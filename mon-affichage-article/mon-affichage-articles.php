@@ -76,7 +76,13 @@ final class Mon_Affichage_Articles {
         $category_slug = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
         $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
 
-        $sanitize_referer = static function ( $url ) {
+        $home_url  = home_url();
+        $site_host = wp_parse_url( $home_url, PHP_URL_HOST );
+        $site_host = is_string( $site_host ) ? strtolower( $site_host ) : '';
+        $site_scheme = wp_parse_url( $home_url, PHP_URL_SCHEME );
+        $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
+
+        $sanitize_referer = static function ( $url ) use ( $site_host, $site_scheme ) {
             if ( ! is_string( $url ) || '' === $url ) {
                 return '';
             }
@@ -89,6 +95,18 @@ final class Mon_Affichage_Articles {
             $hash_position = strpos( $clean_url, '#' );
             if ( false !== $hash_position ) {
                 $clean_url = substr( $clean_url, 0, $hash_position );
+            }
+
+            $referer_host = wp_parse_url( $clean_url, PHP_URL_HOST );
+            $referer_host = is_string( $referer_host ) ? strtolower( $referer_host ) : '';
+            if ( '' !== $site_host && ( '' === $referer_host || $site_host !== $referer_host ) ) {
+                return '';
+            }
+
+            $referer_scheme = wp_parse_url( $clean_url, PHP_URL_SCHEME );
+            $referer_scheme = is_string( $referer_scheme ) ? strtolower( $referer_scheme ) : '';
+            if ( '' !== $site_scheme && '' !== $referer_scheme && $site_scheme !== $referer_scheme ) {
+                return '';
             }
 
             return $clean_url;
