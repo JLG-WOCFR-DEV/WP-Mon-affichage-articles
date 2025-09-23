@@ -187,16 +187,18 @@ class My_Articles_Shortcode {
         }
 
         $pinned_ids = array();
+        $post_type  = $options['post_type'];
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
             $pinned_ids = array_values(
                 array_filter(
                     array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
-                    static function ( $post_id ) use ( $options ) {
-                        return $post_id > 0 && get_post_type( $post_id ) === $options['post_type'];
+                    static function ( $post_id ) use ( $post_type ) {
+                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
                     }
                 )
             );
         }
+        $options['pinned_posts'] = $pinned_ids;
         $exclude_ids = !empty($options['exclude_posts']) ? array_map('absint', explode(',', $options['exclude_posts'])) : array();
         $all_excluded_ids = array_unique(array_merge($pinned_ids, $exclude_ids));
 
