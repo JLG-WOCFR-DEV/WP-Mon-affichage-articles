@@ -20,6 +20,12 @@ class My_Articles_Shortcode {
     }
 
     public static function get_default_options() {
+        static $cached_defaults = null;
+
+        if ( null !== $cached_defaults ) {
+            return $cached_defaults;
+        }
+
         $defaults = [
             'post_type' => 'post',
             'taxonomy' => '',
@@ -86,7 +92,9 @@ class My_Articles_Shortcode {
 
         $saved_options = array_intersect_key( $saved_options, $defaults );
 
-        return wp_parse_args( $saved_options, $defaults );
+        $cached_defaults = wp_parse_args( $saved_options, $defaults );
+
+        return $cached_defaults;
     }
 
     public static function normalize_instance_options( $raw_options, $context = array() ) {
