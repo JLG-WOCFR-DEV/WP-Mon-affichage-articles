@@ -220,7 +220,7 @@ class My_Articles_Metaboxes {
                 }
                 break;
             case 'color':
-                $alpha = $args['alpha'] ?? false ? 'data-alpha-enabled="true"' : '';
+                $alpha = ! empty( $args['alpha'] ) ? 'data-alpha-enabled="true"' : '';
                 printf('<input type="text" id="%s" name="%s" value="%s" class="my-color-picker" %s />', esc_attr($id), $name, esc_attr($value), $alpha);
                 break;
             case 'select':
