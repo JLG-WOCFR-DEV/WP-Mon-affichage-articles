@@ -49,6 +49,19 @@ class My_Articles_Metaboxes {
                     'allCategoriesText' => __( 'Toutes les catégories', 'mon-articles' ),
                 ]
             );
+            wp_localize_script(
+                'my-articles-admin-options',
+                'myArticlesAdminOptions',
+                [
+                    'minColumnWidth'  => 240,
+                    'warningThreshold' => 960,
+                    'warningClass'    => 'my-articles-columns-warning--active',
+                    /* translators: 1: number of columns, 2: estimated width in pixels. */
+                    'warningMessage'  => __( 'Attention : %1$d colonnes nécessitent environ %2$spx de largeur. Réduisez le nombre de colonnes ou agrandissez la zone de contenu.', 'mon-articles' ),
+                    /* translators: 1: number of columns, 2: estimated width in pixels. */
+                    'infoMessage'     => __( 'Largeur estimée : %2$spx pour %1$d colonnes.', 'mon-articles' ),
+                ]
+            );
         }
     }
 
@@ -113,10 +126,26 @@ class My_Articles_Metaboxes {
 
         echo '<hr><h3>' . __('Mise en Page', 'mon-articles') . '</h3>';
         $this->render_field('display_mode', __('Mode d\'affichage', 'mon-articles'), 'select', $opts, [ 'default' => 'grid', 'options' => [ 'grid' => 'Grille', 'slideshow' => 'Diaporama', 'list' => 'Liste' ] ]);
+
+        echo '<div class="my-articles-columns-warning" data-field="columns_mobile">';
         $this->render_field('columns_mobile', __('Colonnes (Mobile < 768px)', 'mon-articles'), 'number', $opts, ['default' => 1, 'min' => 1, 'max' => 3, 'description' => 'Pour Grille et Diaporama']);
+        echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
+        echo '</div>';
+
+        echo '<div class="my-articles-columns-warning" data-field="columns_tablet">';
         $this->render_field('columns_tablet', __('Colonnes (Tablette ≥ 768px)', 'mon-articles'), 'number', $opts, ['default' => 2, 'min' => 1, 'max' => 4, 'description' => 'Pour Grille et Diaporama']);
+        echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
+        echo '</div>';
+
+        echo '<div class="my-articles-columns-warning" data-field="columns_desktop">';
         $this->render_field('columns_desktop', __('Colonnes (Desktop ≥ 1024px)', 'mon-articles'), 'number', $opts, ['default' => 3, 'min' => 1, 'max' => 6, 'description' => 'Pour Grille et Diaporama']);
+        echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
+        echo '</div>';
+
+        echo '<div class="my-articles-columns-warning" data-field="columns_ultrawide">';
         $this->render_field('columns_ultrawide', __('Colonnes (Ultra-Wide ≥ 1536px)', 'mon-articles'), 'number', $opts, ['default' => 4, 'min' => 1, 'max' => 8, 'description' => 'Pour Grille et Diaporama']);
+        echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
+        echo '</div>';
 
         echo '<hr><h3>' . __('Apparence & Performances', 'mon-articles') . '</h3>';
         $this->render_field('module_padding_left', __('Marge intérieure gauche (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
