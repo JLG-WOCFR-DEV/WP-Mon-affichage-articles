@@ -3,6 +3,12 @@
 
     var adminSettings = (typeof myArticlesAdmin !== 'undefined') ? myArticlesAdmin : {};
 
+    function displayAdminError(message) {
+        var fallbackMessage = adminSettings.errorMessage || adminSettings.genericErrorText || adminSettings.errorText || 'Une erreur est survenue.';
+
+        window.alert(message || fallbackMessage);
+    }
+
     function updateTaxonomySelector() {
         var $postTypeSelector = $('#post_type_selector');
         var $taxonomyWrapper = $('#taxonomy_selector_wrapper');
@@ -28,11 +34,11 @@
                 $termWrapper.hide();
             },
             success: function (response) {
-                if (response.success && response.data.length > 0) {
+                if (response && response.success && Array.isArray(response.data) && response.data.length > 0) {
                     var $taxonomySelect = $taxonomyWrapper.find('select');
                     var currentTax = $taxonomySelect.data('current');
                     $taxonomySelect.empty();
-                    
+
                     $.each(response.data, function (index, tax) {
                         $taxonomySelect.append($('<option>', {
                             value: tax.name,
@@ -43,10 +49,35 @@
 
                     $taxonomyWrapper.show();
                     $taxonomySelect.prop('disabled', false).trigger('change');
-                } else {
+                } else if (response && response.success) {
                     $taxonomyWrapper.hide();
                     $termWrapper.hide();
+                } else {
+                    var errorMessage = '';
+
+                    if (response && response.data) {
+                        if (typeof response.data === 'string') {
+                            errorMessage = response.data;
+                        } else if (response.data.message) {
+                            errorMessage = response.data.message;
+                        }
+                    }
+
+                    $taxonomyWrapper.hide();
+                    $termWrapper.hide();
+                    displayAdminError(errorMessage);
                 }
+            },
+            error: function (xhr) {
+                var message = '';
+
+                if (xhr && xhr.responseJSON && xhr.responseJSON.data) {
+                    message = xhr.responseJSON.data.message || xhr.responseJSON.data;
+                }
+
+                $taxonomyWrapper.hide();
+                $termWrapper.hide();
+                displayAdminError(message);
             }
         });
     }
