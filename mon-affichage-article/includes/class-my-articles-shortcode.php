@@ -20,7 +20,7 @@ class My_Articles_Shortcode {
     }
 
     public static function get_default_options() {
-        return [
+        $defaults = [
             'post_type' => 'post',
             'taxonomy' => '',
             'term' => '',
@@ -59,6 +59,34 @@ class My_Articles_Shortcode {
             'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
             'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
         ];
+
+        $saved_options = get_option( 'my_articles_options', array() );
+
+        if ( ! is_array( $saved_options ) ) {
+            $saved_options = array();
+        }
+
+        $aliases = array(
+            'desktop_columns'     => 'columns_desktop',
+            'mobile_columns'      => 'columns_mobile',
+            'module_margin_left'  => 'module_padding_left',
+            'module_margin_right' => 'module_padding_right',
+        );
+
+        foreach ( $aliases as $stored_key => $option_key ) {
+            if ( array_key_exists( $stored_key, $saved_options ) ) {
+                $saved_options[ $option_key ] = $saved_options[ $stored_key ];
+            }
+        }
+
+        if ( ! empty( $saved_options['default_category'] ) ) {
+            $saved_options['taxonomy'] = 'category';
+            $saved_options['term']     = sanitize_title( (string) $saved_options['default_category'] );
+        }
+
+        $saved_options = array_intersect_key( $saved_options, $defaults );
+
+        return wp_parse_args( $saved_options, $defaults );
     }
 
     public static function normalize_instance_options( $raw_options, $context = array() ) {
