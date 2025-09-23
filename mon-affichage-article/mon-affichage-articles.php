@@ -386,13 +386,16 @@ final class Mon_Affichage_Articles {
             $sanitized_seen = ! empty( $seen_pinned_ids ) ? implode( ',', $seen_pinned_ids ) : '';
             wp_send_json_success(
                 [
-                    'html'       => '',
-                    'pinned_ids' => $sanitized_seen,
+                    'html'        => '',
+                    'pinned_ids'  => $sanitized_seen,
+                    'total_pages' => 0,
+                    'next_page'   => 0,
                 ]
             );
         }
 
         $exclude_ids = $options['exclude_post_ids'];
+        $all_excluded_ids = isset( $options['all_excluded_ids'] ) ? $options['all_excluded_ids'] : array();
 
         $ignore_sticky_posts = (int) $options['ignore_native_sticky'];
         $matching_pinned_ids = array();
@@ -522,10 +525,53 @@ final class Mon_Affichage_Articles {
         $html = ob_get_clean();
         $pinned_ids_string = ! empty( $seen_pinned_ids ) ? implode( ',', array_map( 'absint', $seen_pinned_ids ) ) : '';
 
+        $total_pinned_posts = count( $matching_pinned_ids );
+        $total_regular_posts = 0;
+
+        $count_query_args = [
+            'post_type'           => $post_type,
+            'post_status'         => 'publish',
+            'posts_per_page'      => 1,
+            'post__not_in'        => $all_excluded_ids,
+            'ignore_sticky_posts' => $ignore_sticky_posts,
+            'fields'              => 'ids',
+        ];
+
+        if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
+            $count_query_args['tax_query'] = [
+                [
+                    'taxonomy' => $resolved_taxonomy,
+                    'field'    => 'slug',
+                    'terms'    => $active_category,
+                ],
+            ];
+        }
+
+        $count_query = new WP_Query( $count_query_args );
+        if ( $count_query instanceof WP_Query ) {
+            $total_regular_posts = (int) $count_query->found_posts;
+        }
+        wp_reset_postdata();
+
+        $pagination_totals = my_articles_calculate_total_pages(
+            $total_pinned_posts,
+            $total_regular_posts,
+            $posts_per_page
+        );
+
+        $total_pages = $pagination_totals['total_pages'];
+        $next_page   = 0;
+
+        if ( $total_pages > 0 && $paged < $total_pages ) {
+            $next_page = $paged + 1;
+        }
+
         wp_send_json_success(
             [
-                'html'       => $html,
-                'pinned_ids' => $pinned_ids_string,
+                'html'        => $html,
+                'pinned_ids'  => $pinned_ids_string,
+                'total_pages' => $total_pages,
+                'next_page'   => $next_page,
             ]
         );
     }

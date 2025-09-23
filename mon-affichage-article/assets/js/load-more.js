@@ -41,22 +41,56 @@
             },
             success: function (response) {
                 if (response.success) {
-                    // Ajoute les nouveaux articles à la suite des anciens
-                    contentArea.append(response.data.html);
+                    var responseData = response.data || {};
 
-                    if (response.data && typeof response.data.pinned_ids !== 'undefined') {
-                        var updatedPinnedIds = response.data.pinned_ids;
+                    // Ajoute les nouveaux articles à la suite des anciens
+                    if (typeof responseData.html !== 'undefined') {
+                        contentArea.append(responseData.html);
+                    }
+
+                    if (typeof responseData.pinned_ids !== 'undefined') {
+                        var updatedPinnedIds = responseData.pinned_ids;
                         button.data('pinned-ids', updatedPinnedIds);
                         button.attr('data-pinned-ids', updatedPinnedIds);
                     }
 
-                    var newPage = paged + 1;
-                    button.data('paged', newPage);
-                    button.attr('data-paged', newPage);
+                    if (typeof responseData.total_pages !== 'undefined') {
+                        var serverTotalPages = parseInt(responseData.total_pages, 10);
+                        if (!isNaN(serverTotalPages)) {
+                            totalPages = serverTotalPages;
+                            button.data('total-pages', totalPages);
+                            button.attr('data-total-pages', totalPages);
+                        }
+                    }
+
+                    var nextPageFromServer = null;
+                    if (typeof responseData.next_page !== 'undefined') {
+                        var parsedNext = parseInt(responseData.next_page, 10);
+                        if (!isNaN(parsedNext)) {
+                            nextPageFromServer = parsedNext;
+                        }
+                    }
 
                     button.text(loadMoreSettings.loadMoreText || button.text());
 
-                    if (!totalPages || newPage > totalPages) {
+                    if (nextPageFromServer !== null) {
+                        paged = nextPageFromServer;
+                        button.data('paged', paged);
+                        button.attr('data-paged', paged);
+
+                        if (paged <= 0) {
+                            button.hide();
+                            button.prop('disabled', false);
+                            return;
+                        }
+                    } else {
+                        var newPage = paged + 1;
+                        paged = newPage;
+                        button.data('paged', newPage);
+                        button.attr('data-paged', newPage);
+                    }
+
+                    if (!totalPages || paged > totalPages) {
                         // S'il n'y a plus de page, on cache le bouton
                         button.hide();
                         button.prop('disabled', false);
