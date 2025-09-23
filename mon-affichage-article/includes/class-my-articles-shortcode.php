@@ -742,6 +742,12 @@ class My_Articles_Shortcode {
             return '';
         }
 
+        $site_home   = home_url();
+        $site_host   = wp_parse_url( $site_home, PHP_URL_HOST );
+        $site_host   = is_string( $site_host ) ? strtolower( $site_host ) : '';
+        $site_scheme = wp_parse_url( $site_home, PHP_URL_SCHEME );
+        $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
+
         if ( empty( $base_url ) ) {
             global $wp;
             $base_url = home_url( add_query_arg( array(), $wp->request ) );
@@ -758,6 +764,18 @@ class My_Articles_Shortcode {
         }
 
         if ( empty( $base_url ) ) {
+            return '';
+        }
+
+        $base_host = wp_parse_url( $base_url, PHP_URL_HOST );
+        $base_host = is_string( $base_host ) ? strtolower( $base_host ) : '';
+        if ( '' !== $site_host && ( '' === $base_host || $site_host !== $base_host ) ) {
+            return '';
+        }
+
+        $base_scheme = wp_parse_url( $base_url, PHP_URL_SCHEME );
+        $base_scheme = is_string( $base_scheme ) ? strtolower( $base_scheme ) : '';
+        if ( '' !== $site_scheme && '' !== $base_scheme && $site_scheme !== $base_scheme ) {
             return '';
         }
 
