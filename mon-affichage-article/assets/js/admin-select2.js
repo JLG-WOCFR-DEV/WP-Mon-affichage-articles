@@ -6,6 +6,12 @@
         var $selectField = $('.my-articles-post-selector');
         var select2Settings = (typeof myArticlesSelect2 !== 'undefined') ? myArticlesSelect2 : {};
 
+        function displaySelect2Error(message) {
+            var fallbackMessage = select2Settings.errorMessage || select2Settings.genericErrorText || 'Une erreur est survenue.';
+
+            window.alert(message || fallbackMessage);
+        }
+
         if ($selectField.length) {
             $selectField.select2({
                 placeholder: select2Settings.placeholder || '',
@@ -24,9 +30,42 @@
                         };
                     },
                     processResults: function (response) {
+                        if (!response || response.success === false) {
+                            var message = '';
+
+                            if (response && response.data) {
+                                if (typeof response.data === 'string') {
+                                    message = response.data;
+                                } else if (response.data.message) {
+                                    message = response.data.message;
+                                }
+                            }
+
+                            displaySelect2Error(message);
+
+                            return {
+                                results: []
+                            };
+                        }
+
+                        if (!Array.isArray(response.data)) {
+                            return {
+                                results: []
+                            };
+                        }
+
                         return {
                             results: response.data
                         };
+                    },
+                    error: function (xhr) {
+                        var message = '';
+
+                        if (xhr && xhr.responseJSON && xhr.responseJSON.data) {
+                            message = xhr.responseJSON.data.message || xhr.responseJSON.data;
+                        }
+
+                        displaySelect2Error(message);
                     },
                     cache: true
                 }
