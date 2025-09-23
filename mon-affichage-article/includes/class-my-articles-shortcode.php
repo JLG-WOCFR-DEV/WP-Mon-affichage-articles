@@ -409,12 +409,41 @@ class My_Articles_Shortcode {
 
         wp_enqueue_style('my-articles-styles');
 
+        $default_min_card_width = 220;
+        $options['min_card_width'] = max(1, (int) apply_filters('my_articles_min_card_width', $default_min_card_width, $options, $id));
+
+        if ( in_array( $options['display_mode'], array( 'grid', 'list', 'slideshow' ), true ) ) {
+            wp_enqueue_script( 'my-articles-responsive-layout' );
+        }
+
         ob_start();
         $this->render_inline_styles($options, $id);
-        
+
         $wrapper_class = 'my-articles-wrapper my-articles-' . esc_attr($options['display_mode']);
-        
-        echo '<div id="my-articles-wrapper-' . esc_attr($id) . '" class="' . esc_attr($wrapper_class) . '" data-instance-id="' . esc_attr($id) . '">';
+
+        $columns_mobile    = max( 1, (int) $options['columns_mobile'] );
+        $columns_tablet    = max( 1, (int) $options['columns_tablet'] );
+        $columns_desktop   = max( 1, (int) $options['columns_desktop'] );
+        $columns_ultrawide = max( 1, (int) $options['columns_ultrawide'] );
+        $min_card_width    = max( 1, (int) $options['min_card_width'] );
+
+        $wrapper_attributes = array(
+            'id'                   => 'my-articles-wrapper-' . $id,
+            'class'                => $wrapper_class,
+            'data-instance-id'     => $id,
+            'data-cols-mobile'     => $columns_mobile,
+            'data-cols-tablet'     => $columns_tablet,
+            'data-cols-desktop'    => $columns_desktop,
+            'data-cols-ultrawide'  => $columns_ultrawide,
+            'data-min-card-width'  => $min_card_width,
+        );
+
+        $wrapper_attribute_strings = array();
+        foreach ( $wrapper_attributes as $attribute => $value ) {
+            $wrapper_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+        }
+
+        echo '<div ' . implode( ' ', $wrapper_attribute_strings ) . '>';
 
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
             $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
@@ -692,7 +721,7 @@ class My_Articles_Shortcode {
     private function enqueue_swiper_scripts($options, $instance_id) {
         wp_enqueue_style('swiper-css');
         wp_enqueue_script('swiper-js');
-        wp_enqueue_script('my-articles-swiper-init', MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js', ['swiper-js'], MY_ARTICLES_VERSION, true);
+        wp_enqueue_script('my-articles-swiper-init', MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js', ['swiper-js', 'my-articles-responsive-layout'], MY_ARTICLES_VERSION, true);
         wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, [ 'columns_mobile' => $options['columns_mobile'], 'columns_tablet' => $options['columns_tablet'], 'columns_desktop' => $options['columns_desktop'], 'columns_ultrawide' => $options['columns_ultrawide'], 'gap_size' => $options['gap_size'], 'container_selector' => '#my-articles-wrapper-' . $instance_id . ' .swiper-container' ]);
     }
     
@@ -802,12 +831,18 @@ class My_Articles_Shortcode {
     }
 
     private function render_inline_styles($options, $id) {
+        $min_card_width = 220;
+        if ( isset( $options['min_card_width'] ) ) {
+            $min_card_width = max( 1, (int) $options['min_card_width'] );
+        }
+
         $dynamic_css = "
         #my-articles-wrapper-{$id} {
             --my-articles-cols-mobile: " . intval($options['columns_mobile']) . ";
             --my-articles-cols-tablet: " . intval($options['columns_tablet']) . ";
             --my-articles-cols-desktop: " . intval($options['columns_desktop']) . ";
             --my-articles-cols-ultrawide: " . intval($options['columns_ultrawide']) . ";
+            --my-articles-min-card-width: " . $min_card_width . "px;
             --my-articles-gap: " . intval($options['gap_size']) . "px;
             --my-articles-list-gap: " . intval($options['list_item_gap']) . "px;
             --my-articles-list-padding-top: " . intval($options['list_content_padding_top']) . "px;
