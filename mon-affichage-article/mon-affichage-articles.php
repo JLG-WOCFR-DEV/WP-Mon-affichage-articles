@@ -107,22 +107,13 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $defaults           = My_Articles_Shortcode::get_default_options();
-        $options            = wp_parse_args( $options_meta, $defaults );
+        $options            = My_Articles_Shortcode::normalize_instance_options( $options_meta );
 
-        $display_mode = $options['display_mode'] ?? 'grid';
-        $post_type    = my_articles_normalize_post_type( $options['post_type'] ?? '' );
-        $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
-
-        $default_term = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
-        $allowed_slugs = array();
-
-        $options['display_mode'] = $display_mode;
-        $options['post_type']    = $post_type;
-        $options['taxonomy']     = $taxonomy;
-
-        $resolved_taxonomy = My_Articles_Shortcode::resolve_taxonomy( $options );
-        $options['resolved_taxonomy'] = $resolved_taxonomy;
+        $display_mode       = $options['display_mode'];
+        $post_type          = $options['post_type'];
+        $resolved_taxonomy  = $options['resolved_taxonomy'];
+        $default_term       = $options['term'];
+        $allowed_slugs      = array();
 
         if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
             $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
@@ -150,42 +141,15 @@ final class Mon_Affichage_Articles {
             }
         }
 
-        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
-        $is_unlimited       = $raw_posts_per_page <= 0;
-        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
-        if ( ! $is_unlimited && ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
-            $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
-            if ( $master_columns > 0 ) {
-                $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
-                $posts_per_page = $rows_needed * $master_columns;
-            }
-        }
-        $options['posts_per_page'] = $posts_per_page;
+        $posts_per_page    = (int) $options['posts_per_page'];
+        $is_unlimited      = ! empty( $options['is_unlimited'] );
+        $ignore_sticky_posts = (int) $options['ignore_native_sticky'];
 
-        $ignore_sticky_posts        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
-        $options['ignore_native_sticky'] = $ignore_sticky_posts;
+        $render_limit = $is_unlimited ? 0 : max( 0, $posts_per_page );
 
-        $render_limit = $is_unlimited ? 0 : max( 0, (int) $posts_per_page );
-
-        $pinned_ids = array();
-        if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $pinned_ids = array_values(
-                array_filter(
-                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
-                    static function ( $post_id ) use ( $post_type ) {
-                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
-                    }
-                )
-            );
-        }
-        $options['pinned_posts'] = $pinned_ids;
-
-        $exclude_ids = array();
-        if ( ! empty( $options['exclude_posts'] ) ) {
-            $exclude_ids = array_map( 'absint', explode( ',', $options['exclude_posts'] ) );
-        }
-
-        $all_excluded_ids = array_unique( array_merge( $pinned_ids, $exclude_ids ) );
+        $pinned_ids       = $options['pinned_posts'];
+        $exclude_ids      = $options['exclude_post_ids'];
+        $all_excluded_ids = $options['all_excluded_ids'];
 
         $pinned_query         = null;
         $total_pinned_posts   = 0;
@@ -380,21 +344,13 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $defaults           = My_Articles_Shortcode::get_default_options();
-        $options            = wp_parse_args( $options_meta, $defaults );
+        $options            = My_Articles_Shortcode::normalize_instance_options( $options_meta );
 
-        $display_mode = $options['display_mode'] ?? 'grid';
-        $post_type    = my_articles_normalize_post_type( $options['post_type'] ?? '' );
-        $taxonomy     = ( ! empty( $options['taxonomy'] ) && taxonomy_exists( $options['taxonomy'] ) ) ? $options['taxonomy'] : '';
-        $options['display_mode'] = $display_mode;
-        $options['post_type']    = $post_type;
-        $options['taxonomy']     = $taxonomy;
-
-        $resolved_taxonomy = My_Articles_Shortcode::resolve_taxonomy( $options );
-        $options['resolved_taxonomy'] = $resolved_taxonomy;
-
-        $default_term  = isset( $options['term'] ) ? sanitize_title( $options['term'] ) : '';
-        $allowed_slugs = array();
+        $display_mode      = $options['display_mode'];
+        $post_type         = $options['post_type'];
+        $resolved_taxonomy = $options['resolved_taxonomy'];
+        $default_term      = $options['term'];
+        $allowed_slugs     = array();
 
         if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
             $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
@@ -421,30 +377,10 @@ final class Mon_Affichage_Articles {
                 wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
             }
         }
-        $configured_pinned_ids = array();
-        if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $configured_pinned_ids = array_values(
-                array_filter(
-                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
-                    static function ( $post_id ) use ( $post_type ) {
-                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
-                    }
-                )
-            );
-        }
-        $options['pinned_posts'] = $configured_pinned_ids;
+        $configured_pinned_ids = $options['pinned_posts'];
 
-        $raw_posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 10;
-        $is_unlimited       = $raw_posts_per_page <= 0;
-        $posts_per_page     = $is_unlimited ? -1 : $raw_posts_per_page;
-        if ( ! $is_unlimited && ( $options['counting_behavior'] ?? 'exact' ) === 'auto_fill' && in_array( $display_mode, array( 'grid', 'slideshow' ), true ) ) {
-            $master_columns = isset( $options['columns_ultrawide'] ) ? (int) $options['columns_ultrawide'] : 0;
-            if ( $master_columns > 0 ) {
-                $rows_needed    = (int) ceil( $posts_per_page / $master_columns );
-                $posts_per_page = $rows_needed * $master_columns;
-            }
-        }
-        $options['posts_per_page'] = $posts_per_page;
+        $posts_per_page = (int) $options['posts_per_page'];
+        $is_unlimited   = ! empty( $options['is_unlimited'] );
 
         $seen_pinned_ids = array();
         if ( ! empty( $pinned_ids_str ) ) {
@@ -462,13 +398,9 @@ final class Mon_Affichage_Articles {
             );
         }
 
-        $exclude_ids = array();
-        if ( ! empty( $options['exclude_posts'] ) ) {
-            $exclude_ids = array_map( 'absint', explode( ',', $options['exclude_posts'] ) );
-        }
+        $exclude_ids = $options['exclude_post_ids'];
 
-        $ignore_sticky_posts        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
-        $options['ignore_native_sticky'] = $ignore_sticky_posts;
+        $ignore_sticky_posts = (int) $options['ignore_native_sticky'];
         $matching_pinned_ids = array();
         if ( ! empty( $configured_pinned_ids ) ) {
             $pinned_lookup_args = [
