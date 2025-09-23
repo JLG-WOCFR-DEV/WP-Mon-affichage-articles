@@ -61,7 +61,7 @@ class My_Articles_Shortcode {
         ];
     }
 
-    public static function normalize_instance_options( $raw_options ) {
+    public static function normalize_instance_options( $raw_options, $context = array() ) {
         $defaults = self::get_default_options();
         $options  = wp_parse_args( (array) $raw_options, $defaults );
 
@@ -102,6 +102,20 @@ class My_Articles_Shortcode {
         $ignore_native_sticky        = ! empty( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0;
         $options['ignore_native_sticky'] = $ignore_native_sticky;
 
+        $options['pinned_posts_ignore_filter'] = ! empty( $options['pinned_posts_ignore_filter'] ) ? 1 : 0;
+
+        $filter_categories = array();
+        if ( ! empty( $options['filter_categories'] ) ) {
+            if ( is_array( $options['filter_categories'] ) ) {
+                $filter_categories = $options['filter_categories'];
+            } else {
+                $filter_categories = explode( ',', (string) $options['filter_categories'] );
+            }
+
+            $filter_categories = array_values( array_filter( array_map( 'absint', $filter_categories ) ) );
+        }
+        $options['filter_categories'] = $filter_categories;
+
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
             $pinned_ids = array_values(
@@ -124,6 +138,82 @@ class My_Articles_Shortcode {
 
         $options['all_excluded_ids'] = array_values( array_unique( array_merge( $pinned_ids, $exclude_post_ids ) ) );
 
+        $default_term = $options['term'];
+        $requested_category = '';
+
+        if ( isset( $context['requested_category'] ) ) {
+            $requested_category = sanitize_title( (string) $context['requested_category'] );
+        }
+
+        $force_collect_terms = ! empty( $context['force_collect_terms'] );
+
+        $should_collect_terms = $force_collect_terms
+            || ! empty( $options['show_category_filter'] )
+            || '' !== $requested_category
+            || ! empty( $filter_categories );
+
+        $available_categories     = array();
+        $available_category_slugs = array();
+
+        if ( $should_collect_terms && ! empty( $options['resolved_taxonomy'] ) ) {
+            $get_terms_args = [
+                'taxonomy'   => $options['resolved_taxonomy'],
+                'hide_empty' => true,
+            ];
+
+            if ( ! empty( $filter_categories ) ) {
+                $get_terms_args['include'] = $filter_categories;
+                $get_terms_args['orderby'] = 'include';
+            }
+
+            $terms = get_terms( $get_terms_args );
+
+            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                $available_categories     = $terms;
+                $available_category_slugs = array_values( array_filter( wp_list_pluck( $terms, 'slug' ), 'strlen' ) );
+            }
+        }
+
+        $options['available_categories']     = $available_categories;
+        $options['available_category_slugs'] = $available_category_slugs;
+
+        $allowed_filter_term_slugs = array();
+        if ( ! empty( $filter_categories ) && ! empty( $available_category_slugs ) ) {
+            $allowed_filter_term_slugs = $available_category_slugs;
+        }
+        $options['allowed_filter_term_slugs'] = $allowed_filter_term_slugs;
+
+        $valid_category_slugs = array_unique(
+            array_merge(
+                array( '', 'all', $default_term ),
+                $allowed_filter_term_slugs
+            )
+        );
+        $options['valid_category_slugs'] = $valid_category_slugs;
+
+        $is_requested_category_valid = true;
+
+        if ( ! empty( $allowed_filter_term_slugs ) ) {
+            $is_requested_category_valid = in_array( $requested_category, $valid_category_slugs, true );
+        }
+
+        $active_category = $default_term;
+
+        if ( '' !== $requested_category ) {
+            if ( 'all' === $requested_category ) {
+                $active_category = 'all';
+            } elseif ( in_array( $requested_category, $available_category_slugs, true ) ) {
+                $active_category = $requested_category;
+            } elseif ( empty( $available_category_slugs ) ) {
+                $active_category = $requested_category;
+            }
+        }
+
+        $options['term']                       = $active_category;
+        $options['default_term']               = $default_term;
+        $options['requested_category']         = $requested_category;
+        $options['is_requested_category_valid'] = $is_requested_category_valid;
+
         return $options;
     }
 
@@ -134,11 +224,6 @@ class My_Articles_Shortcode {
         if ( !$id || 'mon_affichage' !== get_post_type($id) ) {
             return '';
         }
-
-        $options_meta = (array) get_post_meta( $id, '_my_articles_settings', true );
-        $options      = self::normalize_instance_options( $options_meta );
-
-        $resolved_taxonomy = $options['resolved_taxonomy'];
 
         $category_query_var = 'my_articles_cat_' . $id;
         $requested_category = '';
@@ -157,42 +242,16 @@ class My_Articles_Shortcode {
             }
         }
 
-        $should_collect_terms = ! empty( $options['show_category_filter'] ) || '' !== $requested_category || ( ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) );
-        $available_categories = array();
-        $available_category_slugs = array();
+        $options_meta = (array) get_post_meta( $id, '_my_articles_settings', true );
+        $options      = self::normalize_instance_options(
+            $options_meta,
+            array(
+                'requested_category' => $requested_category,
+            )
+        );
 
-        if ( $should_collect_terms && ! empty( $resolved_taxonomy ) ) {
-            $get_terms_args = [
-                'taxonomy'   => $resolved_taxonomy,
-                'hide_empty' => true,
-            ];
-
-            if ( ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
-                $get_terms_args['include'] = array_map( 'absint', $options['filter_categories'] );
-                $get_terms_args['orderby'] = 'include';
-            }
-
-            $terms = get_terms( $get_terms_args );
-
-            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
-                $available_categories     = $terms;
-                $available_category_slugs = array_values( array_filter( wp_list_pluck( $terms, 'slug' ), 'strlen' ) );
-            }
-        }
-
-        $active_category = $options['term'];
-
-        if ( '' !== $requested_category ) {
-            if ( 'all' === $requested_category ) {
-                $active_category = 'all';
-            } elseif ( in_array( $requested_category, $available_category_slugs, true ) ) {
-                $active_category = $requested_category;
-            } elseif ( empty( $available_category_slugs ) ) {
-                $active_category = $requested_category;
-            }
-        }
-
-        $options['term'] = $active_category;
+        $resolved_taxonomy = $options['resolved_taxonomy'];
+        $available_categories = $options['available_categories'];
 
         if ( !empty($options['show_category_filter']) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);

@@ -107,39 +107,23 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $options            = My_Articles_Shortcode::normalize_instance_options( $options_meta );
+        $options            = My_Articles_Shortcode::normalize_instance_options(
+            $options_meta,
+            array(
+                'requested_category'  => $category_slug,
+                'force_collect_terms' => true,
+            )
+        );
+
+        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
+            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
+        }
 
         $display_mode       = $options['display_mode'];
         $post_type          = $options['post_type'];
         $resolved_taxonomy  = $options['resolved_taxonomy'];
-        $default_term       = $options['term'];
-        $allowed_slugs      = array();
-
-        if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
-            $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
-
-            if ( ! empty( $allowed_term_ids ) ) {
-                $allowed_terms = get_terms(
-                    array(
-                        'taxonomy'   => $resolved_taxonomy,
-                        'include'    => $allowed_term_ids,
-                        'hide_empty' => false,
-                    )
-                );
-
-                if ( ! is_wp_error( $allowed_terms ) && ! empty( $allowed_terms ) ) {
-                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ), 'strlen' ) );
-                }
-            }
-        }
-
-        if ( ! empty( $allowed_slugs ) ) {
-            $valid_slugs = array_unique( array_merge( array( '', 'all', $default_term ), $allowed_slugs ) );
-
-            if ( ! in_array( $category_slug, $valid_slugs, true ) ) {
-                wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
-            }
-        }
+        $default_term       = $options['default_term'];
+        $active_category    = $options['term'];
 
         $posts_per_page    = (int) $options['posts_per_page'];
         $is_unlimited      = ! empty( $options['is_unlimited'] );
@@ -171,12 +155,12 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
                 $pinned_query_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $category_slug,
+                        'terms'    => $active_category,
                     ],
                 ];
             }
@@ -210,12 +194,12 @@ final class Mon_Affichage_Articles {
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
 
-            if ( '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
                 $query_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $category_slug,
+                        'terms'    => $active_category,
                     ],
                 ];
             }
@@ -266,12 +250,12 @@ final class Mon_Affichage_Articles {
                 'fields'              => 'ids',
             ];
 
-            if ( '' !== $category_slug && 'all' !== $category_slug && '' !== $resolved_taxonomy ) {
+            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
                 $count_query_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $category_slug,
+                        'terms'    => $active_category,
                     ],
                 ];
             }
@@ -298,7 +282,7 @@ final class Mon_Affichage_Articles {
         if ( 'numbered' === ( $options['pagination_mode'] ?? '' ) ) {
             $pagination_query_args = array();
             $category_query_var    = 'my_articles_cat_' . $instance_id;
-            $current_filter_slug   = $category_slug;
+            $current_filter_slug   = $active_category;
 
             if ( '' === $current_filter_slug ) {
                 $current_filter_slug = $default_term;
@@ -344,39 +328,23 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $options            = My_Articles_Shortcode::normalize_instance_options( $options_meta );
+        $options            = My_Articles_Shortcode::normalize_instance_options(
+            $options_meta,
+            array(
+                'requested_category'  => $category,
+                'force_collect_terms' => true,
+            )
+        );
+
+        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
+            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
+        }
 
         $display_mode      = $options['display_mode'];
         $post_type         = $options['post_type'];
         $resolved_taxonomy = $options['resolved_taxonomy'];
-        $default_term      = $options['term'];
-        $allowed_slugs     = array();
-
-        if ( ! empty( $resolved_taxonomy ) && ! empty( $options['filter_categories'] ) && is_array( $options['filter_categories'] ) ) {
-            $allowed_term_ids = array_values( array_filter( array_map( 'absint', $options['filter_categories'] ) ) );
-
-            if ( ! empty( $allowed_term_ids ) ) {
-                $allowed_terms = get_terms(
-                    array(
-                        'taxonomy'   => $resolved_taxonomy,
-                        'include'    => $allowed_term_ids,
-                        'hide_empty' => false,
-                    )
-                );
-
-                if ( ! is_wp_error( $allowed_terms ) && ! empty( $allowed_terms ) ) {
-                    $allowed_slugs = array_values( array_filter( wp_list_pluck( $allowed_terms, 'slug' ), 'strlen' ) );
-                }
-            }
-        }
-
-        if ( ! empty( $allowed_slugs ) ) {
-            $valid_slugs = array_unique( array_merge( array( '', 'all', $default_term ), $allowed_slugs ) );
-
-            if ( ! in_array( $category, $valid_slugs, true ) ) {
-                wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
-            }
-        }
+        $default_term      = $options['default_term'];
+        $active_category   = $options['term'];
         $configured_pinned_ids = $options['pinned_posts'];
 
         $posts_per_page = (int) $options['posts_per_page'];
@@ -413,12 +381,12 @@ final class Mon_Affichage_Articles {
                 'post__not_in'   => $exclude_ids,
             ];
 
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $category && 'all' !== $category && '' !== $resolved_taxonomy ) {
+            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
                 $pinned_lookup_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $category,
+                        'terms'    => $active_category,
                     ],
                 ];
             }
@@ -497,12 +465,12 @@ final class Mon_Affichage_Articles {
                 'ignore_sticky_posts' => $ignore_sticky_posts,
             ];
 
-            if ( '' !== $category && 'all' !== $category && '' !== $resolved_taxonomy ) {
+            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
                 $query_args['tax_query'] = [
                     [
                         'taxonomy' => $resolved_taxonomy,
                         'field'    => 'slug',
-                        'terms'    => $category,
+                        'terms'    => $active_category,
                     ],
                 ];
             }
