@@ -82,7 +82,7 @@ final class Mon_Affichage_Articles {
         $site_scheme = wp_parse_url( $home_url, PHP_URL_SCHEME );
         $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
 
-        $sanitize_referer = static function ( $url ) use ( $site_host, $site_scheme ) {
+        $sanitize_referer = static function ( $url ) {
             if ( ! is_string( $url ) || '' === $url ) {
                 return '';
             }
@@ -97,24 +97,32 @@ final class Mon_Affichage_Articles {
                 $clean_url = substr( $clean_url, 0, $hash_position );
             }
 
-            $referer_host = wp_parse_url( $clean_url, PHP_URL_HOST );
-            $referer_host = is_string( $referer_host ) ? strtolower( $referer_host ) : '';
-            if ( '' !== $site_host && ( '' === $referer_host || $site_host !== $referer_host ) ) {
-                return '';
-            }
-
-            $referer_scheme = wp_parse_url( $clean_url, PHP_URL_SCHEME );
-            $referer_scheme = is_string( $referer_scheme ) ? strtolower( $referer_scheme ) : '';
-            if ( '' !== $site_scheme && '' !== $referer_scheme && $site_scheme !== $referer_scheme ) {
-                return '';
-            }
-
             return $clean_url;
         };
 
         $referer_url = $sanitize_referer( $raw_current_url );
         if ( '' === $referer_url ) {
             $referer_url = $sanitize_referer( wp_get_referer() );
+        }
+
+        if ( '' !== $referer_url ) {
+            $referer_host = wp_parse_url( $referer_url, PHP_URL_HOST );
+            $referer_host = is_string( $referer_host ) ? strtolower( $referer_host ) : '';
+
+            if ( '' !== $site_host ) {
+                if ( '' === $referer_host || $site_host !== $referer_host ) {
+                    $referer_url = '';
+                }
+            }
+
+            if ( '' !== $referer_url && '' !== $site_scheme ) {
+                $referer_scheme = wp_parse_url( $referer_url, PHP_URL_SCHEME );
+                $referer_scheme = is_string( $referer_scheme ) ? strtolower( $referer_scheme ) : '';
+
+                if ( '' !== $referer_scheme && $site_scheme !== $referer_scheme ) {
+                    $referer_url = '';
+                }
+            }
         }
 
         if ( ! $instance_id ) {
