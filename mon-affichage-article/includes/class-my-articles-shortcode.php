@@ -605,11 +605,13 @@ class My_Articles_Shortcode {
                     <?php if ($options['show_category'] && !empty($taxonomy)) echo '<span class="article-category">' . wp_kses_post(get_the_term_list(get_the_ID(), $taxonomy, '', ', ')) . '</span>'; ?>
                     <?php
                     if ( $options['show_author'] ) {
+                        $author_url  = esc_url( get_author_posts_url( get_the_author_meta( 'ID' ) ) );
+                        $author_name = esc_html( get_the_author() );
                         printf(
                             '<span class="article-author">%s <a href="%s">%s</a></span>',
                             esc_html__( 'par', 'mon-articles' ),
-                            esc_url( get_author_posts_url( get_the_author_meta( 'ID' ) ) ),
-                            esc_html( get_the_author() )
+                            $author_url,
+                            $author_name
                         );
                     }
                     ?>
