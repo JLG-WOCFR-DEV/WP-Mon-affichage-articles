@@ -169,7 +169,14 @@ final class Mon_Affichage_Articles {
 
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $pinned_ids = array_map( 'absint', $options['pinned_posts'] );
+            $pinned_ids = array_values(
+                array_filter(
+                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
+                    static function ( $post_id ) use ( $post_type ) {
+                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
+                    }
+                )
+            );
         }
         $options['pinned_posts'] = $pinned_ids;
 
@@ -192,7 +199,7 @@ final class Mon_Affichage_Articles {
             }
 
             $pinned_query_args = [
-                'post_type'      => 'any',
+                'post_type'      => $post_type,
                 'post_status'    => 'publish',
                 'post__in'       => $pinned_ids,
                 'orderby'        => 'post__in',
@@ -416,7 +423,14 @@ final class Mon_Affichage_Articles {
         }
         $configured_pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
-            $configured_pinned_ids = array_map( 'absint', $options['pinned_posts'] );
+            $configured_pinned_ids = array_values(
+                array_filter(
+                    array_unique( array_map( 'absint', $options['pinned_posts'] ) ),
+                    static function ( $post_id ) use ( $post_type ) {
+                        return $post_id > 0 && get_post_type( $post_id ) === $post_type;
+                    }
+                )
+            );
         }
         $options['pinned_posts'] = $configured_pinned_ids;
 
@@ -458,7 +472,7 @@ final class Mon_Affichage_Articles {
         $matching_pinned_ids = array();
         if ( ! empty( $configured_pinned_ids ) ) {
             $pinned_lookup_args = [
-                'post_type'      => 'any',
+                'post_type'      => $post_type,
                 'post_status'    => 'publish',
                 'post__in'       => $configured_pinned_ids,
                 'orderby'        => 'post__in',
@@ -479,7 +493,14 @@ final class Mon_Affichage_Articles {
 
             $pinned_lookup_query = new WP_Query( $pinned_lookup_args );
             if ( $pinned_lookup_query->have_posts() ) {
-                $matching_pinned_ids = array_values( array_filter( array_map( 'absint', $pinned_lookup_query->posts ) ) );
+                $matching_pinned_ids = array_values(
+                    array_filter(
+                        array_map( 'absint', $pinned_lookup_query->posts ),
+                        static function ( $post_id ) use ( $post_type ) {
+                            return $post_id > 0 && get_post_type( $post_id ) === $post_type;
+                        }
+                    )
+                );
             }
             wp_reset_postdata();
         }
@@ -505,7 +526,7 @@ final class Mon_Affichage_Articles {
         if ( ! empty( $pinned_ids_to_render ) ) {
             $pinned_render_query = new WP_Query(
                 [
-                    'post_type'      => 'any',
+                    'post_type'      => $post_type,
                     'post_status'    => 'publish',
                     'post__in'       => $pinned_ids_to_render,
                     'orderby'        => 'post__in',
