@@ -451,7 +451,13 @@ final class Mon_Affichage_Articles {
 
         $offset = $regular_posts_already_displayed;
 
-        $regular_excluded_ids = array_unique( array_merge( $seen_pinned_ids, $exclude_ids ) );
+        $regular_excluded_ids = array_unique(
+            array_merge(
+                $seen_pinned_ids,
+                $exclude_ids,
+                $matching_pinned_ids
+            )
+        );
 
         $regular_posts_limit = $is_unlimited ? -1 : max( 0, $posts_per_page - $actual_pinned_rendered );
 
