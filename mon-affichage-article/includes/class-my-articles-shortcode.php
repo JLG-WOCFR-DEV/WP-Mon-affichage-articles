@@ -20,7 +20,7 @@ class My_Articles_Shortcode {
     }
 
     public static function get_default_options() {
-        return [
+        $defaults = [
             'post_type' => 'post',
             'taxonomy' => '',
             'term' => '',
@@ -59,6 +59,14 @@ class My_Articles_Shortcode {
             'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
             'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
         ];
+
+        $saved_options = get_option( 'my_articles_options', array() );
+
+        if ( ! is_array( $saved_options ) ) {
+            $saved_options = array();
+        }
+
+        return wp_parse_args( $saved_options, $defaults );
     }
 
     public static function normalize_instance_options( $raw_options, $context = array() ) {
