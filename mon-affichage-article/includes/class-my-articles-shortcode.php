@@ -930,8 +930,12 @@ class My_Articles_Shortcode {
         }
     }
 
+    public function get_empty_state_html() {
+        return '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+    }
+
     private function render_empty_state_message() {
-        echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+        echo $this->get_empty_state_html();
     }
 
     public function render_article_item($options, $is_pinned = false) {
@@ -940,11 +944,12 @@ class My_Articles_Shortcode {
         $display_mode = $options['display_mode'] ?? 'grid';
         $taxonomy = $options['resolved_taxonomy'] ?? self::resolve_taxonomy( $options );
         $enable_lazy_load = !empty($options['enable_lazy_load']);
+        $excerpt_more = __( '…', 'mon-articles' );
         ?>
         <div class="<?php echo esc_attr($item_classes); ?>">
             <?php
             if ($display_mode === 'list') {
-                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', '...');
+                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more);
             } else {
                 $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '');
             }

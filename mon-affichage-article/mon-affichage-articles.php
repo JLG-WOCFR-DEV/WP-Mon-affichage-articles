@@ -84,7 +84,7 @@ final class Mon_Affichage_Articles {
         }
 
         if ( ! $instance_id ) {
-            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
+            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ), 400 );
         }
 
         $this->assert_valid_instance_post_type( $instance_id );
@@ -100,7 +100,7 @@ final class Mon_Affichage_Articles {
         );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
+            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ), 403 );
         }
 
         $display_mode      = $options['display_mode'];
@@ -182,7 +182,7 @@ final class Mon_Affichage_Articles {
         }
 
         if ( 0 === $displayed_posts_count ) {
-            echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+            echo $shortcode_instance->get_empty_state_html();
         }
 
         if ( $pinned_query instanceof WP_Query ) {
@@ -247,7 +247,7 @@ final class Mon_Affichage_Articles {
         $category = isset( $_POST['category'] ) ? sanitize_text_field( wp_unslash( $_POST['category'] ) ) : '';
 
         if ( ! $instance_id ) {
-            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ) );
+            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ), 400 );
         }
 
         $this->assert_valid_instance_post_type( $instance_id );
@@ -263,7 +263,7 @@ final class Mon_Affichage_Articles {
         );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
+            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ), 403 );
         }
 
         $seen_pinned_ids = array();
@@ -331,7 +331,7 @@ final class Mon_Affichage_Articles {
         }
 
         if ( 0 === $displayed_posts_count ) {
-            echo '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+            echo $shortcode_instance->get_empty_state_html();
         }
 
         $html = ob_get_clean();
@@ -477,6 +477,7 @@ final class Mon_Affichage_Articles {
 
         if ( ! empty( $include_param ) ) {
             $term_args['include'] = array_values( array_unique( array_filter( $include_param ) ) );
+            $term_args['orderby'] = 'include';
         } else {
             $term_args['number'] = $per_page;
             $term_args['offset'] = ( $page - 1 ) * $per_page;
