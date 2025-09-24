@@ -842,10 +842,17 @@ class My_Articles_Shortcode {
             $fallback_base = home_url( add_query_arg( array(), $request_path ) );
 
             if ( ! empty( $_GET ) ) {
-                $sanitized_query_args = array_map( 'sanitize_text_field', wp_unslash( $_GET ) );
+                $raw_query_args = wp_unslash( $_GET );
+                if ( is_array( $raw_query_args ) ) {
+                    $sanitized_query_args = map_deep( $raw_query_args, 'sanitize_text_field' );
+                } else {
+                    $sanitized_query_args = array();
+                }
+
                 if ( isset( $sanitized_query_args[ $paged_var ] ) ) {
                     unset( $sanitized_query_args[ $paged_var ] );
                 }
+
                 if ( ! empty( $sanitized_query_args ) ) {
                     $fallback_base = add_query_arg( $sanitized_query_args, $fallback_base );
                 }
@@ -865,7 +872,7 @@ class My_Articles_Shortcode {
         $query_string  = wp_parse_url( $base_url, PHP_URL_QUERY );
         if ( $query_string ) {
             wp_parse_str( $query_string, $existing_args );
-            $existing_args = array_map( 'sanitize_text_field', $existing_args );
+            $existing_args = map_deep( $existing_args, 'sanitize_text_field' );
 
             if ( ! empty( $existing_args ) ) {
                 $base_url = remove_query_arg( array_keys( $existing_args ), $base_url );
