@@ -49,6 +49,62 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_normalize_internal_url' ) ) {
+    /**
+     * Sanitize a URL while ensuring it targets the current site domain.
+     *
+     * @param string $url       Raw URL that should be validated.
+     * @param string $site_home Optional site URL used to validate host and scheme.
+     *
+     * @return string A sanitized URL when valid for the current site, an empty string otherwise.
+     */
+    function my_articles_normalize_internal_url( $url, $site_home = '' ) {
+        if ( ! is_string( $url ) || '' === $url ) {
+            return '';
+        }
+
+        $clean_url = esc_url_raw( $url );
+        if ( '' === $clean_url ) {
+            return '';
+        }
+
+        $hash_position = strpos( $clean_url, '#' );
+        if ( false !== $hash_position ) {
+            $clean_url = substr( $clean_url, 0, $hash_position );
+        }
+
+        if ( '' === $site_home ) {
+            $site_home = home_url();
+        }
+
+        $site_host = wp_parse_url( $site_home, PHP_URL_HOST );
+        $site_host = is_string( $site_host ) ? strtolower( $site_host ) : '';
+
+        $site_scheme = wp_parse_url( $site_home, PHP_URL_SCHEME );
+        $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
+
+        if ( '' !== $site_host ) {
+            $candidate_host = wp_parse_url( $clean_url, PHP_URL_HOST );
+            $candidate_host = is_string( $candidate_host ) ? strtolower( $candidate_host ) : '';
+
+            if ( '' === $candidate_host || $candidate_host !== $site_host ) {
+                return '';
+            }
+        }
+
+        if ( '' !== $site_scheme ) {
+            $candidate_scheme = wp_parse_url( $clean_url, PHP_URL_SCHEME );
+            $candidate_scheme = is_string( $candidate_scheme ) ? strtolower( $candidate_scheme ) : '';
+
+            if ( '' !== $candidate_scheme && $candidate_scheme !== $site_scheme ) {
+                return '';
+            }
+        }
+
+        return $clean_url;
+    }
+}
+
 if ( ! function_exists( 'my_articles_get_selectable_post_types' ) ) {
     /**
      * Retrieve the list of selectable post types for the plugin.
