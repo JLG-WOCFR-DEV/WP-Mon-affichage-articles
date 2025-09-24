@@ -615,14 +615,38 @@ final class Mon_Affichage_Articles {
     public function get_taxonomy_terms_callback() {
         check_ajax_referer( 'my_articles_admin_nonce', 'security' );
 
-        if ( ! current_user_can( 'edit_posts' ) ) {
-            wp_send_json_error( array( 'message' => __( 'Action non autorisée.', 'mon-articles' ) ) );
-        }
-
         $taxonomy = isset( $_POST['taxonomy'] ) ? sanitize_text_field( wp_unslash( $_POST['taxonomy'] ) ) : '';
 
         if ( empty( $taxonomy ) || ! taxonomy_exists( $taxonomy ) ) {
-            wp_send_json_error( array( 'message' => __( 'Taxonomie invalide.', 'mon-articles' ) ) );
+            wp_send_json_error( array( 'message' => __( 'Taxonomie invalide.', 'mon-articles' ) ), 400 );
+        }
+
+        $taxonomy_object = get_taxonomy( $taxonomy );
+        $required_caps   = array();
+
+        if ( isset( $taxonomy_object->cap->assign_terms ) && ! empty( $taxonomy_object->cap->assign_terms ) ) {
+            $required_caps[] = $taxonomy_object->cap->assign_terms;
+        }
+
+        if ( isset( $taxonomy_object->cap->manage_terms ) && ! empty( $taxonomy_object->cap->manage_terms ) ) {
+            $required_caps[] = $taxonomy_object->cap->manage_terms;
+        }
+
+        if ( empty( $required_caps ) ) {
+            $required_caps[] = 'edit_posts';
+        }
+
+        $has_cap = false;
+
+        foreach ( $required_caps as $required_cap ) {
+            if ( current_user_can( $required_cap ) ) {
+                $has_cap = true;
+                break;
+            }
+        }
+
+        if ( ! $has_cap ) {
+            wp_send_json_error( array( 'message' => __( 'Action non autorisée.', 'mon-articles' ) ), 403 );
         }
 
         $terms = get_terms(
@@ -633,7 +657,7 @@ final class Mon_Affichage_Articles {
         );
 
         if ( is_wp_error( $terms ) ) {
-            wp_send_json_error( array( 'message' => $terms->get_error_message() ) );
+            wp_send_json_error( array( 'message' => $terms->get_error_message() ), 500 );
         }
 
         $formatted_terms = array();
