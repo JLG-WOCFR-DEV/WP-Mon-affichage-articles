@@ -69,6 +69,89 @@ final class Mon_Affichage_Articles {
         return $post_type;
     }
 
+    private function append_active_tax_query( array $args, $resolved_taxonomy, $active_category ) {
+        if ( '' === $resolved_taxonomy || '' === $active_category || 'all' === $active_category ) {
+            return $args;
+        }
+
+        $tax_query   = array();
+        $tax_query[] = array(
+            'taxonomy' => $resolved_taxonomy,
+            'field'    => 'slug',
+            'terms'    => $active_category,
+        );
+
+        if ( isset( $args['tax_query'] ) && is_array( $args['tax_query'] ) ) {
+            $tax_query = array_merge( $args['tax_query'], $tax_query );
+        }
+
+        $args['tax_query'] = $tax_query;
+
+        return $args;
+    }
+
+    private function get_matching_pinned_ids( array $options ) {
+        $pinned_ids = isset( $options['pinned_posts'] ) ? (array) $options['pinned_posts'] : array();
+
+        if ( empty( $pinned_ids ) ) {
+            return array();
+        }
+
+        $query_args = array(
+            'post_type'              => $options['post_type'],
+            'post_status'            => 'publish',
+            'post__in'               => $pinned_ids,
+            'orderby'                => 'post__in',
+            'posts_per_page'         => -1,
+            'fields'                 => 'ids',
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'post__not_in'           => isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
+        );
+
+        if ( empty( $options['pinned_posts_ignore_filter'] ) ) {
+            $query_args = $this->append_active_tax_query(
+                $query_args,
+                $options['resolved_taxonomy'] ?? '',
+                $options['term'] ?? ''
+            );
+        }
+
+        $pinned_query = new WP_Query( $query_args );
+
+        $matching_ids = array();
+
+        if ( $pinned_query instanceof WP_Query && ! empty( $pinned_query->posts ) ) {
+            $matching_ids = array_values( array_filter( array_map( 'absint', $pinned_query->posts ) ) );
+        }
+
+        wp_reset_postdata();
+
+        return $matching_ids;
+    }
+
+    private function build_regular_query( array $options, array $overrides = array(), $active_category = null ) {
+        $base_args = array(
+            'post_type'           => $options['post_type'],
+            'post_status'         => 'publish',
+            'ignore_sticky_posts' => isset( $options['ignore_native_sticky'] ) ? (int) $options['ignore_native_sticky'] : 0,
+        );
+
+        if ( ! isset( $overrides['post__not_in'] ) && isset( $options['all_excluded_ids'] ) ) {
+            $base_args['post__not_in'] = $options['all_excluded_ids'];
+        }
+
+        $query_args = array_merge( $base_args, $overrides );
+
+        $resolved_taxonomy = $options['resolved_taxonomy'] ?? '';
+        $active_category   = null === $active_category ? ( $options['term'] ?? '' ) : $active_category;
+
+        $query_args = $this->append_active_tax_query( $query_args, $resolved_taxonomy, $active_category );
+
+        return new WP_Query( $query_args );
+    }
+
     public function filter_articles_callback() {
         check_ajax_referer( 'my_articles_filter_nonce', 'security' );
 
@@ -157,43 +240,34 @@ final class Mon_Affichage_Articles {
 
         $render_limit = $is_unlimited ? 0 : max( 0, $posts_per_page );
 
-        $pinned_ids       = $options['pinned_posts'];
         $exclude_ids      = $options['exclude_post_ids'];
         $all_excluded_ids = $options['all_excluded_ids'];
 
-        $pinned_query         = null;
-        $total_pinned_posts   = 0;
+        $matching_pinned_ids = $this->get_matching_pinned_ids( $options );
+
+        $total_pinned_posts   = count( $matching_pinned_ids );
         $displayed_pinned_ids = array();
+        $pinned_query         = null;
 
-        if ( ! empty( $pinned_ids ) ) {
-            $pinned_posts_per_page = count( $pinned_ids );
+        $pinned_render_limit = $is_unlimited ? $total_pinned_posts : $render_limit;
+        if ( $pinned_render_limit > 0 ) {
+            $pinned_ids_to_render = array_slice( $matching_pinned_ids, 0, $pinned_render_limit );
+        } else {
+            $pinned_ids_to_render = $is_unlimited ? $matching_pinned_ids : array();
+        }
 
-            if ( 'slideshow' === $display_mode && $render_limit > 0 ) {
-                $pinned_posts_per_page = min( $pinned_posts_per_page, $render_limit );
-            }
-
-            $pinned_query_args = [
-                'post_type'      => $post_type,
-                'post_status'    => 'publish',
-                'post__in'       => $pinned_ids,
-                'orderby'        => 'post__in',
-                'posts_per_page' => $pinned_posts_per_page,
-                'post__not_in'   => $exclude_ids,
-            ];
-
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-                $pinned_query_args['tax_query'] = [
-                    [
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ],
-                ];
-            }
-            $pinned_query = new WP_Query( $pinned_query_args );
-            if ( $pinned_query instanceof WP_Query ) {
-                $total_pinned_posts = (int) ( $pinned_query->found_posts ?? $pinned_query->post_count );
-            }
+        if ( ! empty( $pinned_ids_to_render ) ) {
+            $pinned_query = new WP_Query(
+                array(
+                    'post_type'      => $post_type,
+                    'post_status'    => 'publish',
+                    'post__in'       => $pinned_ids_to_render,
+                    'orderby'        => 'post__in',
+                    'posts_per_page' => count( $pinned_ids_to_render ),
+                    'no_found_rows'  => true,
+                    'post__not_in'   => $exclude_ids,
+                )
+            );
         }
 
         $displayed_posts_count = 0;
@@ -202,40 +276,31 @@ final class Mon_Affichage_Articles {
         $projected_pinned_display = 0;
         if ( $pinned_query instanceof WP_Query ) {
             $projected_pinned_display = (int) $pinned_query->post_count;
-            if ( $should_limit_display ) {
-                $projected_pinned_display = min( $projected_pinned_display, $render_limit );
-            }
+        } elseif ( ! empty( $pinned_ids_to_render ) ) {
+            $projected_pinned_display = count( $pinned_ids_to_render );
+        }
+        if ( $should_limit_display && $projected_pinned_display > $render_limit ) {
+            $projected_pinned_display = $render_limit;
         }
 
         $total_posts_needed   = $posts_per_page;
         $regular_posts_needed = $is_unlimited ? -1 : max( 0, $total_posts_needed - $projected_pinned_display );
-        $articles_query = null;
-
-        if ( $is_unlimited || $regular_posts_needed > 0 ) {
-            $query_args = [
-                'post_type' => $post_type,
-                'post_status' => 'publish',
-                'posts_per_page' => $is_unlimited ? -1 : $regular_posts_needed,
-                'post__not_in' => $all_excluded_ids,
-                'ignore_sticky_posts' => $ignore_sticky_posts,
-            ];
-
-            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-                $query_args['tax_query'] = [
-                    [
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ],
-                ];
-            }
-            $articles_query = new WP_Query($query_args);
-        }
+        $regular_query_limit  = $is_unlimited ? -1 : max( 1, $regular_posts_needed );
+        $articles_query       = $this->build_regular_query(
+            $options,
+            array(
+                'posts_per_page' => $regular_query_limit,
+                'post__not_in'   => $all_excluded_ids,
+            )
+        );
 
         ob_start();
 
         if ( $pinned_query && $pinned_query->have_posts() ) {
-            while ( $pinned_query->have_posts() && ( ! $should_limit_display || $displayed_posts_count < $render_limit ) ) {
+            while ( $pinned_query->have_posts() ) {
+                if ( $should_limit_display && $displayed_posts_count >= $render_limit ) {
+                    break;
+                }
                 $pinned_query->the_post();
                 if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
                 $shortcode_instance->render_article_item($options, true);
@@ -246,12 +311,20 @@ final class Mon_Affichage_Articles {
         }
 
         if ( $articles_query && $articles_query->have_posts() ) {
-            while ( $articles_query->have_posts() && ( ! $should_limit_display || $displayed_posts_count < $render_limit ) ) {
+            $regular_rendered = 0;
+            while ( $articles_query->have_posts() ) {
+                if ( ! $is_unlimited && $regular_rendered >= $regular_posts_needed ) {
+                    break;
+                }
+                if ( $should_limit_display && $displayed_posts_count >= $render_limit ) {
+                    break;
+                }
                 $articles_query->the_post();
                 if ($display_mode === 'slideshow') echo '<div class="swiper-slide">';
                 $shortcode_instance->render_article_item($options, false);
                 if ($display_mode === 'slideshow') echo '</div>';
                 $displayed_posts_count++;
+                $regular_rendered++;
             }
         }
 
@@ -262,38 +335,7 @@ final class Mon_Affichage_Articles {
         wp_reset_postdata();
         $html = ob_get_clean();
 
-        $total_regular_posts = 0;
-
-        if ( $articles_query instanceof WP_Query ) {
-            $total_regular_posts = (int) $articles_query->found_posts;
-        } else {
-            $count_query_args = [
-                'post_type'           => $post_type,
-                'post_status'         => 'publish',
-                'posts_per_page'      => 1,
-                'post__not_in'        => $all_excluded_ids,
-                'ignore_sticky_posts' => $ignore_sticky_posts,
-                'fields'              => 'ids',
-            ];
-
-            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-                $count_query_args['tax_query'] = [
-                    [
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ],
-                ];
-            }
-
-            $count_query = new WP_Query( $count_query_args );
-            $total_regular_posts = (int) $count_query->found_posts;
-            wp_reset_postdata();
-        }
-
-        if ( 0 === $total_pinned_posts && ! empty( $displayed_pinned_ids ) ) {
-            $total_pinned_posts = count( $displayed_pinned_ids );
-        }
+        $total_regular_posts = (int) ( $articles_query instanceof WP_Query ? $articles_query->found_posts : 0 );
 
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
@@ -366,12 +408,8 @@ final class Mon_Affichage_Articles {
             wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ) );
         }
 
-        $display_mode      = $options['display_mode'];
-        $post_type         = $options['post_type'];
-        $resolved_taxonomy = $options['resolved_taxonomy'];
-        $default_term      = $options['default_term'];
-        $active_category   = $options['term'];
-        $configured_pinned_ids = $options['pinned_posts'];
+        $post_type       = $options['post_type'];
+        $active_category = $options['term'];
 
         $posts_per_page = (int) $options['posts_per_page'];
         $is_unlimited   = ! empty( $options['is_unlimited'] );
@@ -395,46 +433,7 @@ final class Mon_Affichage_Articles {
         }
 
         $exclude_ids = $options['exclude_post_ids'];
-        $all_excluded_ids = isset( $options['all_excluded_ids'] ) ? $options['all_excluded_ids'] : array();
-
-        $ignore_sticky_posts = (int) $options['ignore_native_sticky'];
-        $matching_pinned_ids = array();
-        if ( ! empty( $configured_pinned_ids ) ) {
-            $pinned_lookup_args = [
-                'post_type'      => $post_type,
-                'post_status'    => 'publish',
-                'post__in'       => $configured_pinned_ids,
-                'orderby'        => 'post__in',
-                'posts_per_page' => -1,
-                'fields'         => 'ids',
-                'post__not_in'   => $exclude_ids,
-                'no_found_rows'  => true,
-                'update_post_meta_cache' => false,
-            ];
-
-            if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-                $pinned_lookup_args['tax_query'] = [
-                    [
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ],
-                ];
-            }
-
-            $pinned_lookup_query = new WP_Query( $pinned_lookup_args );
-            if ( $pinned_lookup_query->have_posts() ) {
-                $matching_pinned_ids = array_values(
-                    array_filter(
-                        array_map( 'absint', $pinned_lookup_query->posts ),
-                        static function ( $post_id ) use ( $post_type ) {
-                            return $post_id > 0 && get_post_type( $post_id ) === $post_type;
-                        }
-                    )
-                );
-            }
-            wp_reset_postdata();
-        }
+        $matching_pinned_ids = $this->get_matching_pinned_ids( $options );
 
         $seen_pinned_ids = array_values( array_intersect( $matching_pinned_ids, $seen_pinned_ids ) );
         $remaining_pinned_ids = array_values( array_diff( $matching_pinned_ids, $seen_pinned_ids ) );
@@ -462,6 +461,7 @@ final class Mon_Affichage_Articles {
                     'post__in'       => $pinned_ids_to_render,
                     'orderby'        => 'post__in',
                     'posts_per_page' => count( $pinned_ids_to_render ),
+                    'no_found_rows'  => true,
                 ]
             );
 
@@ -492,68 +492,37 @@ final class Mon_Affichage_Articles {
 
         $regular_posts_limit = $is_unlimited ? -1 : max( 0, $posts_per_page - $actual_pinned_rendered );
 
-        if ( $is_unlimited || $regular_posts_limit > 0 ) {
-            $query_args = [
-                'post_type'           => $post_type,
-                'post_status'         => 'publish',
-                'posts_per_page'      => $is_unlimited ? -1 : $regular_posts_limit,
-                'post__not_in'        => $regular_excluded_ids,
-                'offset'              => $is_unlimited ? 0 : $offset,
-                'ignore_sticky_posts' => $ignore_sticky_posts,
-            ];
+        $regular_query_limit = $is_unlimited ? -1 : max( 1, $regular_posts_limit );
 
-            if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-                $query_args['tax_query'] = [
-                    [
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ],
-                ];
-            }
+        $query = $this->build_regular_query(
+            $options,
+            array(
+                'posts_per_page' => $regular_query_limit,
+                'post__not_in'   => $regular_excluded_ids,
+                'offset'         => $is_unlimited ? 0 : $offset,
+            ),
+            $active_category
+        );
 
-            $query = new WP_Query( $query_args );
-
-            if ( $query->have_posts() ) {
-                while ( $query->have_posts() ) {
-                    $query->the_post();
-                    $shortcode_instance->render_article_item( $options, false );
+        if ( $query->have_posts() ) {
+            $rendered_regular = 0;
+            while ( $query->have_posts() ) {
+                if ( ! $is_unlimited && $rendered_regular >= $regular_posts_limit ) {
+                    break;
                 }
+                $query->the_post();
+                $shortcode_instance->render_article_item( $options, false );
+                $rendered_regular++;
             }
-
-            wp_reset_postdata();
         }
+
+        wp_reset_postdata();
 
         $html = ob_get_clean();
         $pinned_ids_string = ! empty( $seen_pinned_ids ) ? implode( ',', array_map( 'absint', $seen_pinned_ids ) ) : '';
 
-        $total_pinned_posts = count( $matching_pinned_ids );
-        $total_regular_posts = 0;
-
-        $count_query_args = [
-            'post_type'           => $post_type,
-            'post_status'         => 'publish',
-            'posts_per_page'      => 1,
-            'post__not_in'        => $all_excluded_ids,
-            'ignore_sticky_posts' => $ignore_sticky_posts,
-            'fields'              => 'ids',
-        ];
-
-        if ( '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
-            $count_query_args['tax_query'] = [
-                [
-                    'taxonomy' => $resolved_taxonomy,
-                    'field'    => 'slug',
-                    'terms'    => $active_category,
-                ],
-            ];
-        }
-
-        $count_query = new WP_Query( $count_query_args );
-        if ( $count_query instanceof WP_Query ) {
-            $total_regular_posts = (int) $count_query->found_posts;
-        }
-        wp_reset_postdata();
+        $total_pinned_posts  = count( $matching_pinned_ids );
+        $total_regular_posts = (int) $query->found_posts;
 
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
