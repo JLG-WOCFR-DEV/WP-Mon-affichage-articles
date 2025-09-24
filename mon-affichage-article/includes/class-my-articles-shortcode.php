@@ -641,7 +641,7 @@ class My_Articles_Shortcode {
                     'ajax_url'     => admin_url('admin-ajax.php'),
                     'nonce'        => wp_create_nonce('my_articles_load_more_nonce'),
                     'loadingText'  => __( 'Chargement...', 'mon-articles' ),
-                    'loadMoreText' => __( 'Charger plus', 'mon-articles' ),
+                    'loadMoreText' => esc_html__( 'Charger plus', 'mon-articles' ),
                     'errorText'    => __( 'Erreur AJAX.', 'mon-articles' ),
                 ]
             );
@@ -808,7 +808,7 @@ class My_Articles_Shortcode {
                 if ( $total_pages > 1 && $paged < $total_pages) {
                     $next_page = min( $paged + 1, $total_pages );
                     $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . __('Charger plus', 'mon-articles') . '</button></div>';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $pagination_query_args = array();
@@ -953,37 +953,11 @@ class My_Articles_Shortcode {
             <div class="article-thumbnail-wrapper">
                 <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
                 <?php if (has_post_thumbnail()):
-                    $image_id       = get_post_thumbnail_id();
-                    $image_src      = wp_get_attachment_image_url($image_id, 'large');
-                    $image_srcset   = wp_get_attachment_image_srcset($image_id, 'large');
-                    $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                    $image_id = get_post_thumbnail_id();
+                    $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
 
-                    if ( $enable_lazy_load && ! empty( $image_src ) ) {
-                        $img_attributes = array(
-                            'src'       => $placeholder_src,
-                            'class'     => 'attachment-large size-large wp-post-image lazyload',
-                            'alt'       => $title_attr,
-                            'data-sizes'=> 'auto',
-                            'data-src'  => $image_src,
-                        );
-
-                        if ( ! empty( $image_srcset ) ) {
-                            $img_attributes['data-srcset'] = $image_srcset;
-                        }
-
-                        echo '<img';
-                        foreach ( $img_attributes as $attr_name => $attr_value ) {
-                            if ( 'data-src' === $attr_name ) {
-                                $escaped_value = esc_url( $attr_value );
-                            } elseif ( 'src' === $attr_name && 0 !== strncmp( $attr_value, 'data:', 5 ) ) {
-                                $escaped_value = esc_url( $attr_value );
-                            } else {
-                                $escaped_value = esc_attr( $attr_value );
-                            }
-
-                            echo ' ' . esc_attr( $attr_name ) . '="' . $escaped_value . '"';
-                        }
-                        echo ' />';
+                    if ( '' !== $thumbnail_html ) {
+                        echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                     } else {
                         the_post_thumbnail('large');
                     }
@@ -1023,6 +997,80 @@ class My_Articles_Shortcode {
             <?php endif; ?>
         </div>
         <?php
+    }
+
+    private function get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load ) {
+        $size            = 'large';
+        $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+        if ( $enable_lazy_load ) {
+            $image_data = wp_get_attachment_image_src( $image_id, $size );
+
+            if ( empty( $image_data ) || empty( $image_data[0] ) ) {
+                return '';
+            }
+
+            $image_src    = $image_data[0];
+            $image_width  = isset( $image_data[1] ) ? (int) $image_data[1] : 0;
+            $image_height = isset( $image_data[2] ) ? (int) $image_data[2] : 0;
+
+            $image_srcset = wp_get_attachment_image_srcset( $image_id, $size );
+
+            $attributes = array(
+                'src'        => $placeholder_src,
+                'class'      => 'attachment-large size-large wp-post-image lazyload',
+                'alt'        => $title_attr,
+                'data-sizes' => 'auto',
+                'data-src'   => $image_src,
+                'decoding'   => 'async',
+                'loading'    => 'lazy',
+            );
+
+            if ( ! empty( $image_srcset ) ) {
+                $attributes['data-srcset'] = $image_srcset;
+            }
+
+            if ( $image_width > 0 ) {
+                $attributes['width'] = $image_width;
+            }
+
+            if ( $image_height > 0 ) {
+                $attributes['height'] = $image_height;
+            }
+
+            $html = '<img';
+
+            foreach ( $attributes as $attr_name => $attr_value ) {
+                if ( '' === $attr_value && 0 !== $attr_value ) {
+                    continue;
+                }
+
+                if ( 'data-src' === $attr_name ) {
+                    $escaped_value = esc_url( $attr_value );
+                } elseif ( 'data-srcset' === $attr_name ) {
+                    $escaped_value = esc_attr( $attr_value );
+                } elseif ( 'src' === $attr_name && 0 !== strncmp( $attr_value, 'data:', 5 ) ) {
+                    $escaped_value = esc_url( $attr_value );
+                } else {
+                    $escaped_value = esc_attr( $attr_value );
+                }
+
+                $html .= ' ' . esc_attr( $attr_name ) . '="' . $escaped_value . '"';
+            }
+
+            $html .= ' />';
+
+            return $html;
+        }
+
+        $attributes = array(
+            'class'    => 'attachment-large size-large wp-post-image',
+            'alt'      => $title_attr,
+            'decoding' => 'async',
+            'loading'  => 'lazy',
+        );
+
+        return wp_get_attachment_image( $image_id, $size, false, $attributes );
     }
 
     private function enqueue_swiper_scripts($options, $instance_id) {
