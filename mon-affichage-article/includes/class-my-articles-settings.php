@@ -196,7 +196,7 @@ class My_Articles_Settings {
         if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'my_articles_reset_settings_nonce' ) ) { wp_die( 'La vérification a échoué.' ); }
         if ( ! current_user_can( 'manage_options' ) ) { wp_die( 'Permission refusée.' ); }
         delete_option( $this->option_name );
-        wp_redirect( admin_url( 'admin.php?page=my-articles-settings&status=reset' ) );
+        wp_safe_redirect( admin_url( 'admin.php?page=my-articles-settings&status=reset' ) );
         exit;
     }
 }

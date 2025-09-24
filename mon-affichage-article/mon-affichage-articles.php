@@ -408,6 +408,8 @@ final class Mon_Affichage_Articles {
                 'posts_per_page' => -1,
                 'fields'         => 'ids',
                 'post__not_in'   => $exclude_ids,
+                'no_found_rows'  => true,
+                'update_post_meta_cache' => false,
             ];
 
             if ( empty( $options['pinned_posts_ignore_filter'] ) && '' !== $active_category && 'all' !== $active_category && '' !== $resolved_taxonomy ) {
