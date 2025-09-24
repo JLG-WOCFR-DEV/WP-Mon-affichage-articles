@@ -778,58 +778,9 @@ class My_Articles_Shortcode {
             return '';
         }
 
-        $site_home   = home_url();
-        $site_host   = wp_parse_url( $site_home, PHP_URL_HOST );
-        $site_host   = is_string( $site_host ) ? strtolower( $site_host ) : '';
-        $site_scheme = wp_parse_url( $site_home, PHP_URL_SCHEME );
-        $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
+        $site_home = home_url();
 
-        $sanitize_base_url = static function ( $url ) {
-            if ( ! is_string( $url ) || '' === $url ) {
-                return '';
-            }
-
-            $clean_url = esc_url_raw( $url );
-            if ( '' === $clean_url ) {
-                return '';
-            }
-
-            $hash_position = strpos( $clean_url, '#' );
-            if ( false !== $hash_position ) {
-                $clean_url = substr( $clean_url, 0, $hash_position );
-            }
-
-            return $clean_url;
-        };
-
-        $enforce_site_domain = static function ( $url ) use ( $site_host, $site_scheme ) {
-            if ( '' === $url ) {
-                return '';
-            }
-
-            $candidate_host = wp_parse_url( $url, PHP_URL_HOST );
-            $candidate_host = is_string( $candidate_host ) ? strtolower( $candidate_host ) : '';
-
-            if ( '' !== $site_host ) {
-                if ( '' === $candidate_host || $candidate_host !== $site_host ) {
-                    return '';
-                }
-            }
-
-            if ( '' !== $site_scheme ) {
-                $candidate_scheme = wp_parse_url( $url, PHP_URL_SCHEME );
-                $candidate_scheme = is_string( $candidate_scheme ) ? strtolower( $candidate_scheme ) : '';
-
-                if ( '' !== $candidate_scheme && $candidate_scheme !== $site_scheme ) {
-                    return '';
-                }
-            }
-
-            return $url;
-        };
-
-        $base_url = $sanitize_base_url( $base_url );
-        $base_url = $enforce_site_domain( $base_url );
+        $base_url = my_articles_normalize_internal_url( $base_url, $site_home );
 
         if ( '' === $base_url ) {
             global $wp;
@@ -858,8 +809,7 @@ class My_Articles_Shortcode {
                 }
             }
 
-            $base_url = $sanitize_base_url( $fallback_base );
-            $base_url = $enforce_site_domain( $base_url );
+            $base_url = my_articles_normalize_internal_url( $fallback_base, $site_home );
         }
 
         if ( '' === $base_url ) {
