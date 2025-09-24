@@ -223,11 +223,11 @@ class My_Articles_Shortcode {
             );
 
             if ( $effective_limit > 0 ) {
-                if ( $regular_posts_limit >= 0 ) {
+                if ( $regular_posts_limit > 0 ) {
                     $regular_query = self::build_regular_query(
                         $options,
                         array(
-                            'posts_per_page' => max( 1, $regular_posts_limit ),
+                            'posts_per_page' => $regular_posts_limit,
                             'post__not_in'   => $regular_excluded_ids,
                             'offset'         => $regular_offset,
                         ),
@@ -287,11 +287,11 @@ class My_Articles_Shortcode {
             }
 
             if ( $effective_limit > 0 ) {
-                if ( $regular_posts_limit >= 0 ) {
+                if ( $regular_posts_limit > 0 ) {
                     $regular_query = self::build_regular_query(
                         $options,
                         array(
-                            'posts_per_page' => max( 1, $regular_posts_limit ),
+                            'posts_per_page' => $regular_posts_limit,
                             'offset'         => $regular_offset,
                         ),
                         $options['term'] ?? ''
@@ -819,29 +819,26 @@ class My_Articles_Shortcode {
             }
         }
         
-        if (!empty($options['enable_debug_mode'])) {
+        if ( ! empty( $options['enable_debug_mode'] ) ) {
             echo '<div style="background: #fff; border: 2px solid red; padding: 15px; margin: 20px 0; text-align: left; color: #000; font-family: monospace; line-height: 1.6; clear: both;">';
             echo '<h4 style="margin: 0 0 10px 0;">-- DEBUG MODE --</h4>';
             echo '<ul>';
-            echo '<li>Réglage "Lazy Load" activé : <strong>' . (!empty($options['enable_lazy_load']) ? 'Oui' : 'Non') . '</strong></li>';
-            echo '<li>Statut du script lazysizes : <strong id="lazysizes-status-'.esc_attr($id).'" style="color: red;">En attente...</strong></li>';
+            echo '<li>Réglage "Lazy Load" activé : <strong>' . ( ! empty( $options['enable_lazy_load'] ) ? 'Oui' : 'Non' ) . '</strong></li>';
+            echo '<li>Statut du script lazysizes : <strong id="lazysizes-status-' . esc_attr( $id ) . '" style="color: red;">En attente...</strong></li>';
             echo '</ul>';
             echo '</div>';
-            echo "<script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    var statusSpan = document.getElementById('lazysizes-status-".esc_attr($id)."');
-                    if (statusSpan) {
-                        setTimeout(function() {
-                            if (window.lazySizes) {
-                                statusSpan.textContent = '✅ Chargé et actif !';
-                                statusSpan.style.color = 'green';
-                            } else {
-                                statusSpan.textContent = '❌ ERREUR : Non trouvé !';
-                            }
-                        }, 500);
-                    }
-                });
-            </script>";
+
+            wp_enqueue_script( 'my-articles-debug-helper' );
+
+            $status_span_id = 'lazysizes-status-' . $id;
+            $debug_script   = sprintf(
+                "document.addEventListener('DOMContentLoaded',function(){var statusSpan=document.getElementById(%s);if(!statusSpan){return;}setTimeout(function(){if(window.lazySizes){statusSpan.textContent=%s;statusSpan.style.color='green';}else{statusSpan.textContent=%s;}},500);});",
+                wp_json_encode( $status_span_id ),
+                wp_json_encode( '✅ Chargé et actif !' ),
+                wp_json_encode( '❌ ERREUR : Non trouvé !' )
+            );
+
+            wp_add_inline_script( 'my-articles-debug-helper', $debug_script );
         }
         
         echo '</div>';

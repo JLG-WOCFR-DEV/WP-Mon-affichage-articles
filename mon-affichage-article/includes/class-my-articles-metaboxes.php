@@ -306,7 +306,7 @@ class My_Articles_Metaboxes {
         
         $sanitized['post_type'] = my_articles_normalize_post_type( $input['post_type'] ?? '' );
         $sanitized['taxonomy'] = isset($input['taxonomy']) ? sanitize_key($input['taxonomy']) : '';
-        $sanitized['term'] = isset($input['term']) ? sanitize_text_field( wp_unslash( $input['term'] ) ) : '';
+        $sanitized['term'] = isset($input['term']) ? sanitize_text_field( $input['term'] ) : '';
         $sanitized['counting_behavior'] = isset($input['counting_behavior']) && in_array($input['counting_behavior'], ['exact', 'auto_fill']) ? $input['counting_behavior'] : 'exact';
         $sanitized['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 1, absint( $input['posts_per_page'] ) ) : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';

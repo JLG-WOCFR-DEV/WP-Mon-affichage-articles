@@ -28,6 +28,7 @@ class My_Articles_Enqueue {
         wp_register_script( 'swiper-js', $vendor_url . 'swiper/swiper-bundle.min.js', array(), '11.0.0', true );
         wp_register_script( 'lazysizes', $vendor_url . 'lazysizes/lazysizes.min.js', array(), '5.3.2', true );
         wp_register_script( 'my-articles-responsive-layout', MY_ARTICLES_PLUGIN_URL . 'assets/js/responsive-layout.js', array(), MY_ARTICLES_VERSION, true );
+        wp_register_script( 'my-articles-debug-helper', false, array(), MY_ARTICLES_VERSION, true );
 
         if ( function_exists( 'wp_script_add_data' ) ) {
             wp_script_add_data( 'lazysizes', 'async', true );
