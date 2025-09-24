@@ -850,70 +850,49 @@ class My_Articles_Shortcode {
         return ob_get_clean();
     }
     
-    private function render_list($pinned_query, $regular_query, $options, $posts_per_page) {
-        $has_rendered_posts = false;
-        $render_limit = max(0, (int) $posts_per_page);
-        $should_limit = $render_limit > 0;
-        $rendered_count = 0;
+    private function render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, $container_class ) {
+        $has_rendered_posts   = false;
+        $render_limit         = max( 0, (int) $posts_per_page );
+        $should_limit         = $render_limit > 0;
+        $rendered_count       = 0;
         $displayed_pinned_ids = array();
-        echo '<div class="my-articles-list-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) {
+
+        echo '<div class="' . esc_attr( $container_class ) . '">';
+
+        if ( $pinned_query instanceof WP_Query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
                 $pinned_query->the_post();
-                $this->render_article_item($options, true);
-                $has_rendered_posts = true;
+                $this->render_article_item( $options, true );
+                $has_rendered_posts   = true;
                 $rendered_count++;
                 $displayed_pinned_ids[] = get_the_ID();
             }
         }
-        if ( $regular_query && $regular_query->have_posts() ) {
+
+        if ( $regular_query instanceof WP_Query && $regular_query->have_posts() ) {
             while ( $regular_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
                 $regular_query->the_post();
-                $this->render_article_item($options, false);
+                $this->render_article_item( $options, false );
                 $has_rendered_posts = true;
                 $rendered_count++;
             }
         }
+
         echo '</div>';
 
-        if ( !$has_rendered_posts ) {
+        if ( ! $has_rendered_posts ) {
             $this->render_empty_state_message();
         }
 
         return $displayed_pinned_ids;
     }
 
+    private function render_list($pinned_query, $regular_query, $options, $posts_per_page) {
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-list-content' );
+    }
+
     private function render_grid($pinned_query, $regular_query, $options, $posts_per_page) {
-        $has_rendered_posts = false;
-        $render_limit = max(0, (int) $posts_per_page);
-        $should_limit = $render_limit > 0;
-        $rendered_count = 0;
-        $displayed_pinned_ids = array();
-        echo '<div class="my-articles-grid-content">';
-        if ( $pinned_query && $pinned_query->have_posts() ) {
-            while ( $pinned_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
-                $pinned_query->the_post();
-                $this->render_article_item($options, true);
-                $has_rendered_posts = true;
-                $rendered_count++;
-                $displayed_pinned_ids[] = get_the_ID();
-            }
-        }
-        if ( $regular_query && $regular_query->have_posts() ) {
-            while ( $regular_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
-                $regular_query->the_post();
-                $this->render_article_item($options, false);
-                $has_rendered_posts = true;
-                $rendered_count++;
-            }
-        }
-        echo '</div>';
-
-        if ( !$has_rendered_posts ) {
-            $this->render_empty_state_message();
-        }
-
-        return $displayed_pinned_ids;
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content' );
     }
 
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
@@ -974,12 +953,37 @@ class My_Articles_Shortcode {
             <div class="article-thumbnail-wrapper">
                 <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
                 <?php if (has_post_thumbnail()):
-                    $image_id = get_post_thumbnail_id();
-                    $image_src = wp_get_attachment_image_url($image_id, 'large');
-                    $image_srcset = wp_get_attachment_image_srcset($image_id, 'large');
+                    $image_id       = get_post_thumbnail_id();
+                    $image_src      = wp_get_attachment_image_url($image_id, 'large');
+                    $image_srcset   = wp_get_attachment_image_srcset($image_id, 'large');
                     $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                    if ($enable_lazy_load) {
-                        echo '<img src="' . $placeholder_src . '" data-src="' . esc_url($image_src) . '" data-srcset="' . esc_attr($image_srcset) . '" class="attachment-large size-large wp-post-image lazyload" alt="' . $title_attr . '" data-sizes="auto" />';
+
+                    if ( $enable_lazy_load && ! empty( $image_src ) ) {
+                        $img_attributes = array(
+                            'src'       => $placeholder_src,
+                            'class'     => 'attachment-large size-large wp-post-image lazyload',
+                            'alt'       => $title_attr,
+                            'data-sizes'=> 'auto',
+                            'data-src'  => $image_src,
+                        );
+
+                        if ( ! empty( $image_srcset ) ) {
+                            $img_attributes['data-srcset'] = $image_srcset;
+                        }
+
+                        echo '<img';
+                        foreach ( $img_attributes as $attr_name => $attr_value ) {
+                            if ( 'data-src' === $attr_name ) {
+                                $escaped_value = esc_url( $attr_value );
+                            } elseif ( 'src' === $attr_name && 0 !== strncmp( $attr_value, 'data:', 5 ) ) {
+                                $escaped_value = esc_url( $attr_value );
+                            } else {
+                                $escaped_value = esc_attr( $attr_value );
+                            }
+
+                            echo ' ' . esc_attr( $attr_name ) . '="' . $escaped_value . '"';
+                        }
+                        echo ' />';
                     } else {
                         the_post_thumbnail('large');
                     }
