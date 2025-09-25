@@ -896,29 +896,54 @@ class My_Articles_Shortcode {
     }
 
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
-        $is_unlimited = (int) $posts_per_page <= 0;
+        $is_unlimited       = (int) $posts_per_page <= 0;
         $total_posts_needed = $is_unlimited ? PHP_INT_MAX : (int) $posts_per_page;
         echo '<div class="swiper-container"><div class="swiper-wrapper">';
         $post_count = 0;
-        if ( $pinned_query && $pinned_query->have_posts() ) { while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) { $pinned_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, true); echo '</div>'; $post_count++; } }
-        if ( $regular_query && $regular_query->have_posts() ) { while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) { $regular_query->the_post(); echo '<div class="swiper-slide">'; $this->render_article_item($options, false); echo '</div>'; $post_count++; } }
-        echo '</div><div class="swiper-pagination"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div>';
+
+        if ( $pinned_query && $pinned_query->have_posts() ) {
+            while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) {
+                $pinned_query->the_post();
+                echo '<div class="swiper-slide">';
+                $this->render_article_item( $options, true );
+                echo '</div>';
+                $post_count++;
+            }
+        }
+
+        if ( $regular_query && $regular_query->have_posts() ) {
+            while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) {
+                $regular_query->the_post();
+                echo '<div class="swiper-slide">';
+                $this->render_article_item( $options, false );
+                echo '</div>';
+                $post_count++;
+            }
+        }
 
         if ( 0 === $post_count ) {
-            $this->render_empty_state_message();
+            $this->render_empty_state_message( true );
         }
+
+        echo '</div><div class="swiper-pagination"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div>';
 
         if ( $pinned_query instanceof WP_Query || $regular_query instanceof WP_Query ) {
             wp_reset_postdata();
         }
     }
 
-    public function get_empty_state_html() {
-        return '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+    public function get_empty_state_html( $wrap_for_swiper = false ) {
+        $html = '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+
+        if ( $wrap_for_swiper ) {
+            $html = '<div class="swiper-slide swiper-slide-empty">' . $html . '</div>';
+        }
+
+        return $html;
     }
 
-    private function render_empty_state_message() {
-        echo $this->get_empty_state_html();
+    private function render_empty_state_message( $wrap_for_swiper = false ) {
+        echo $this->get_empty_state_html( $wrap_for_swiper );
     }
 
     public function render_article_item($options, $is_pinned = false) {
