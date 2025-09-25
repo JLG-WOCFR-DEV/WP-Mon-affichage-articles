@@ -99,7 +99,18 @@ class My_Articles_Metaboxes {
         $this->render_field('taxonomy', __('Filtrer par taxonomie', 'mon-articles'), 'taxonomy_select', $opts);
         $this->render_field('term', __('Filtrer par catégorie/terme', 'mon-articles'), 'term_select', $opts);
         $this->render_field('counting_behavior', __('Comportement du comptage', 'mon-articles'), 'select', $opts, [ 'default' => 'exact', 'options' => [ 'exact' => 'Nombre exact', 'auto_fill' => 'Remplissage automatique (Grille complète)' ] ]);
-        $this->render_field('posts_per_page', __('Nombre d\'articles souhaité', 'mon-articles'), 'number', $opts, ['default' => 10, 'min' => 1, 'max' => 50, 'description' => 'Le nombre exact ou approximatif selon le comportement choisi.']);
+        $this->render_field(
+            'posts_per_page',
+            __('Nombre d\'articles souhaité', 'mon-articles'),
+            'number',
+            $opts,
+            [
+                'default'     => 10,
+                'min'         => 0,
+                'max'         => 50,
+                'description' => __( 'Le nombre exact ou approximatif selon le comportement choisi. Utilisez 0 pour un affichage illimité.', 'mon-articles' ),
+            ]
+        );
         $this->render_field('pagination_mode', __('Type de pagination', 'mon-articles'), 'select', $opts, [ 'default' => 'none', 'options' => [ 'none' => 'Aucune', 'load_more' => 'Bouton "Charger plus"', 'numbered' => 'Liens numérotés' ], 'description' => 'Ne s\'applique pas au mode Diaporama.' ]);
         $this->render_field('show_category_filter', __('Afficher le filtre de catégories', 'mon-articles'), 'checkbox', $opts, ['default' => 0]);
         $this->render_field('filter_alignment', __('Alignement du filtre', 'mon-articles'), 'select', $opts, [ 'default' => 'right', 'options' => ['left' => 'Gauche', 'center' => 'Centre', 'right' => 'Droite'] ]);
@@ -308,7 +319,7 @@ class My_Articles_Metaboxes {
         $sanitized['taxonomy'] = isset($input['taxonomy']) ? sanitize_key($input['taxonomy']) : '';
         $sanitized['term'] = isset($input['term']) ? sanitize_text_field( $input['term'] ) : '';
         $sanitized['counting_behavior'] = isset($input['counting_behavior']) && in_array($input['counting_behavior'], ['exact', 'auto_fill']) ? $input['counting_behavior'] : 'exact';
-        $sanitized['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 1, absint( $input['posts_per_page'] ) ) : 10;
+        $sanitized['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 0, absint( $input['posts_per_page'] ) ) : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';
         $sanitized['show_category_filter'] = isset( $input['show_category_filter'] ) ? 1 : 0;
         $sanitized['filter_alignment'] = isset($input['filter_alignment']) && in_array($input['filter_alignment'], ['left', 'center', 'right']) ? $input['filter_alignment'] : 'right';
