@@ -862,7 +862,10 @@ class My_Articles_Shortcode {
                 $this->render_article_item( $options, true );
                 $has_rendered_posts   = true;
                 $rendered_count++;
-                $displayed_pinned_ids[] = get_the_ID();
+                $pinned_id = absint( get_the_ID() );
+                if ( $pinned_id > 0 ) {
+                    $displayed_pinned_ids[] = $pinned_id;
+                }
             }
         }
 
@@ -903,6 +906,10 @@ class My_Articles_Shortcode {
 
         if ( 0 === $post_count ) {
             $this->render_empty_state_message();
+        }
+
+        if ( $pinned_query instanceof WP_Query || $regular_query instanceof WP_Query ) {
+            wp_reset_postdata();
         }
     }
 
@@ -1201,46 +1208,81 @@ class My_Articles_Shortcode {
     }
 
     private function render_inline_styles($options, $id) {
+        $defaults = self::get_default_options();
+
         $min_card_width = 220;
         if ( isset( $options['min_card_width'] ) ) {
             $min_card_width = max( 1, (int) $options['min_card_width'] );
         }
 
+        $columns_mobile   = max( 1, absint( $options['columns_mobile'] ?? $defaults['columns_mobile'] ) );
+        $columns_tablet   = max( 1, absint( $options['columns_tablet'] ?? $defaults['columns_tablet'] ) );
+        $columns_desktop  = max( 1, absint( $options['columns_desktop'] ?? $defaults['columns_desktop'] ) );
+        $columns_ultrawide = max( 1, absint( $options['columns_ultrawide'] ?? $defaults['columns_ultrawide'] ) );
+
+        $gap_size       = max( 0, absint( $options['gap_size'] ?? $defaults['gap_size'] ) );
+        $list_item_gap  = max( 0, absint( $options['list_item_gap'] ?? $defaults['list_item_gap'] ) );
+        $padding_top    = max( 0, absint( $options['list_content_padding_top'] ?? $defaults['list_content_padding_top'] ) );
+        $padding_right  = max( 0, absint( $options['list_content_padding_right'] ?? $defaults['list_content_padding_right'] ) );
+        $padding_bottom = max( 0, absint( $options['list_content_padding_bottom'] ?? $defaults['list_content_padding_bottom'] ) );
+        $padding_left   = max( 0, absint( $options['list_content_padding_left'] ?? $defaults['list_content_padding_left'] ) );
+
+        $border_radius       = max( 0, absint( $options['border_radius'] ?? $defaults['border_radius'] ) );
+        $title_font_size     = max( 1, absint( $options['title_font_size'] ?? $defaults['title_font_size'] ) );
+        $meta_font_size      = max( 1, absint( $options['meta_font_size'] ?? $defaults['meta_font_size'] ) );
+        $excerpt_font_size   = max( 1, absint( $options['excerpt_font_size'] ?? $defaults['excerpt_font_size'] ) );
+        $module_padding_left  = max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) );
+        $module_padding_right = max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) );
+
+        $title_color          = my_articles_sanitize_color( $options['title_color'] ?? '', $defaults['title_color'] );
+        $meta_color           = my_articles_sanitize_color( $options['meta_color'] ?? '', $defaults['meta_color'] );
+        $meta_color_hover     = my_articles_sanitize_color( $options['meta_color_hover'] ?? '', $defaults['meta_color_hover'] );
+        $excerpt_color        = my_articles_sanitize_color( $options['excerpt_color'] ?? '', $defaults['excerpt_color'] );
+        $pagination_color     = my_articles_sanitize_color( $options['pagination_color'] ?? '', $defaults['pagination_color'] );
+        $shadow_color         = my_articles_sanitize_color( $options['shadow_color'] ?? '', $defaults['shadow_color'] );
+        $shadow_color_hover   = my_articles_sanitize_color( $options['shadow_color_hover'] ?? '', $defaults['shadow_color_hover'] );
+        $pinned_border_color  = my_articles_sanitize_color( $options['pinned_border_color'] ?? '', $defaults['pinned_border_color'] );
+        $pinned_badge_bg      = my_articles_sanitize_color( $options['pinned_badge_bg_color'] ?? '', $defaults['pinned_badge_bg_color'] );
+        $pinned_badge_text    = my_articles_sanitize_color( $options['pinned_badge_text_color'] ?? '', $defaults['pinned_badge_text_color'] );
+        $module_bg_color      = my_articles_sanitize_color( $options['module_bg_color'] ?? '', $defaults['module_bg_color'] );
+        $vignette_bg_color    = my_articles_sanitize_color( $options['vignette_bg_color'] ?? '', $defaults['vignette_bg_color'] );
+        $title_wrapper_bg     = my_articles_sanitize_color( $options['title_wrapper_bg_color'] ?? '', $defaults['title_wrapper_bg_color'] );
+
         $dynamic_css = "
         #my-articles-wrapper-{$id} {
-            --my-articles-cols-mobile: " . intval($options['columns_mobile']) . ";
-            --my-articles-cols-tablet: " . intval($options['columns_tablet']) . ";
-            --my-articles-cols-desktop: " . intval($options['columns_desktop']) . ";
-            --my-articles-cols-ultrawide: " . intval($options['columns_ultrawide']) . ";
-            --my-articles-min-card-width: " . $min_card_width . "px;
-            --my-articles-gap: " . intval($options['gap_size']) . "px;
-            --my-articles-list-gap: " . intval($options['list_item_gap']) . "px;
-            --my-articles-list-padding-top: " . intval($options['list_content_padding_top']) . "px;
-            --my-articles-list-padding-right: " . intval($options['list_content_padding_right']) . "px;
-            --my-articles-list-padding-bottom: " . intval($options['list_content_padding_bottom']) . "px;
-            --my-articles-list-padding-left: " . intval($options['list_content_padding_left']) . "px;
-            --my-articles-border-radius: " . intval($options['border_radius']) . "px;
-            --my-articles-title-color: " . esc_attr($options['title_color']) . ";
-            --my-articles-title-font-size: " . intval($options['title_font_size']) . "px;
-            --my-articles-meta-color: " . esc_attr($options['meta_color']) . ";
-            --my-articles-meta-hover-color: " . esc_attr($options['meta_color_hover']) . ";
-            --my-articles-meta-font-size: " . intval($options['meta_font_size']) . "px;
-            --my-articles-excerpt-font-size: " . intval($options['excerpt_font_size']) . "px;
-            --my-articles-excerpt-color: " . esc_attr($options['excerpt_color']) . ";
-            --my-articles-pagination-color: " . esc_attr($options['pagination_color']) . ";
-            --my-articles-shadow-color: " . esc_attr($options['shadow_color']) . ";
-            --my-articles-shadow-color-hover: " . esc_attr($options['shadow_color_hover']) . ";
-            --my-articles-pinned-border-color: " . esc_attr($options['pinned_border_color']) . ";
-            --my-articles-badge-bg-color: " . esc_attr($options['pinned_badge_bg_color']) . ";
-            --my-articles-badge-text-color: " . esc_attr($options['pinned_badge_text_color']) . ";
-            background-color: " . esc_attr($options['module_bg_color']) . ";
-            padding-left: " . intval($options['module_padding_left']) . "px;
-            padding-right: " . intval($options['module_padding_right']) . "px;
+            --my-articles-cols-mobile: {$columns_mobile};
+            --my-articles-cols-tablet: {$columns_tablet};
+            --my-articles-cols-desktop: {$columns_desktop};
+            --my-articles-cols-ultrawide: {$columns_ultrawide};
+            --my-articles-min-card-width: {$min_card_width}px;
+            --my-articles-gap: {$gap_size}px;
+            --my-articles-list-gap: {$list_item_gap}px;
+            --my-articles-list-padding-top: {$padding_top}px;
+            --my-articles-list-padding-right: {$padding_right}px;
+            --my-articles-list-padding-bottom: {$padding_bottom}px;
+            --my-articles-list-padding-left: {$padding_left}px;
+            --my-articles-border-radius: {$border_radius}px;
+            --my-articles-title-color: {$title_color};
+            --my-articles-title-font-size: {$title_font_size}px;
+            --my-articles-meta-color: {$meta_color};
+            --my-articles-meta-hover-color: {$meta_color_hover};
+            --my-articles-meta-font-size: {$meta_font_size}px;
+            --my-articles-excerpt-font-size: {$excerpt_font_size}px;
+            --my-articles-excerpt-color: {$excerpt_color};
+            --my-articles-pagination-color: {$pagination_color};
+            --my-articles-shadow-color: {$shadow_color};
+            --my-articles-shadow-color-hover: {$shadow_color_hover};
+            --my-articles-pinned-border-color: {$pinned_border_color};
+            --my-articles-badge-bg-color: {$pinned_badge_bg};
+            --my-articles-badge-text-color: {$pinned_badge_text};
+            background-color: {$module_bg_color};
+            padding-left: {$module_padding_left}px;
+            padding-right: {$module_padding_right}px;
         }
-        #my-articles-wrapper-{$id} .my-article-item { background-color: " . esc_attr($options['vignette_bg_color']) . "; }
+        #my-articles-wrapper-{$id} .my-article-item { background-color: {$vignette_bg_color}; }
         #my-articles-wrapper-{$id} .my-articles-grid .my-article-item .article-title-wrapper,
         #my-articles-wrapper-{$id} .my-articles-slideshow .my-article-item .article-title-wrapper,
-        #my-articles-wrapper-{$id} .my-articles-list .my-article-item .article-content-wrapper { background-color: " . esc_attr($options['title_wrapper_bg_color']) . "; }
+        #my-articles-wrapper-{$id} .my-articles-list .my-article-item .article-content-wrapper { background-color: {$title_wrapper_bg}; }
         ";
 
         wp_add_inline_style( 'my-articles-styles', $dynamic_css );
