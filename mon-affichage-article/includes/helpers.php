@@ -49,6 +49,28 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_sanitize_posts_per_page' ) ) {
+    /**
+     * Sanitize a posts per page value while allowing the unlimited flag.
+     *
+     * The metabox and the settings page both interpret the value "0" as an
+     * instruction to display an unlimited number of posts. The sanitizer needs
+     * to keep that value intact instead of falling back to the default.
+     *
+     * @param mixed $value   Raw value coming from user input.
+     * @param int   $default Default value to use when no input is provided.
+     *
+     * @return int A non-negative integer (0 preserves the unlimited behaviour).
+     */
+    function my_articles_sanitize_posts_per_page( $value, $default = 10 ) {
+        if ( '' === $value || null === $value ) {
+            return max( 0, (int) $default );
+        }
+
+        return max( 0, absint( $value ) );
+    }
+}
+
 if ( ! function_exists( 'my_articles_normalize_internal_url' ) ) {
     /**
      * Sanitize a URL while ensuring it targets the current site domain.
