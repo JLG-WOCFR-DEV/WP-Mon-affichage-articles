@@ -932,18 +932,21 @@ class My_Articles_Shortcode {
         }
     }
 
-    public function get_empty_state_html( $wrap_for_swiper = false ) {
-        $html = '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+    public function get_empty_state_html() {
+        return '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
+    }
 
-        if ( $wrap_for_swiper ) {
-            $html = '<div class="swiper-slide swiper-slide-empty">' . $html . '</div>';
-        }
-
-        return $html;
+    public function get_empty_state_slide_html() {
+        return '<div class="swiper-slide swiper-slide-empty">' . $this->get_empty_state_html() . '</div>';
     }
 
     private function render_empty_state_message( $wrap_for_swiper = false ) {
-        echo $this->get_empty_state_html( $wrap_for_swiper );
+        if ( $wrap_for_swiper ) {
+            echo $this->get_empty_state_slide_html();
+            return;
+        }
+
+        echo $this->get_empty_state_html();
     }
 
     public function render_article_item($options, $is_pinned = false) {
