@@ -93,7 +93,7 @@ class My_Articles_Settings {
         $sanitized_input = [];
         $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow']) ? $input['display_mode'] : 'grid';
         $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
-        $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 1, absint( $input['posts_per_page'] ) ) : 10;
+        $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] ) ? max( 0, absint( $input['posts_per_page'] ) ) : 10;
         $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] ) ? max( 1, absint( $input['desktop_columns'] ) ) : 3;
         $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] ) ? max( 1, absint( $input['mobile_columns'] ) ) : 1;
         $sanitized_input['gap_size'] = isset( $input['gap_size'] ) ? absint( $input['gap_size'] ) : 25;
@@ -147,7 +147,10 @@ class My_Articles_Settings {
         $this->render_color_input('pagination_color', '#333333');
     }
     
-    public function posts_per_page_callback() { $this->render_number_input('posts_per_page', 10, 1, 50); }
+    public function posts_per_page_callback() {
+        $this->render_number_input('posts_per_page', 10, 0, 50);
+        echo '<p class="description">' . esc_html__( 'Utilisez 0 pour afficher un nombre illimité d\'articles.', 'mon-articles' ) . '</p>';
+    }
     public function desktop_columns_callback() { $this->render_number_input('desktop_columns', 3, 1, 6); }
     public function mobile_columns_callback() { $this->render_number_input('mobile_columns', 1, 1, 3); }
     public function gap_size_callback() { $this->render_number_input('gap_size', 25, 0, 50); }
