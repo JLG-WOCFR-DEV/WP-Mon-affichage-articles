@@ -156,7 +156,7 @@ final class Mon_Affichage_Articles {
         }
 
         if ( 0 === $displayed_posts_count ) {
-            $html = $shortcode_instance->get_empty_state_html();
+            $html = $shortcode_instance->get_empty_state_html( $wrap_slides );
         }
 
         return array(
