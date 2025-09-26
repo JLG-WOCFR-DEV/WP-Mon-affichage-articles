@@ -979,6 +979,10 @@ class My_Articles_Shortcode {
 
         if ( $options['show_category'] && ! empty( $taxonomy ) ) {
             $term_list_html = get_the_term_list( get_the_ID(), $taxonomy, '', ', ' );
+
+            if ( is_wp_error( $term_list_html ) ) {
+                $term_list_html = '';
+            }
         }
         ?>
         <a href="<?php echo $escaped_link; ?>" class="article-thumbnail-link">
