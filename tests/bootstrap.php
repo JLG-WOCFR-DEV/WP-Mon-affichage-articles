@@ -333,13 +333,37 @@ if (!class_exists('WP_Query')) {
 
         private int $current_index = 0;
 
+        public int $found_posts = 0;
+
         /**
-         * @param array<int, array<string, mixed>> $posts
+         * @param array<int, array<string, mixed>>|array<string, mixed> $posts
          */
         public function __construct(array $posts = array())
         {
-            $this->posts = array_values($posts);
+            global $mon_articles_test_wp_query_factory;
+
             $this->current_index = 0;
+
+            if ($this->is_associative($posts)) {
+                $factory = $mon_articles_test_wp_query_factory ?? null;
+
+                if (is_callable($factory)) {
+                    $result = $factory($posts);
+                    $this->posts = array_values($result['posts'] ?? array());
+                    $this->found_posts = isset($result['found_posts']) ? (int) $result['found_posts'] : count($this->posts);
+                } else {
+                    $this->posts = array();
+                    $this->found_posts = 0;
+                }
+            } else {
+                $this->posts = array_values($posts);
+                $this->found_posts = count($this->posts);
+            }
+        }
+
+        private function is_associative(array $array): bool
+        {
+            return $array !== array_values($array);
         }
 
         public function have_posts(): bool

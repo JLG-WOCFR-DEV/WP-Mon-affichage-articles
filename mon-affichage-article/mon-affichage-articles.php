@@ -230,6 +230,30 @@ final class Mon_Affichage_Articles {
         $is_unlimited             = ! empty( $state['is_unlimited'] );
         $effective_posts_per_page = $state['effective_posts_per_page'];
 
+        if ( 0 === $total_regular_posts && ! ( $articles_query instanceof WP_Query ) ) {
+            $count_query_args = array(
+                'post_type'           => $options['post_type'],
+                'post_status'         => 'publish',
+                'posts_per_page'      => 1,
+                'post__not_in'        => $options['all_excluded_ids'] ?? array(),
+                'ignore_sticky_posts' => (int) ( $options['ignore_native_sticky'] ?? 0 ),
+                'fields'              => 'ids',
+            );
+
+            if ( '' !== $resolved_taxonomy && '' !== $active_category && 'all' !== $active_category ) {
+                $count_query_args['tax_query'] = array(
+                    array(
+                        'taxonomy' => $resolved_taxonomy,
+                        'field'    => 'slug',
+                        'terms'    => $active_category,
+                    ),
+                );
+            }
+
+            $count_query        = new WP_Query( $count_query_args );
+            $total_regular_posts = (int) $count_query->found_posts;
+        }
+
         $posts_per_page_for_render = $render_limit > 0 ? $render_limit : $effective_posts_per_page;
 
         if ( $is_unlimited && 0 === $posts_per_page_for_render ) {
