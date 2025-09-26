@@ -92,13 +92,20 @@ class My_Articles_Metaboxes {
         wp_nonce_field( 'my_articles_save_meta_box_data', 'my_articles_meta_box_nonce' );
         $opts = (array) get_post_meta( $post->ID, $this->option_key, true );
 
-        echo '<p style="font-size: 14px; background-color: #f0f6fc; border-left: 4px solid #72aee6; padding: 10px;"><strong>Tutoriel :</strong> copier / coller le shortcode dans une balise HTML de Wordpress.</p>';
+        $helper_message = wp_kses_post(
+            __('<strong>Tutoriel :</strong> copier / coller le shortcode dans une balise HTML de WordPress.', 'mon-articles')
+        );
+
+        printf(
+            '<p style="font-size: 14px; background-color: #f0f6fc; border-left: 4px solid #72aee6; padding: 10px;">%s</p>',
+            $helper_message
+        );
 
         echo '<h3>' . esc_html__('Contenu & Filtres', 'mon-articles') . '</h3>';
         $this->render_field('post_type', esc_html__('Source du contenu', 'mon-articles'), 'post_type_select', $opts);
         $this->render_field('taxonomy', esc_html__('Filtrer par taxonomie', 'mon-articles'), 'taxonomy_select', $opts);
         $this->render_field('term', esc_html__('Filtrer par catégorie/terme', 'mon-articles'), 'term_select', $opts);
-        $this->render_field('counting_behavior', esc_html__('Comportement du comptage', 'mon-articles'), 'select', $opts, [ 'default' => 'exact', 'options' => [ 'exact' => 'Nombre exact', 'auto_fill' => 'Remplissage automatique (Grille complète)' ] ]);
+        $this->render_field('counting_behavior', esc_html__('Comportement du comptage', 'mon-articles'), 'select', $opts, [ 'default' => 'exact', 'options' => [ 'exact' => __('Nombre exact', 'mon-articles'), 'auto_fill' => __('Remplissage automatique (Grille complète)', 'mon-articles') ] ]);
         $this->render_field(
             'posts_per_page',
             esc_html__('Nombre d\'articles souhaité', 'mon-articles'),
@@ -111,9 +118,24 @@ class My_Articles_Metaboxes {
                 'description' => esc_html__( 'Le nombre exact ou approximatif selon le comportement choisi. Utilisez 0 pour un affichage illimité.', 'mon-articles' ),
             ]
         );
-        $this->render_field('pagination_mode', esc_html__('Type de pagination', 'mon-articles'), 'select', $opts, [ 'default' => 'none', 'options' => [ 'none' => 'Aucune', 'load_more' => 'Bouton "Charger plus"', 'numbered' => 'Liens numérotés' ], 'description' => 'Ne s\'applique pas au mode Diaporama.' ]);
+        $this->render_field('pagination_mode', esc_html__('Type de pagination', 'mon-articles'), 'select', $opts, [
+            'default'     => 'none',
+            'options'     => [
+                'none'      => __('Aucune', 'mon-articles'),
+                'load_more' => __('Bouton "Charger plus"', 'mon-articles'),
+                'numbered'  => __('Liens numérotés', 'mon-articles'),
+            ],
+            'description' => __('Ne s\'applique pas au mode Diaporama.', 'mon-articles'),
+        ]);
         $this->render_field('show_category_filter', esc_html__('Afficher le filtre de catégories', 'mon-articles'), 'checkbox', $opts, ['default' => 0]);
-        $this->render_field('filter_alignment', esc_html__('Alignement du filtre', 'mon-articles'), 'select', $opts, [ 'default' => 'right', 'options' => ['left' => 'Gauche', 'center' => 'Centre', 'right' => 'Droite'] ]);
+        $this->render_field('filter_alignment', esc_html__('Alignement du filtre', 'mon-articles'), 'select', $opts, [
+            'default' => 'right',
+            'options' => [
+                'left'   => __('Gauche', 'mon-articles'),
+                'center' => __('Centre', 'mon-articles'),
+                'right'  => __('Droite', 'mon-articles'),
+            ],
+        ]);
         $this->render_field(
             'filter_categories',
             esc_html__('Catégories à inclure dans le filtre', 'mon-articles'),
@@ -124,7 +146,10 @@ class My_Articles_Metaboxes {
         
         echo '<hr><h3>' . esc_html__('Articles Épinglés', 'mon-articles') . '</h3>';
         $this->render_field('pinned_posts', esc_html__('Choisir les articles à épingler', 'mon-articles'), 'select2_ajax', $opts);
-        $this->render_field('pinned_posts_ignore_filter', esc_html__('Toujours afficher les articles épinglés', 'mon-articles'), 'checkbox', $opts, ['default' => 0, 'description' => 'Si coché, les articles épinglés s\'afficheront toujours, même si une autre catégorie est sélectionnée dans le filtre.']);
+        $this->render_field('pinned_posts_ignore_filter', esc_html__('Toujours afficher les articles épinglés', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 0,
+            'description' => __('Si coché, les articles épinglés s\'afficheront toujours, même si une autre catégorie est sélectionnée dans le filtre.', 'mon-articles'),
+        ]);
         $this->render_field('pinned_border_color', esc_html__('Couleur de bordure (épinglés)', 'mon-articles'), 'color', $opts, ['default' => '#eab308']);
         $this->render_field('pinned_show_badge', esc_html__('Afficher un badge sur les épinglés', 'mon-articles'), 'checkbox', $opts, ['default' => 0]);
         $this->render_field('pinned_badge_text', esc_html__('Texte du badge', 'mon-articles'), 'text', $opts, ['default' => 'Épinglé', 'wrapper_class' => 'badge-option']);
@@ -132,29 +157,54 @@ class My_Articles_Metaboxes {
         $this->render_field('pinned_badge_text_color', esc_html__('Couleur du texte du badge', 'mon-articles'), 'color', $opts, ['default' => '#ffffff', 'wrapper_class' => 'badge-option']);
 
         echo '<hr><h3>' . esc_html__('Exclusions & Comportements Avancés', 'mon-articles') . '</h3>';
-        $this->render_field('exclude_posts', esc_html__('ID des articles à exclure', 'mon-articles'), 'text', $opts, ['description' => 'Séparez les ID par des virgules (ex: 21, 56). Ces articles n\'apparaîtront jamais.']);
-        $this->render_field('ignore_native_sticky', esc_html__('Ignorer les articles "Épinglés" de WordPress', 'mon-articles'), 'checkbox', $opts, ['default' => 1, 'description' => 'Cochez pour ignorer les articles marqués comme "épinglés" dans l\'éditeur WordPress.']);
+        $this->render_field('exclude_posts', esc_html__('ID des articles à exclure', 'mon-articles'), 'text', $opts, [
+            'description' => __('Séparez les ID par des virgules (ex: 21, 56). Ces articles n\'apparaîtront jamais.', 'mon-articles'),
+        ]);
+        $this->render_field('ignore_native_sticky', esc_html__('Ignorer les articles "Épinglés" de WordPress', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 1,
+            'description' => __('Cochez pour ignorer les articles marqués comme "épinglés" dans l\'éditeur WordPress.', 'mon-articles'),
+        ]);
 
         echo '<hr><h3>' . esc_html__('Mise en Page', 'mon-articles') . '</h3>';
         $this->render_field('display_mode', esc_html__('Mode d\'affichage', 'mon-articles'), 'select', $opts, [ 'default' => 'grid', 'options' => [ 'grid' => 'Grille', 'slideshow' => 'Diaporama', 'list' => 'Liste' ] ]);
 
         echo '<div class="my-articles-columns-warning" data-field="columns_mobile">';
-        $this->render_field('columns_mobile', esc_html__('Colonnes (Mobile < 768px)', 'mon-articles'), 'number', $opts, ['default' => 1, 'min' => 1, 'max' => 3, 'description' => 'Pour Grille et Diaporama']);
+        $this->render_field('columns_mobile', esc_html__('Colonnes (Mobile < 768px)', 'mon-articles'), 'number', $opts, [
+            'default'     => 1,
+            'min'         => 1,
+            'max'         => 3,
+            'description' => __('Pour Grille et Diaporama', 'mon-articles'),
+        ]);
         echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
         echo '</div>';
 
         echo '<div class="my-articles-columns-warning" data-field="columns_tablet">';
-        $this->render_field('columns_tablet', esc_html__('Colonnes (Tablette ≥ 768px)', 'mon-articles'), 'number', $opts, ['default' => 2, 'min' => 1, 'max' => 4, 'description' => 'Pour Grille et Diaporama']);
+        $this->render_field('columns_tablet', esc_html__('Colonnes (Tablette ≥ 768px)', 'mon-articles'), 'number', $opts, [
+            'default'     => 2,
+            'min'         => 1,
+            'max'         => 4,
+            'description' => __('Pour Grille et Diaporama', 'mon-articles'),
+        ]);
         echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
         echo '</div>';
 
         echo '<div class="my-articles-columns-warning" data-field="columns_desktop">';
-        $this->render_field('columns_desktop', esc_html__('Colonnes (Desktop ≥ 1024px)', 'mon-articles'), 'number', $opts, ['default' => 3, 'min' => 1, 'max' => 6, 'description' => 'Pour Grille et Diaporama']);
+        $this->render_field('columns_desktop', esc_html__('Colonnes (Desktop ≥ 1024px)', 'mon-articles'), 'number', $opts, [
+            'default'     => 3,
+            'min'         => 1,
+            'max'         => 6,
+            'description' => __('Pour Grille et Diaporama', 'mon-articles'),
+        ]);
         echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
         echo '</div>';
 
         echo '<div class="my-articles-columns-warning" data-field="columns_ultrawide">';
-        $this->render_field('columns_ultrawide', esc_html__('Colonnes (Ultra-Wide ≥ 1536px)', 'mon-articles'), 'number', $opts, ['default' => 4, 'min' => 1, 'max' => 8, 'description' => 'Pour Grille et Diaporama']);
+        $this->render_field('columns_ultrawide', esc_html__('Colonnes (Ultra-Wide ≥ 1536px)', 'mon-articles'), 'number', $opts, [
+            'default'     => 4,
+            'min'         => 1,
+            'max'         => 8,
+            'description' => __('Pour Grille et Diaporama', 'mon-articles'),
+        ]);
         echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
         echo '</div>';
 
@@ -164,7 +214,10 @@ class My_Articles_Metaboxes {
         $this->render_field('gap_size', esc_html__('Espacement des vignettes (Grille)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
         $this->render_field('list_item_gap', esc_html__('Espacement vertical (Liste)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
         $this->render_field('border_radius', esc_html__('Arrondi des bordures (px)', 'mon-articles'), 'number', $opts, ['default' => 12, 'min' => 0, 'max' => 50]);
-        $this->render_field('enable_lazy_load', esc_html__('Activer le chargement paresseux des images (Lazy Load)', 'mon-articles'), 'checkbox', $opts, ['default' => 1, 'description' => 'Améliore considérablement la vitesse de chargement de la page.']);
+        $this->render_field('enable_lazy_load', esc_html__('Activer le chargement paresseux des images (Lazy Load)', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 1,
+            'description' => __('Améliore considérablement la vitesse de chargement de la page.', 'mon-articles'),
+        ]);
         
         echo '<h4>' . esc_html__('Marge intérieur du contenu (Mode liste)', 'mon-articles') . '</h4>';
         $this->render_field('list_content_padding_top', esc_html__('Haut (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 100]);
@@ -198,7 +251,10 @@ class My_Articles_Metaboxes {
         $this->render_field('excerpt_color', esc_html__('Couleur du texte', 'mon-articles'), 'color', $opts, ['default' => '#4b5563', 'wrapper_class' => 'excerpt-option']);
         
         echo '<hr><h3 style="color: red;">' . esc_html__('Débogage', 'mon-articles') . '</h3>';
-        $this->render_field('enable_debug_mode', esc_html__('Activer le mode de débogage', 'mon-articles'), 'checkbox', $opts, ['default' => 0, 'description' => 'Affiche des informations techniques sous le module sur le site public. À n\'utiliser que pour résoudre un problème.']);
+        $this->render_field('enable_debug_mode', esc_html__('Activer le mode de débogage', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 0,
+            'description' => __('Affiche des informations techniques sous le module sur le site public. À n\'utiliser que pour résoudre un problème.', 'mon-articles'),
+        ]);
     }
 
     private function render_field($id, $label, $type, $opts, $args = []) {
