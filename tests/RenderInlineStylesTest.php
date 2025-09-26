@@ -44,8 +44,8 @@ final class RenderInlineStylesTest extends TestCase
         $this->assertStringContainsString('#my-articles-wrapper-321 {', $css);
         $this->assertStringContainsString('background-color: #123456;', $css);
         $this->assertStringContainsString('#my-articles-wrapper-321 .my-article-item { background-color: #654321; }', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321 .my-articles-grid .my-article-item .article-title-wrapper,', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321 .my-articles-slideshow .my-article-item .article-title-wrapper,', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321 .my-articles-list .my-article-item .article-content-wrapper { background-color: #abcdef; }', $css);
+        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-grid .my-article-item .article-title-wrapper,', $css);
+        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-slideshow .my-article-item .article-title-wrapper,', $css);
+        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-list .my-article-item .article-content-wrapper { background-color: #abcdef; }', $css);
     }
 }
