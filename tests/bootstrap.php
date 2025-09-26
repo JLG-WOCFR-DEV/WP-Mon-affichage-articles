@@ -37,6 +37,60 @@ if (!function_exists('add_action')) {
     }
 }
 
+if (!function_exists('sanitize_hex_color')) {
+    function sanitize_hex_color($color)
+    {
+        if (!is_string($color)) {
+            return '';
+        }
+
+        $color = trim($color);
+
+        if (preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $color) === 1) {
+            return strtolower($color);
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('wp_add_inline_style')) {
+    function wp_add_inline_style($handle, $data)
+    {
+        global $mon_articles_inline_styles;
+
+        if (!isset($mon_articles_inline_styles)) {
+            $mon_articles_inline_styles = array();
+        }
+
+        if (!isset($mon_articles_inline_styles[$handle])) {
+            $mon_articles_inline_styles[$handle] = array();
+        }
+
+        $mon_articles_inline_styles[$handle][] = $data;
+
+        return true;
+    }
+}
+
+if (!function_exists('get_option')) {
+    function get_option($name, $default = false)
+    {
+        return $default;
+    }
+}
+
+if (!function_exists('sanitize_title')) {
+    function sanitize_title($title)
+    {
+        $title = strtolower((string) $title);
+        $title = preg_replace('/[^a-z0-9]+/', '-', $title);
+        $title = trim((string) $title, '-');
+
+        return (string) $title;
+    }
+}
+
 if (!function_exists('wp_parse_args')) {
     function wp_parse_args($args, $defaults = array())
     {
@@ -112,3 +166,5 @@ if (!class_exists('WP_Query')) {
 }
 
 require_once __DIR__ . '/../mon-affichage-article/mon-affichage-articles.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';

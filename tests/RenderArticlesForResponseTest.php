@@ -78,4 +78,30 @@ class RenderArticlesForResponseTest extends TestCase
         $this->assertSame('', $result['html']);
         $this->assertSame(0, $result['displayed_posts_count']);
     }
+
+    public function test_title_wrapper_background_color_updates_all_display_modes(): void
+    {
+        global $mon_articles_inline_styles;
+        $mon_articles_inline_styles = array();
+
+        $options = array(
+            'title_wrapper_bg_color' => '#112233',
+        );
+
+        $reflection = new ReflectionClass(\My_Articles_Shortcode::class);
+        $shortcode = $reflection->newInstanceWithoutConstructor();
+
+        $method = $reflection->getMethod('render_inline_styles');
+        $method->setAccessible(true);
+        $method->invoke($shortcode, $options, 42);
+
+        $this->assertArrayHasKey('my-articles-styles', $mon_articles_inline_styles);
+        $this->assertNotEmpty($mon_articles_inline_styles['my-articles-styles']);
+
+        $css = implode("\n", $mon_articles_inline_styles['my-articles-styles']);
+
+        $this->assertStringContainsString('#my-articles-wrapper-42.my-articles-grid .my-article-item .article-title-wrapper,', $css);
+        $this->assertStringContainsString('#my-articles-wrapper-42.my-articles-slideshow .my-article-item .article-title-wrapper,', $css);
+        $this->assertStringContainsString('#my-articles-wrapper-42.my-articles-list .my-article-item .article-content-wrapper { background-color: #112233; }', $css);
+    }
 }

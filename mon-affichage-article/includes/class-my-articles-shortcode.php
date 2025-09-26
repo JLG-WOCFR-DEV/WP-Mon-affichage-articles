@@ -1308,9 +1308,9 @@ class My_Articles_Shortcode {
             padding-right: {$module_padding_right}px;
         }
         #my-articles-wrapper-{$id} .my-article-item { background-color: {$vignette_bg_color}; }
-        #my-articles-wrapper-{$id} .my-articles-grid .my-article-item .article-title-wrapper,
-        #my-articles-wrapper-{$id} .my-articles-slideshow .my-article-item .article-title-wrapper,
-        #my-articles-wrapper-{$id} .my-articles-list .my-article-item .article-content-wrapper { background-color: {$title_wrapper_bg}; }
+        #my-articles-wrapper-{$id}.my-articles-grid .my-article-item .article-title-wrapper,
+        #my-articles-wrapper-{$id}.my-articles-slideshow .my-article-item .article-title-wrapper,
+        #my-articles-wrapper-{$id}.my-articles-list .my-article-item .article-content-wrapper { background-color: {$title_wrapper_bg}; }
         ";
 
         wp_add_inline_style( 'my-articles-styles', $dynamic_css );
