@@ -75,6 +75,7 @@ final class Mon_Affichage_Articles {
             'regular_limit' => -1,
             'track_pinned'  => false,
             'wrap_slides'   => ( isset( $options['display_mode'] ) && 'slideshow' === $options['display_mode'] ),
+            'skip_empty_state_when_empty' => false,
         );
 
         $args = wp_parse_args( $args, $defaults );
@@ -83,6 +84,7 @@ final class Mon_Affichage_Articles {
         $regular_limit = (int) $args['regular_limit'];
         $track_pinned  = ! empty( $args['track_pinned'] );
         $wrap_slides   = ! empty( $args['wrap_slides'] );
+        $skip_empty_state = ! empty( $args['skip_empty_state_when_empty'] );
         $should_limit  = ( $render_limit > 0 && ! $wrap_slides );
 
         ob_start();
@@ -156,7 +158,9 @@ final class Mon_Affichage_Articles {
         }
 
         if ( 0 === $displayed_posts_count ) {
-            if ( $wrap_slides ) {
+            if ( $skip_empty_state ) {
+                $html = '';
+            } elseif ( $wrap_slides ) {
                 $html = $shortcode_instance->get_empty_state_slide_html();
             } else {
                 $html = $shortcode_instance->get_empty_state_html();
@@ -350,6 +354,7 @@ final class Mon_Affichage_Articles {
             $articles_query,
             array(
                 'wrap_slides' => ( 'slideshow' === $display_mode ),
+                'skip_empty_state_when_empty' => true,
             )
         );
 
@@ -621,4 +626,6 @@ function my_articles_plugin_run() {
     return Mon_Affichage_Articles::get_instance();
 }
 
-my_articles_plugin_run();
+if ( ! defined( 'MY_ARTICLES_DISABLE_AUTOBOOT' ) ) {
+    my_articles_plugin_run();
+}
