@@ -30,10 +30,83 @@ if (!function_exists('plugin_dir_url')) {
     }
 }
 
+if (!function_exists('sanitize_hex_color')) {
+    function sanitize_hex_color($color)
+    {
+        if (!is_string($color)) {
+            return null;
+        }
+
+        $color = trim($color);
+
+        if ('' === $color || '#' !== $color[0]) {
+            return null;
+        }
+
+        $hex = substr($color, 1);
+
+        if (!preg_match('/^([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $hex)) {
+            return null;
+        }
+
+        return '#' . strtolower($hex);
+    }
+}
+
 if (!function_exists('add_action')) {
     function add_action(...$args): void
     {
         // No-op for tests.
+    }
+}
+
+if (!function_exists('get_option')) {
+    function get_option(string $option, $default = false)
+    {
+        return $default;
+    }
+}
+
+if (!class_exists('WP_Styles')) {
+    class WP_Styles
+    {
+        /** @var array<string, array<int, string>> */
+        public array $inline_styles = array();
+
+        public function add_inline_style(string $handle, string $data): bool
+        {
+            if ('' === $handle) {
+                return false;
+            }
+
+            if (!isset($this->inline_styles[$handle])) {
+                $this->inline_styles[$handle] = array();
+            }
+
+            $this->inline_styles[$handle][] = $data;
+
+            return true;
+        }
+    }
+}
+
+if (!function_exists('wp_styles')) {
+    function wp_styles(): WP_Styles
+    {
+        global $wp_styles;
+
+        if (!$wp_styles instanceof WP_Styles) {
+            $wp_styles = new WP_Styles();
+        }
+
+        return $wp_styles;
+    }
+}
+
+if (!function_exists('wp_add_inline_style')) {
+    function wp_add_inline_style(string $handle, string $data): bool
+    {
+        return wp_styles()->add_inline_style($handle, $data);
     }
 }
 
@@ -112,3 +185,5 @@ if (!class_exists('WP_Query')) {
 }
 
 require_once __DIR__ . '/../mon-affichage-article/mon-affichage-articles.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
