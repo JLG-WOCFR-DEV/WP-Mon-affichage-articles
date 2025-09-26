@@ -1,0 +1,16 @@
+{
+    "name": "lcv/mon-affichage-articles",
+    "type": "project",
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "MonAffichageArticles\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    }
+}
