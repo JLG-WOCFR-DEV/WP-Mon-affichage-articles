@@ -9,6 +9,49 @@ if (!defined('WPINC')) {
     define('WPINC', 'wp-includes');
 }
 
+if (!class_exists('WP_Error')) {
+    class WP_Error
+    {
+        /** @var string */
+        private $code;
+
+        /** @var string */
+        private $message;
+
+        /** @var mixed */
+        private $data;
+
+        public function __construct($code = '', $message = '', $data = null)
+        {
+            $this->code = (string) $code;
+            $this->message = (string) $message;
+            $this->data = $data;
+        }
+
+        public function get_error_code()
+        {
+            return $this->code;
+        }
+
+        public function get_error_message()
+        {
+            return $this->message;
+        }
+
+        public function get_error_data()
+        {
+            return $this->data;
+        }
+    }
+}
+
+if (!function_exists('is_wp_error')) {
+    function is_wp_error($thing): bool
+    {
+        return $thing instanceof WP_Error;
+    }
+}
+
 if (!function_exists('__')) {
     function __($text, $domain = null)
     {
@@ -127,6 +170,142 @@ if (!function_exists('absint')) {
     function absint($maybeint)
     {
         return abs((int) $maybeint);
+    }
+}
+
+if (!function_exists('get_permalink')) {
+    function get_permalink($post = null)
+    {
+        return 'http://example.com/post/' . (is_numeric($post) ? (int) $post : 'current');
+    }
+}
+
+if (!function_exists('esc_url')) {
+    function esc_url($url)
+    {
+        return (string) $url;
+    }
+}
+
+if (!function_exists('get_the_title')) {
+    function get_the_title($post = 0)
+    {
+        return 'Sample Title';
+    }
+}
+
+if (!function_exists('esc_attr')) {
+    function esc_attr($text)
+    {
+        return (string) $text;
+    }
+}
+
+if (!function_exists('esc_attr_e')) {
+    function esc_attr_e($text, $domain = null): void
+    {
+        echo esc_attr($text);
+    }
+}
+
+if (!function_exists('esc_html')) {
+    function esc_html($text)
+    {
+        return (string) $text;
+    }
+}
+
+if (!function_exists('esc_html__')) {
+    function esc_html__($text, $domain = null)
+    {
+        return $text;
+    }
+}
+
+if (!function_exists('has_post_thumbnail')) {
+    function has_post_thumbnail($post = null)
+    {
+        return false;
+    }
+}
+
+if (!function_exists('get_post_thumbnail_id')) {
+    function get_post_thumbnail_id($post = null)
+    {
+        return 0;
+    }
+}
+
+if (!function_exists('the_post_thumbnail')) {
+    function the_post_thumbnail($size = 'post-thumbnail')
+    {
+        // No-op.
+    }
+}
+
+if (!function_exists('wp_kses_post')) {
+    function wp_kses_post($content)
+    {
+        return (string) $content;
+    }
+}
+
+if (!function_exists('get_the_term_list')) {
+    function get_the_term_list($post_id, $taxonomy, $before = '', $sep = '', $after = '')
+    {
+        global $mon_articles_test_term_list_callback;
+
+        if (is_callable($mon_articles_test_term_list_callback)) {
+            return $mon_articles_test_term_list_callback($post_id, $taxonomy, $before, $sep, $after);
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('get_the_author_meta')) {
+    function get_the_author_meta($field, $user_id = false)
+    {
+        if ('ID' === $field) {
+            return 1;
+        }
+
+        return '';
+    }
+}
+
+if (!function_exists('get_the_author')) {
+    function get_the_author()
+    {
+        return 'Author Name';
+    }
+}
+
+if (!function_exists('get_author_posts_url')) {
+    function get_author_posts_url($author_id, $author_nicename = '', $author_nickname = '')
+    {
+        return 'http://example.com/author/' . (int) $author_id;
+    }
+}
+
+if (!function_exists('get_the_date')) {
+    function get_the_date($format = '', $post = null)
+    {
+        return '2023-01-01';
+    }
+}
+
+if (!function_exists('get_the_excerpt')) {
+    function get_the_excerpt($post = null)
+    {
+        return 'Excerpt content';
+    }
+}
+
+if (!function_exists('wp_trim_words')) {
+    function wp_trim_words($text, $num_words = 55, $more = null)
+    {
+        return (string) $text;
     }
 }
 
