@@ -73,6 +73,26 @@ if (!function_exists('plugin_dir_url')) {
     }
 }
 
+if (!function_exists('get_post_types')) {
+    function get_post_types($args = array(), $output = 'names', $operator = 'and')
+    {
+        if ('objects' === $output) {
+            return array();
+        }
+
+        return array('post', 'page');
+    }
+}
+
+if (!function_exists('post_type_exists')) {
+    function post_type_exists($post_type)
+    {
+        $post_type = (string) $post_type;
+
+        return in_array($post_type, array('post', 'page', 'mon_affichage'), true);
+    }
+}
+
 if (!function_exists('sanitize_hex_color')) {
     function sanitize_hex_color($color)
     {
@@ -93,6 +113,19 @@ if (!function_exists('sanitize_hex_color')) {
         }
 
         return '#' . strtolower($hex);
+    }
+}
+
+if (!function_exists('sanitize_key')) {
+    function sanitize_key($key)
+    {
+        if (!is_scalar($key)) {
+            return '';
+        }
+
+        $key = strtolower((string) $key);
+
+        return preg_replace('/[^a-z0-9_\-]/', '', $key);
     }
 }
 
