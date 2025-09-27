@@ -449,11 +449,14 @@ final class Mon_Affichage_Articles {
                 continue;
             }
 
-            $label = isset( $taxonomy->labels->singular_name ) ? $taxonomy->labels->singular_name : $taxonomy->label;
+            $raw_name  = isset( $taxonomy->name ) ? $taxonomy->name : '';
+            $label     = isset( $taxonomy->labels->singular_name ) ? $taxonomy->labels->singular_name : $taxonomy->label;
+            $cleaned_name  = sanitize_text_field( $raw_name );
+            $cleaned_label = sanitize_text_field( $label );
 
             $taxonomies[] = array(
-                'name'  => $taxonomy->name,
-                'label' => $label,
+                'name'  => $cleaned_name,
+                'label' => $cleaned_label,
             );
         }
 

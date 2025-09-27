@@ -286,9 +286,9 @@ final class AdminAjaxCallbacksTest extends TestCase
         $mon_articles_test_object_taxonomies = array(
             'mon_affichage' => array(
                 (object) array(
-                    'name'   => 'genre_affiche',
+                    'name'   => 'genre <strong>affiche</strong>',
                     'labels' => (object) array(
-                        'singular_name' => 'Genre propre',
+                        'singular_name' => 'Genre <em>propre</em>',
                         'label'         => 'Genre <strong>brut</strong>',
                     ),
                     'show_ui' => true,
@@ -315,7 +315,7 @@ final class AdminAjaxCallbacksTest extends TestCase
             $this->assertSame(
                 array(
                     array(
-                        'name'  => 'genre_affiche',
+                        'name'  => 'genre affiche',
                         'label' => 'Genre propre',
                     ),
                 ),
