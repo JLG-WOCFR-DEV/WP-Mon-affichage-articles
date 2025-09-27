@@ -1106,7 +1106,13 @@ class My_Articles_Shortcode {
             'loading'  => 'eager',
         );
 
-        return wp_get_attachment_image( $image_id, $size, false, $attributes );
+        $image_html = wp_get_attachment_image( $image_id, $size, false, $attributes );
+
+        if ( ! $enable_lazy_load && is_string( $image_html ) && '' !== $image_html && false !== strpos( $image_html, 'loading="lazy"' ) ) {
+            $image_html = str_replace( 'loading="lazy"', 'loading="eager"', $image_html );
+        }
+
+        return $image_html;
     }
 
     private function enqueue_swiper_scripts($options, $instance_id) {
