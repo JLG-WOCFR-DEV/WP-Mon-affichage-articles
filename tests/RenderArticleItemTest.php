@@ -60,8 +60,22 @@ final class RenderArticleItemTest extends TestCase
 
         $html = $method->invoke($shortcode, 456, 'Sample Title', false);
 
-        $this->assertStringContainsString('loading="eager"', $html);
         $this->assertStringNotContainsString('loading="lazy"', $html);
+        $this->assertStringContainsString('loading="eager"', $html);
+    }
+
+    public function test_thumbnail_loading_attribute_when_lazy_load_enabled(): void
+    {
+        $reflection = new \ReflectionClass(My_Articles_Shortcode::class);
+        $shortcode = $reflection->newInstanceWithoutConstructor();
+
+        $method = $reflection->getMethod('get_article_thumbnail_html');
+        $method->setAccessible(true);
+
+        $html = $method->invoke($shortcode, 789, 'Lazy Title', true);
+
+        $this->assertStringContainsString('loading="lazy"', $html);
+        $this->assertStringNotContainsString('loading="eager"', $html);
     }
 }
 
