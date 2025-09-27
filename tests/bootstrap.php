@@ -93,6 +93,98 @@ if (!function_exists('post_type_exists')) {
     }
 }
 
+if (!function_exists('apply_filters')) {
+    function apply_filters($hook, $value)
+    {
+        return $value;
+    }
+}
+
+if (!function_exists('get_post_type')) {
+    function get_post_type($post = null)
+    {
+        global $mon_articles_test_post_type_map;
+
+        if (!is_array($mon_articles_test_post_type_map)) {
+            return null;
+        }
+
+        $post_id = is_numeric($post) ? (int) $post : 0;
+
+        return $mon_articles_test_post_type_map[$post_id] ?? null;
+    }
+}
+
+if (!function_exists('get_post_status')) {
+    function get_post_status($post = null)
+    {
+        global $mon_articles_test_post_status_map;
+
+        if (!is_array($mon_articles_test_post_status_map)) {
+            return false;
+        }
+
+        $post_id = is_numeric($post) ? (int) $post : 0;
+
+        return $mon_articles_test_post_status_map[$post_id] ?? false;
+    }
+}
+
+if (!function_exists('get_post_meta')) {
+    function get_post_meta($post_id, $key = '', $single = false)
+    {
+        global $mon_articles_test_post_meta_map;
+
+        if (!is_array($mon_articles_test_post_meta_map)) {
+            return $single ? '' : array();
+        }
+
+        $post_id = (int) $post_id;
+
+        if (!isset($mon_articles_test_post_meta_map[$post_id])) {
+            return $single ? '' : array();
+        }
+
+        if ('' === $key) {
+            return $mon_articles_test_post_meta_map[$post_id];
+        }
+
+        $value = $mon_articles_test_post_meta_map[$post_id][$key] ?? ($single ? '' : array());
+
+        return $value;
+    }
+}
+
+if (!function_exists('shortcode_atts')) {
+    function shortcode_atts($pairs, $atts, $shortcode = '')
+    {
+        $atts = (array) $atts;
+        $out = array();
+
+        foreach ((array) $pairs as $name => $default) {
+            if (array_key_exists($name, $atts)) {
+                $out[$name] = $atts[$name];
+            } else {
+                $out[$name] = $default;
+            }
+            unset($atts[$name]);
+        }
+
+        foreach ($atts as $name => $value) {
+            $out[$name] = $value;
+        }
+
+        return $out;
+    }
+}
+
+if (!function_exists('add_shortcode')) {
+    function add_shortcode($tag, $callback): void
+    {
+        // No-op for tests.
+    }
+}
+
 if (!function_exists('sanitize_hex_color')) {
     function sanitize_hex_color($color)
     {

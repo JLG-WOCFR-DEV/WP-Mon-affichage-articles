@@ -222,10 +222,11 @@ final class FilterArticlesPaginationTest extends TestCase
     {
         parent::setUp();
 
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_wp_query_factory;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_wp_query_factory;
 
         $mon_articles_test_post_meta_map = array();
         $mon_articles_test_post_type_map = array();
+        $mon_articles_test_post_status_map = array();
         $this->wpQueryFactoryBackup = $mon_articles_test_wp_query_factory ?? null;
         $mon_articles_test_wp_query_factory = null;
 
@@ -249,7 +250,7 @@ final class FilterArticlesPaginationTest extends TestCase
 
     protected function tearDown(): void
     {
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_wp_query_factory;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_wp_query_factory;
 
         $reflection = new ReflectionClass(My_Articles_Shortcode::class);
 
@@ -267,6 +268,7 @@ final class FilterArticlesPaginationTest extends TestCase
 
         $mon_articles_test_post_meta_map = array();
         $mon_articles_test_post_type_map = array();
+        $mon_articles_test_post_status_map = array();
         $mon_articles_test_wp_query_factory = $this->wpQueryFactoryBackup;
 
         $_POST = array();
@@ -276,7 +278,7 @@ final class FilterArticlesPaginationTest extends TestCase
 
     public function test_total_pages_accounts_for_regular_posts_after_pinned_page(): void
     {
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_wp_query_factory;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_wp_query_factory;
 
         $instanceId = 123;
         $perPage = 3;
@@ -318,6 +320,8 @@ final class FilterArticlesPaginationTest extends TestCase
         $mon_articles_test_post_type_map = array(
             $instanceId => 'mon_affichage',
         );
+
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
 
         $reflection = new ReflectionClass(My_Articles_Shortcode::class);
         $cacheKeyMethod = $reflection->getMethod('build_normalized_options_cache_key');
@@ -417,6 +421,39 @@ final class FilterArticlesPaginationTest extends TestCase
 
             $this->assertArrayHasKey('total_pages', $response->data);
             $this->assertSame(3, $response->data['total_pages']);
+        }
+    }
+
+    public function test_filter_articles_returns_error_for_unpublished_instance(): void
+    {
+        global $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
+
+        $instanceId = 9876;
+
+        $mon_articles_test_post_type_map = array(
+            $instanceId => 'mon_affichage',
+        );
+        $mon_articles_test_post_status_map = array(
+            $instanceId => 'draft',
+        );
+
+        $_POST = array(
+            'security'    => 'nonce',
+            'instance_id' => (string) $instanceId,
+            'category'    => '',
+            'current_url' => 'http://example.com/page',
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        try {
+            $plugin->filter_articles_callback();
+            $this->fail('Expected JSON error response.');
+        } catch (\MyArticlesJsonResponse $response) {
+            $this->assertFalse($response->success, 'Expected the JSON response to be an error.');
+            $this->assertSame(404, $response->status_code);
+            $this->assertArrayHasKey('message', $response->data);
+            $this->assertNotEmpty($response->data['message']);
         }
     }
 }
