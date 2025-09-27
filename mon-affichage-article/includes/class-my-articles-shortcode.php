@@ -1103,7 +1103,7 @@ class My_Articles_Shortcode {
             'class'    => 'attachment-large size-large wp-post-image',
             'alt'      => $title_attr,
             'decoding' => 'async',
-            'loading'  => 'lazy',
+            'loading'  => 'eager',
         );
 
         return wp_get_attachment_image( $image_id, $size, false, $attributes );

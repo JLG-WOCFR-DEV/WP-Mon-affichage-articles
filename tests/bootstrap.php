@@ -229,6 +229,41 @@ if (!function_exists('has_post_thumbnail')) {
     }
 }
 
+if (!function_exists('wp_get_attachment_image_src')) {
+    function wp_get_attachment_image_src($attachment_id, $size = 'thumbnail')
+    {
+        return array('http://example.com/image-' . (int) $attachment_id . '.jpg', 800, 600);
+    }
+}
+
+if (!function_exists('wp_get_attachment_image_srcset')) {
+    function wp_get_attachment_image_srcset($attachment_id, $size = 'thumbnail')
+    {
+        return 'http://example.com/image-' . (int) $attachment_id . '-1x.jpg 1x';
+    }
+}
+
+if (!function_exists('wp_get_attachment_image')) {
+    function wp_get_attachment_image($attachment_id, $size = 'thumbnail', $icon = false, $attr = '')
+    {
+        $attributes_string = '';
+
+        if (is_array($attr)) {
+            foreach ($attr as $name => $value) {
+                if ('' === $name) {
+                    continue;
+                }
+
+                $attributes_string .= sprintf(' %s="%s"', esc_attr($name), esc_attr((string) $value));
+            }
+        }
+
+        $size_descriptor = is_array($size) ? 'custom' : (string) $size;
+
+        return sprintf('<img src="http://example.com/image-%d-%s.jpg"%s />', (int) $attachment_id, $size_descriptor, $attributes_string);
+    }
+}
+
 if (!function_exists('get_post_thumbnail_id')) {
     function get_post_thumbnail_id($post = null)
     {
