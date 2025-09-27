@@ -11,27 +11,29 @@ if (!function_exists('check_ajax_referer')) {
     }
 }
 
-class MyArticlesJsonResponse extends \RuntimeException
-{
-    /** @var bool */
-    public $success;
-
-    /** @var array<string, mixed> */
-    public array $data;
-
-    /** @var int|null */
-    public $status_code;
-
-    /**
-     * @param array<string, mixed> $data
-     */
-    public function __construct(bool $success, array $data, ?int $status_code)
+if (!class_exists('MyArticlesJsonResponse')) {
+    class MyArticlesJsonResponse extends \RuntimeException
     {
-        parent::__construct('JSON response emitted.');
+        /** @var bool */
+        public $success;
 
-        $this->success = $success;
-        $this->data = $data;
-        $this->status_code = $status_code;
+        /** @var array<string, mixed> */
+        public array $data;
+
+        /** @var int|null */
+        public $status_code;
+
+        /**
+         * @param array<string, mixed> $data
+         */
+        public function __construct(bool $success, array $data, ?int $status_code)
+        {
+            parent::__construct('JSON response emitted.');
+
+            $this->success = $success;
+            $this->data = $data;
+            $this->status_code = $status_code;
+        }
     }
 }
 
