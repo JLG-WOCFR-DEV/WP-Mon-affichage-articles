@@ -77,25 +77,80 @@ if ( ! function_exists( 'my_articles_normalize_internal_url' ) ) {
             $site_home = home_url();
         }
 
-        $site_host = wp_parse_url( $site_home, PHP_URL_HOST );
-        $site_host = is_string( $site_host ) ? strtolower( $site_host ) : '';
+        $site_parts = wp_parse_url( $site_home );
+        if ( false === $site_parts ) {
+            return '';
+        }
 
-        $site_scheme = wp_parse_url( $site_home, PHP_URL_SCHEME );
-        $site_scheme = is_string( $site_scheme ) ? strtolower( $site_scheme ) : '';
+        $site_host   = isset( $site_parts['host'] ) ? strtolower( (string) $site_parts['host'] ) : '';
+        $site_scheme = isset( $site_parts['scheme'] ) ? strtolower( (string) $site_parts['scheme'] ) : '';
+
+        $candidate_parts = wp_parse_url( $clean_url );
+        if ( false === $candidate_parts ) {
+            return '';
+        }
+
+        $candidate_host   = isset( $candidate_parts['host'] ) ? strtolower( (string) $candidate_parts['host'] ) : '';
+        $candidate_scheme = isset( $candidate_parts['scheme'] ) ? strtolower( (string) $candidate_parts['scheme'] ) : '';
+
+        if ( '' === $candidate_host && '' === $candidate_scheme && '' !== $site_host ) {
+            $relative_path = isset( $candidate_parts['path'] ) ? (string) $candidate_parts['path'] : '';
+            $query         = isset( $candidate_parts['query'] ) ? (string) $candidate_parts['query'] : '';
+
+            $base_scheme = '' !== $site_scheme ? $site_scheme . '://' : '';
+            $base_host   = isset( $site_parts['host'] ) ? (string) $site_parts['host'] : '';
+            $base_port   = isset( $site_parts['port'] ) ? ':' . $site_parts['port'] : '';
+            $base_path   = isset( $site_parts['path'] ) ? (string) $site_parts['path'] : '';
+
+            if ( '' === $relative_path ) {
+                $path = $base_path;
+            } elseif ( '/' === substr( $relative_path, 0, 1 ) ) {
+                $path = $relative_path;
+            } else {
+                if ( '' === $base_path ) {
+                    $path = '/' . ltrim( $relative_path, '/' );
+                } else {
+                    $trimmed_base = '/' === substr( $base_path, -1 ) ? rtrim( $base_path, '/' ) : $base_path;
+                    $path         = $trimmed_base . '/' . ltrim( $relative_path, '/' );
+                }
+            }
+
+            if ( '' !== $base_scheme ) {
+                $clean_url = $base_scheme . $base_host . $base_port;
+            } elseif ( '' !== $base_host ) {
+                $clean_url = '//' . $base_host . $base_port;
+            } else {
+                $clean_url = '';
+            }
+
+            if ( '' !== $path ) {
+                if ( '/' !== substr( $path, 0, 1 ) ) {
+                    $clean_url .= '/' . $path;
+                } else {
+                    $clean_url .= $path;
+                }
+            }
+
+            if ( '' !== $query ) {
+                $clean_url .= '?' . $query;
+            }
+
+            $candidate_parts = wp_parse_url( $clean_url );
+            if ( false === $candidate_parts ) {
+                return '';
+            }
+
+            $candidate_host   = isset( $candidate_parts['host'] ) ? strtolower( (string) $candidate_parts['host'] ) : '';
+            $candidate_scheme = isset( $candidate_parts['scheme'] ) ? strtolower( (string) $candidate_parts['scheme'] ) : '';
+        }
 
         if ( '' !== $site_host ) {
-            $candidate_host = wp_parse_url( $clean_url, PHP_URL_HOST );
-            $candidate_host = is_string( $candidate_host ) ? strtolower( $candidate_host ) : '';
-
             if ( '' === $candidate_host || $candidate_host !== $site_host ) {
                 return '';
             }
         }
 
         if ( '' !== $site_scheme ) {
-            $candidate_scheme = wp_parse_url( $clean_url, PHP_URL_SCHEME );
-            $candidate_scheme = is_string( $candidate_scheme ) ? strtolower( $candidate_scheme ) : '';
-
             if ( '' !== $candidate_scheme && $candidate_scheme !== $site_scheme ) {
                 return '';
             }
