@@ -66,6 +66,21 @@ final class Mon_Affichage_Articles {
             wp_send_json_error( __( 'Type de contenu invalide pour cette instance.', 'mon-articles' ), 400 );
         }
 
+        $post_status      = get_post_status( $instance_id );
+        $allowed_statuses = My_Articles_Shortcode::get_allowed_instance_statuses( $instance_id );
+
+        if ( empty( $post_status ) || ! in_array( $post_status, $allowed_statuses, true ) ) {
+            $error_code = (int) apply_filters( 'my_articles_unpublished_instance_error_code', 404, $instance_id, $post_status );
+            if ( $error_code <= 0 ) {
+                $error_code = 404;
+            }
+
+            wp_send_json_error(
+                array( 'message' => __( 'Instance non publiée.', 'mon-articles' ) ),
+                $error_code
+            );
+        }
+
         return $post_type;
     }
 

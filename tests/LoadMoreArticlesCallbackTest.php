@@ -222,10 +222,11 @@ final class LoadMoreArticlesCallbackTest extends TestCase
     {
         parent::setUp();
 
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_wp_query_factory;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_wp_query_factory;
 
         $mon_articles_test_post_meta_map = array();
         $mon_articles_test_post_type_map = array();
+        $mon_articles_test_post_status_map = array();
         $this->wpQueryFactoryBackup = $mon_articles_test_wp_query_factory ?? null;
         $mon_articles_test_wp_query_factory = null;
 
@@ -249,7 +250,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
 
     protected function tearDown(): void
     {
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_wp_query_factory;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_wp_query_factory;
 
         $reflection = new ReflectionClass(My_Articles_Shortcode::class);
 
@@ -267,6 +268,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
 
         $mon_articles_test_post_meta_map = array();
         $mon_articles_test_post_type_map = array();
+        $mon_articles_test_post_status_map = array();
         $mon_articles_test_wp_query_factory = $this->wpQueryFactoryBackup;
 
         $_POST = array();
@@ -280,13 +282,14 @@ final class LoadMoreArticlesCallbackTest extends TestCase
      */
     private function seedInstanceOptions(int $instanceId, array $rawOptions, array $normalizedOptions, string $requestedCategory): void
     {
-        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map;
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
 
         $mon_articles_test_post_meta_map[$instanceId] = array(
             '_my_articles_settings' => $rawOptions,
         );
 
         $mon_articles_test_post_type_map[$instanceId] = 'mon_affichage';
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
 
         $reflection = new ReflectionClass(My_Articles_Shortcode::class);
         $cacheKeyMethod = $reflection->getMethod('build_normalized_options_cache_key');
@@ -582,6 +585,40 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             $this->assertSame('101,102', $payload['pinned_ids']);
             $this->assertSame(2, $payload['total_pages']);
             $this->assertSame(0, $payload['next_page']);
+        }
+    }
+
+    public function test_load_more_returns_error_for_unpublished_instance(): void
+    {
+        global $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
+
+        $instanceId = 777;
+
+        $mon_articles_test_post_type_map = array(
+            $instanceId => 'mon_affichage',
+        );
+        $mon_articles_test_post_status_map = array(
+            $instanceId => 'trash',
+        );
+
+        $_POST = array(
+            'security'    => 'nonce',
+            'instance_id' => (string) $instanceId,
+            'paged'       => '1',
+            'pinned_ids'  => '',
+            'category'    => '',
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        try {
+            $plugin->load_more_articles_callback();
+            $this->fail('Expected JSON error response for unpublished instance.');
+        } catch (\MyArticlesJsonResponse $response) {
+            $this->assertFalse($response->success, 'Expected the JSON response to indicate failure.');
+            $this->assertSame(404, $response->status_code);
+            $this->assertArrayHasKey('message', $response->data);
+            $this->assertNotEmpty($response->data['message']);
         }
     }
 }

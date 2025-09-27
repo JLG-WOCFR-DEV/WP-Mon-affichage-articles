@@ -121,6 +121,36 @@ class My_Articles_Shortcode {
         return $matching_ids;
     }
 
+    /**
+     * Retrieves the list of allowed post statuses for a shortcode instance.
+     *
+     * @param int $instance_id The instance post ID.
+     *
+     * @return array<int, string> List of allowed statuses.
+     */
+    public static function get_allowed_instance_statuses( $instance_id = 0 ) {
+        $default_statuses = array( 'publish' );
+        $allowed_statuses = apply_filters( 'my_articles_allowed_instance_statuses', $default_statuses, $instance_id );
+
+        if ( ! is_array( $allowed_statuses ) ) {
+            $allowed_statuses = array( $allowed_statuses );
+        }
+
+        $normalized_statuses = array();
+
+        foreach ( $allowed_statuses as $status ) {
+            if ( is_string( $status ) && '' !== $status ) {
+                $normalized_statuses[] = $status;
+            }
+        }
+
+        if ( empty( $normalized_statuses ) ) {
+            $normalized_statuses = $default_statuses;
+        }
+
+        return array_values( array_unique( $normalized_statuses ) );
+    }
+
     public function build_display_state( array $options, array $args = array() ) {
         $defaults = array(
             'paged'                     => 1,
@@ -584,10 +614,17 @@ class My_Articles_Shortcode {
     }
 
     public function render_shortcode( $atts ) {
-        $atts = shortcode_atts( ['id' => 0], $atts, 'mon_affichage_articles' );
-        $id = absint($atts['id']);
+        $atts = shortcode_atts( array( 'id' => 0 ), $atts, 'mon_affichage_articles' );
+        $id   = absint( $atts['id'] );
 
-        if ( !$id || 'mon_affichage' !== get_post_type($id) ) {
+        if ( ! $id || 'mon_affichage' !== get_post_type( $id ) ) {
+            return '';
+        }
+
+        $post_status      = get_post_status( $id );
+        $allowed_statuses = self::get_allowed_instance_statuses( $id );
+
+        if ( empty( $post_status ) || ! in_array( $post_status, $allowed_statuses, true ) ) {
             return '';
         }
 
