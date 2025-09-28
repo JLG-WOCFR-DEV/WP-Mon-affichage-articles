@@ -472,7 +472,11 @@ if (!function_exists('wp_trim_words')) {
 if (!function_exists('wp_reset_postdata')) {
     function wp_reset_postdata(): void
     {
-        // No-op for tests.
+        global $mon_articles_test_wp_reset_postdata_callback;
+
+        if (is_callable($mon_articles_test_wp_reset_postdata_callback)) {
+            call_user_func($mon_articles_test_wp_reset_postdata_callback);
+        }
     }
 }
 
@@ -533,16 +537,17 @@ if (!class_exists('WP_Query')) {
 
         public function the_post(): void
         {
-            global $mon_articles_test_current_post_id;
+            global $mon_articles_test_current_post_id, $post;
 
             if (!$this->have_posts()) {
                 return;
             }
 
-            $post = $this->posts[$this->current_index];
+            $post_data = $this->posts[$this->current_index];
             $this->current_index++;
 
-            $mon_articles_test_current_post_id = isset($post['ID']) ? (int) $post['ID'] : 0;
+            $mon_articles_test_current_post_id = isset($post_data['ID']) ? (int) $post_data['ID'] : 0;
+            $post = is_array($post_data) ? (object) $post_data : $post_data;
         }
     }
 }

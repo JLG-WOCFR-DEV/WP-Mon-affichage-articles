@@ -921,6 +921,10 @@ class My_Articles_Shortcode {
             $this->render_empty_state_message();
         }
 
+        if ( $pinned_query instanceof WP_Query || $regular_query instanceof WP_Query ) {
+            wp_reset_postdata();
+        }
+
         return $displayed_pinned_ids;
     }
 
