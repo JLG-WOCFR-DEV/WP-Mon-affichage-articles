@@ -23,46 +23,71 @@ class My_Articles_Metaboxes {
     }
 
     public function enqueue_admin_scripts( $hook ) {
-        if ( ('post.php' === $hook || 'post-new.php' === $hook) && 'mon_affichage' === get_post_type() ) {
-            wp_enqueue_style( 'wp-color-picker' );
-            wp_enqueue_style( 'select2-css', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0' );
-            
-            wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
-            wp_enqueue_script( 'select2-js', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.js', array('jquery'), '4.1.0-rc.0', true );
-            wp_enqueue_script( 'my-articles-admin-select2', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-select2.js', array('select2-js', 'jquery-ui-sortable'), MY_ARTICLES_VERSION, true );
-            wp_enqueue_script( 'my-articles-admin-options', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-options.js', array('jquery'), MY_ARTICLES_VERSION, true );
-            wp_enqueue_script( 'my-articles-dynamic-fields', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-dynamic-fields.js', array('jquery'), MY_ARTICLES_VERSION, true );
-
-            wp_localize_script(
-                'my-articles-admin-select2',
-                'myArticlesSelect2',
-                [
-                    'nonce'       => wp_create_nonce('my_articles_select2_nonce'),
-                    'placeholder' => esc_html__( 'Rechercher un contenu par son titre...', 'mon-articles' ),
-                ]
-            );
-            wp_localize_script(
-                'my-articles-dynamic-fields',
-                'myArticlesAdmin',
-                [
-                    'nonce'             => wp_create_nonce('my_articles_admin_nonce'),
-                    'allCategoriesText' => esc_html__( 'Toutes les catégories', 'mon-articles' ),
-                ]
-            );
-            wp_localize_script(
-                'my-articles-admin-options',
-                'myArticlesAdminOptions',
-                [
-                    'minColumnWidth'  => 240,
-                    'warningThreshold' => 960,
-                    'warningClass'    => 'my-articles-columns-warning--active',
-                    /* translators: 1: number of columns, 2: estimated width in pixels. */
-                    'warningMessage'  => esc_html__( 'Attention : %1$d colonnes nécessitent environ %2$spx de largeur. Réduisez le nombre de colonnes ou agrandissez la zone de contenu.', 'mon-articles' ),
-                    /* translators: 1: number of columns, 2: estimated width in pixels. */
-                    'infoMessage'     => esc_html__( 'Largeur estimée : %2$spx pour %1$d colonnes.', 'mon-articles' ),
-                ]
-            );
+        if ( 'post.php' !== $hook && 'post-new.php' !== $hook ) {
+            return;
         }
+
+        $post_type = '';
+
+        // Prefer the global $typenow when available.
+        if ( isset( $GLOBALS['typenow'] ) && is_string( $GLOBALS['typenow'] ) ) {
+            $post_type = $GLOBALS['typenow'];
+        }
+
+        if ( '' === $post_type && function_exists( 'get_current_screen' ) ) {
+            $screen = get_current_screen();
+
+            if ( $screen && isset( $screen->post_type ) ) {
+                $post_type = $screen->post_type;
+            }
+        }
+
+        if ( '' === $post_type && 'post.php' === $hook ) {
+            $post_type = (string) get_post_type();
+        }
+
+        if ( 'mon_affichage' !== $post_type ) {
+            return;
+        }
+
+        wp_enqueue_style( 'wp-color-picker' );
+        wp_enqueue_style( 'select2-css', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.css', [], '4.1.0-rc.0' );
+
+        wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
+        wp_enqueue_script( 'select2-js', MY_ARTICLES_PLUGIN_URL . 'assets/vendor/select2/select2.min.js', array('jquery'), '4.1.0-rc.0', true );
+        wp_enqueue_script( 'my-articles-admin-select2', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-select2.js', array('select2-js', 'jquery-ui-sortable'), MY_ARTICLES_VERSION, true );
+        wp_enqueue_script( 'my-articles-admin-options', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-options.js', array('jquery'), MY_ARTICLES_VERSION, true );
+        wp_enqueue_script( 'my-articles-dynamic-fields', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-dynamic-fields.js', array('jquery'), MY_ARTICLES_VERSION, true );
+
+        wp_localize_script(
+            'my-articles-admin-select2',
+            'myArticlesSelect2',
+            [
+                'nonce'       => wp_create_nonce('my_articles_select2_nonce'),
+                'placeholder' => esc_html__( 'Rechercher un contenu par son titre...', 'mon-articles' ),
+            ]
+        );
+        wp_localize_script(
+            'my-articles-dynamic-fields',
+            'myArticlesAdmin',
+            [
+                'nonce'             => wp_create_nonce('my_articles_admin_nonce'),
+                'allCategoriesText' => esc_html__( 'Toutes les catégories', 'mon-articles' ),
+            ]
+        );
+        wp_localize_script(
+            'my-articles-admin-options',
+            'myArticlesAdminOptions',
+            [
+                'minColumnWidth'  => 240,
+                'warningThreshold' => 960,
+                'warningClass'    => 'my-articles-columns-warning--active',
+                /* translators: 1: number of columns, 2: estimated width in pixels. */
+                'warningMessage'  => esc_html__( 'Attention : %1$d colonnes nécessitent environ %2$spx de largeur. Réduisez le nombre de colonnes ou agrandissez la zone de contenu.', 'mon-articles' ),
+                /* translators: 1: number of columns, 2: estimated width in pixels. */
+                'infoMessage'     => esc_html__( 'Largeur estimée : %2$spx pour %1$d colonnes.', 'mon-articles' ),
+            ]
+        );
     }
 
     public function add_admin_head_styles() {
