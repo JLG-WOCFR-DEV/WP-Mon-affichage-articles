@@ -5,17 +5,26 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 delete_option( 'my_articles_options' );
 
-$posts = get_posts(
-    array(
-        'post_type'      => 'mon_affichage',
-        'posts_per_page' => -1,
-        'post_status'    => 'any',
-        'fields'         => 'ids',
-    )
+$query_args = array(
+    'post_type'      => 'mon_affichage',
+    'posts_per_page' => 100,
+    'post_status'    => 'any',
+    'fields'         => 'ids',
+    'no_found_rows'  => true,
 );
 
-if ( ! empty( $posts ) ) {
+while ( true ) {
+    $posts_query = new WP_Query( $query_args );
+    $posts       = $posts_query->posts;
+
+    if ( empty( $posts ) ) {
+        wp_reset_postdata();
+        break;
+    }
+
     foreach ( $posts as $post_id ) {
         wp_delete_post( $post_id, true );
     }
+
+    wp_reset_postdata();
 }
