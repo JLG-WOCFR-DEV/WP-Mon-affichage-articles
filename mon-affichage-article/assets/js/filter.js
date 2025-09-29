@@ -72,14 +72,45 @@
                     contentArea.css('opacity', 1);
                     clearFeedback(wrapper);
 
-                    var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
-                    if (loadMoreBtn.length) {
-                        var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
-                        totalPages = isNaN(totalPages) ? 0 : totalPages;
-                        var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 0;
-                        nextPage = isNaN(nextPage) ? 0 : nextPage;
-                        var pinnedIds = (response.data && typeof response.data.pinned_ids !== 'undefined') ? response.data.pinned_ids : '';
+                    var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
+                    totalPages = isNaN(totalPages) ? 0 : totalPages;
+                    var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 0;
+                    nextPage = isNaN(nextPage) ? 0 : nextPage;
+                    var pinnedIds = (response.data && typeof response.data.pinned_ids !== 'undefined') ? response.data.pinned_ids : '';
 
+                    if (totalPages <= 1) {
+                        var existingLoadMoreContainer = wrapper.find('.my-articles-load-more-container');
+                        if (existingLoadMoreContainer.length) {
+                            existingLoadMoreContainer.remove();
+                        }
+                    }
+
+                    var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
+
+                    if (!loadMoreBtn.length && totalPages > 1) {
+                        var loadMoreText = (typeof myArticlesLoadMore !== 'undefined' && myArticlesLoadMore.loadMoreText) ? myArticlesLoadMore.loadMoreText : 'Charger plus';
+                        var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
+                        var initialNextPage = nextPage > 0 ? nextPage : 2;
+                        var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
+                            .attr('data-instance-id', instanceId)
+                            .attr('data-paged', initialNextPage)
+                            .attr('data-total-pages', totalPages)
+                            .attr('data-pinned-ids', pinnedIds)
+                            .attr('data-category', categorySlug)
+                            .text(loadMoreText);
+
+                        loadMoreContainer.append(newLoadMoreBtn);
+
+                        if (contentArea.length) {
+                            contentArea.last().after(loadMoreContainer);
+                        } else {
+                            wrapper.append(loadMoreContainer);
+                        }
+
+                        loadMoreBtn = newLoadMoreBtn;
+                    }
+
+                    if (loadMoreBtn.length) {
                         loadMoreBtn.data('category', categorySlug);
                         loadMoreBtn.attr('data-category', categorySlug);
 
@@ -102,6 +133,11 @@
                             loadMoreBtn.attr('data-paged', nextPage);
                             loadMoreBtn.hide();
                             loadMoreBtn.prop('disabled', false);
+
+                            var orphanContainer = loadMoreBtn.closest('.my-articles-load-more-container');
+                            if (orphanContainer.length) {
+                                orphanContainer.remove();
+                            }
                         }
                     }
 
