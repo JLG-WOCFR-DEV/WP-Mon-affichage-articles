@@ -489,7 +489,11 @@ class My_Articles_Shortcode {
         $unlimited_cap = (int) apply_filters( 'my_articles_unlimited_batch_size', 50, $options, $context );
         $options['unlimited_query_cap'] = max( 1, $unlimited_cap );
 
-        if ( $is_unlimited && ( $options['pagination_mode'] ?? 'none' ) === 'none' ) {
+        if (
+            $is_unlimited
+            && ( $options['pagination_mode'] ?? 'none' ) === 'none'
+            && 'slideshow' !== $options['display_mode']
+        ) {
             $options['pagination_mode'] = 'load_more';
         }
 
@@ -703,7 +707,7 @@ class My_Articles_Shortcode {
             array(
                 'paged'                   => $paged,
                 'pagination_strategy'     => 'page',
-                'enforce_unlimited_batch' => ! empty( $options['is_unlimited'] ),
+                'enforce_unlimited_batch' => ( ! empty( $options['is_unlimited'] ) && 'slideshow' !== $options['display_mode'] ),
             )
         );
 
