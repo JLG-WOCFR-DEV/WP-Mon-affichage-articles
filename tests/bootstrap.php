@@ -298,6 +298,23 @@ if (!function_exists('absint')) {
     }
 }
 
+if (!function_exists('wp_list_pluck')) {
+    function wp_list_pluck($input_list, $field)
+    {
+        $values = array();
+
+        foreach ((array) $input_list as $item) {
+            if (is_array($item) && array_key_exists($field, $item)) {
+                $values[] = $item[$field];
+            } elseif (is_object($item) && isset($item->{$field})) {
+                $values[] = $item->{$field};
+            }
+        }
+
+        return $values;
+    }
+}
+
 if (!function_exists('get_permalink')) {
     function get_permalink($post = null)
     {
@@ -493,7 +510,7 @@ if (!class_exists('WP_Query')) {
     class WP_Query
     {
         /** @var array<int, array<string, mixed>> */
-        private array $posts;
+        public array $posts;
 
         private int $current_index = 0;
 

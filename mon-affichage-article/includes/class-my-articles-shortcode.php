@@ -703,7 +703,7 @@ class My_Articles_Shortcode {
             array(
                 'paged'                   => $paged,
                 'pagination_strategy'     => 'page',
-                'enforce_unlimited_batch' => ! empty( $options['is_unlimited'] ),
+                'enforce_unlimited_batch' => ! empty( $options['is_unlimited'] ) && 'slideshow' !== $options['display_mode'],
             )
         );
 
@@ -778,14 +778,10 @@ class My_Articles_Shortcode {
         $displayed_pinned_ids = array();
 
         $posts_per_page_for_render    = $render_limit > 0 ? $render_limit : $effective_posts_per_page;
-        $posts_per_page_for_slideshow = $effective_posts_per_page;
+        $posts_per_page_for_slideshow = $is_unlimited ? 0 : $effective_posts_per_page;
 
         if ( $is_unlimited && 0 === $posts_per_page_for_render ) {
             $posts_per_page_for_render = 0;
-        }
-
-        if ( $is_unlimited && 0 === $posts_per_page_for_slideshow ) {
-            $posts_per_page_for_slideshow = 0;
         }
 
         if ($options['display_mode'] === 'slideshow') {
