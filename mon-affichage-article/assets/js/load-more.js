@@ -4,6 +4,35 @@
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
 
+    function getFeedbackElement(wrapper) {
+        var feedback = wrapper.find('.my-articles-feedback');
+
+        if (!feedback.length) {
+            feedback = $('<div class="my-articles-feedback" aria-live="polite"></div>').hide();
+
+            var nav = wrapper.find('.my-articles-filter-nav').first();
+            if (nav.length) {
+                nav.after(feedback);
+            } else {
+                wrapper.prepend(feedback);
+            }
+        }
+
+        return feedback;
+    }
+
+    function clearFeedback(wrapper) {
+        var feedback = wrapper.find('.my-articles-feedback');
+        if (feedback.length) {
+            feedback.removeClass('is-error').text('').hide();
+        }
+    }
+
+    function showError(wrapper, message) {
+        var feedback = getFeedbackElement(wrapper);
+        feedback.text(message).addClass('is-error').show();
+    }
+
     $(document).on('click', '.my-articles-load-more-btn', function (e) {
         e.preventDefault();
 
@@ -11,7 +40,13 @@
         var wrapper = button.closest('.my-articles-wrapper');
         // CORRECTION : On cible le conteneur de la grille OU de la liste
         var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content');
-        
+
+        var originalButtonText = button.data('original-text');
+        if (!originalButtonText) {
+            originalButtonText = button.text();
+            button.data('original-text', originalButtonText);
+        }
+
         var instanceId = button.data('instance-id');
         var paged = parseInt(button.data('paged'), 10) || 0;
         var totalPages = parseInt(button.data('total-pages'), 10) || 0;
@@ -36,8 +71,10 @@
                 category: category
             },
             beforeSend: function () {
-                button.text(loadMoreSettings.loadingText || button.text());
+                var loadingText = loadMoreSettings.loadingText || originalButtonText;
+                button.text(loadingText);
                 button.prop('disabled', true);
+                clearFeedback(wrapper);
             },
             success: function (response) {
                 if (response.success) {
@@ -71,7 +108,8 @@
                         }
                     }
 
-                    button.text(loadMoreSettings.loadMoreText || button.text());
+                    var loadMoreText = loadMoreSettings.loadMoreText || originalButtonText;
+                    button.text(loadMoreText);
 
                     if (nextPageFromServer !== null) {
                         paged = nextPageFromServer;
@@ -98,16 +136,34 @@
                     }
 
                     button.prop('disabled', false);
+                    clearFeedback(wrapper);
                 } else {
-                    // En cas d'erreur, on cache le bouton pour éviter de boucler
-                    button.hide();
+                    var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                    var responseMessage = (response.data && response.data.message) ? response.data.message : '';
+                    var message = responseMessage || fallbackMessage;
+
+                    var resetText = loadMoreSettings.loadMoreText || originalButtonText;
+                    button.text(resetText);
                     button.prop('disabled', false);
+                    showError(wrapper, message);
                 }
             },
-            error: function () {
-                button.hide();
+            error: function (jqXHR) {
+                var errorMessage = '';
+
+                if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                    errorMessage = jqXHR.responseJSON.data.message;
+                }
+
+                if (!errorMessage) {
+                    errorMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                }
+
+                var resetText = loadMoreSettings.loadMoreText || originalButtonText;
+                button.text(resetText);
                 button.prop('disabled', false);
-                console.error(loadMoreSettings.errorText || 'AJAX error.');
+                showError(wrapper, errorMessage);
+                console.error(errorMessage);
             }
         });
     });
