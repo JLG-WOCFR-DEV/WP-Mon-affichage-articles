@@ -63,7 +63,10 @@ final class Mon_Affichage_Articles {
         $post_type = get_post_type( $instance_id );
 
         if ( 'mon_affichage' !== $post_type ) {
-            wp_send_json_error( __( 'Type de contenu invalide pour cette instance.', 'mon-articles' ), 400 );
+            wp_send_json_error(
+                array( 'message' => __( 'Type de contenu invalide pour cette instance.', 'mon-articles' ) ),
+                400
+            );
         }
 
         $post_status      = get_post_status( $instance_id );
@@ -204,7 +207,10 @@ final class Mon_Affichage_Articles {
         }
 
         if ( ! $instance_id ) {
-            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ), 400 );
+            wp_send_json_error(
+                array( 'message' => __( 'ID d\'instance manquant.', 'mon-articles' ) ),
+                400
+            );
         }
 
         $this->assert_valid_instance_post_type( $instance_id );
@@ -220,7 +226,10 @@ final class Mon_Affichage_Articles {
         );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ), 403 );
+            wp_send_json_error(
+                array( 'message' => __( 'Catégorie non autorisée.', 'mon-articles' ) ),
+                403
+            );
         }
 
         $display_mode      = $options['display_mode'];
@@ -343,7 +352,10 @@ final class Mon_Affichage_Articles {
         $category = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
 
         if ( ! $instance_id ) {
-            wp_send_json_error( __( 'ID d\'instance manquant.', 'mon-articles' ), 400 );
+            wp_send_json_error(
+                array( 'message' => __( 'ID d\'instance manquant.', 'mon-articles' ) ),
+                400
+            );
         }
 
         $this->assert_valid_instance_post_type( $instance_id );
@@ -359,7 +371,10 @@ final class Mon_Affichage_Articles {
         );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            wp_send_json_error( __( 'Catégorie non autorisée.', 'mon-articles' ), 403 );
+            wp_send_json_error(
+                array( 'message' => __( 'Catégorie non autorisée.', 'mon-articles' ) ),
+                403
+            );
         }
 
         $display_mode = $options['display_mode'];
@@ -576,14 +591,20 @@ final class Mon_Affichage_Articles {
         $post_type     = sanitize_key( $raw_post_type );
 
         if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
-            wp_send_json_error( __( 'Type de contenu invalide.', 'mon-articles' ), 400 );
+            wp_send_json_error(
+                array( 'message' => __( 'Type de contenu invalide.', 'mon-articles' ) ),
+                400
+            );
         }
 
         $post_type_object = get_post_type_object( $post_type );
         $required_cap     = isset( $post_type_object->cap->edit_posts ) ? $post_type_object->cap->edit_posts : 'edit_posts';
 
         if ( ! current_user_can( $required_cap ) ) {
-            wp_send_json_error( __( 'Unauthorized', 'mon-articles' ), 403 );
+            wp_send_json_error(
+                array( 'message' => __( 'Unauthorized', 'mon-articles' ) ),
+                403
+            );
         }
         $results = array();
 
