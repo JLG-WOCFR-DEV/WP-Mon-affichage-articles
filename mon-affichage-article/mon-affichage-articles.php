@@ -242,7 +242,7 @@ final class Mon_Affichage_Articles {
             array(
                 'paged'                   => 1,
                 'pagination_strategy'     => 'page',
-                'enforce_unlimited_batch' => true,
+                'enforce_unlimited_batch' => ( ! empty( $options['is_unlimited'] ) && 'slideshow' !== $display_mode ),
             )
         );
 
@@ -390,7 +390,7 @@ final class Mon_Affichage_Articles {
                 'paged'                   => $paged,
                 'pagination_strategy'     => 'sequential',
                 'seen_pinned_ids'         => $seen_pinned_ids,
-                'enforce_unlimited_batch' => true,
+                'enforce_unlimited_batch' => ( ! empty( $options['is_unlimited'] ) && 'slideshow' !== $display_mode ),
             )
         );
 
