@@ -17,7 +17,9 @@ class My_Articles_Enqueue {
     }
 
     private function __construct() {
-        add_action( 'wp_enqueue_scripts', array( $this, 'register_plugin_styles_scripts' ) );
+        add_action( 'init', array( $this, 'register_plugin_styles_scripts' ) );
+        add_action( 'wp_enqueue_scripts', array( $this, 'ensure_assets_registered' ) );
+        add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
     }
 
     public function register_plugin_styles_scripts() {
@@ -33,5 +35,21 @@ class My_Articles_Enqueue {
         if ( function_exists( 'wp_script_add_data' ) ) {
             wp_script_add_data( 'lazysizes', 'async', true );
         }
+    }
+
+    public function ensure_assets_registered() {
+        $this->register_plugin_styles_scripts();
+    }
+
+    public function enqueue_block_editor_assets() {
+        $this->register_plugin_styles_scripts();
+
+        wp_enqueue_style( 'swiper-css' );
+        wp_enqueue_style( 'my-articles-styles' );
+
+        wp_enqueue_script( 'swiper-js' );
+        wp_enqueue_script( 'lazysizes' );
+        wp_enqueue_script( 'my-articles-responsive-layout' );
+        wp_enqueue_script( 'my-articles-debug-helper' );
     }
 }
