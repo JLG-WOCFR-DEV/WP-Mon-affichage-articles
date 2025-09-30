@@ -278,6 +278,84 @@ if (!function_exists('wp_add_inline_style')) {
     }
 }
 
+if (!function_exists('wp_register_style')) {
+    /**
+     * @param string $handle
+     * @param string $src
+     * @param array<int, string> $deps
+     * @param string|bool $ver
+     * @param string $media
+     */
+    function wp_register_style($handle, $src = '', $deps = array(), $ver = false, $media = 'all'): bool
+    {
+        global $mon_articles_test_registered_styles;
+
+        if (!is_array($mon_articles_test_registered_styles)) {
+            $mon_articles_test_registered_styles = array();
+        }
+
+        $mon_articles_test_registered_styles[(string) $handle] = array(
+            'src'   => (string) $src,
+            'deps'  => is_array($deps) ? array_values($deps) : array(),
+            'ver'   => is_string($ver) ? $ver : '',
+            'media' => (string) $media,
+        );
+
+        return true;
+    }
+}
+
+if (!function_exists('wp_register_script')) {
+    /**
+     * @param string $handle
+     * @param string|false $src
+     * @param array<int, string> $deps
+     * @param string|bool $ver
+     * @param bool $in_footer
+     */
+    function wp_register_script($handle, $src = '', $deps = array(), $ver = false, $in_footer = false): bool
+    {
+        global $mon_articles_test_registered_scripts;
+
+        if (!is_array($mon_articles_test_registered_scripts)) {
+            $mon_articles_test_registered_scripts = array();
+        }
+
+        $mon_articles_test_registered_scripts[(string) $handle] = array(
+            'src'       => (false === $src) ? false : (string) $src,
+            'deps'      => is_array($deps) ? array_values($deps) : array(),
+            'ver'       => is_string($ver) ? $ver : '',
+            'in_footer' => (bool) $in_footer,
+        );
+
+        return true;
+    }
+}
+
+if (!function_exists('wp_script_add_data')) {
+    /**
+     * @param string $handle
+     * @param string $key
+     * @param mixed $value
+     */
+    function wp_script_add_data($handle, $key, $value): bool
+    {
+        global $mon_articles_test_script_data;
+
+        if (!is_array($mon_articles_test_script_data)) {
+            $mon_articles_test_script_data = array();
+        }
+
+        if (!isset($mon_articles_test_script_data[(string) $handle])) {
+            $mon_articles_test_script_data[(string) $handle] = array();
+        }
+
+        $mon_articles_test_script_data[(string) $handle][(string) $key] = $value;
+
+        return true;
+    }
+}
+
 if (!function_exists('wp_parse_args')) {
     function wp_parse_args($args, $defaults = array())
     {
