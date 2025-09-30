@@ -1,0 +1,66 @@
+{
+    "apiVersion": 2,
+    "name": "mon-affichage/articles",
+    "title": "Tuiles – LCV",
+    "category": "widgets",
+    "icon": "screenoptions",
+    "description": "Afficher un module Tuiles – LCV directement dans l’éditeur de blocs.",
+    "keywords": [
+        "articles",
+        "tuiles",
+        "lcv"
+    ],
+    "textdomain": "mon-articles",
+    "supports": {
+        "html": false
+    },
+    "attributes": {
+        "instanceId": {
+            "type": "integer",
+            "default": 0
+        },
+        "display_mode": {
+            "type": "string",
+            "default": "grid"
+        },
+        "posts_per_page": {
+            "type": "integer",
+            "default": 10
+        },
+        "show_category_filter": {
+            "type": "boolean",
+            "default": false
+        },
+        "filter_alignment": {
+            "type": "string",
+            "default": "right"
+        },
+        "pagination_mode": {
+            "type": "string",
+            "default": "none"
+        },
+        "show_excerpt": {
+            "type": "boolean",
+            "default": false
+        },
+        "excerpt_length": {
+            "type": "integer",
+            "default": 25
+        },
+        "show_author": {
+            "type": "boolean",
+            "default": true
+        },
+        "show_date": {
+            "type": "boolean",
+            "default": true
+        },
+        "show_category": {
+            "type": "boolean",
+            "default": true
+        }
+    },
+    "editorScript": "file:./edit.js",
+    "editorStyle": "file:./editor.css",
+    "style": "file:./style.css"
+}

@@ -36,6 +36,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
     }
 
     private function add_hooks() {
@@ -56,6 +57,7 @@ final class Mon_Affichage_Articles {
         My_Articles_Settings::get_instance();
         My_Articles_Metaboxes::get_instance();
         My_Articles_Shortcode::get_instance();
+        My_Articles_Block::get_instance();
         My_Articles_Enqueue::get_instance();
     }
 
