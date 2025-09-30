@@ -444,6 +444,51 @@ final class FilterArticlesPaginationTest extends TestCase
         $this->assertSame('', $options['requested_category']);
     }
 
+    public function test_filter_articles_rejects_requested_category_when_filters_disabled(): void
+    {
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
+
+        $instanceId = 2468;
+
+        $mon_articles_test_post_meta_map = array(
+            $instanceId => array(
+                '_my_articles_settings' => array(
+                    'post_type'            => 'post',
+                    'term'                 => 'configured-category',
+                    'show_category_filter' => 0,
+                    'filter_categories'    => array(),
+                ),
+            ),
+        );
+
+        $mon_articles_test_post_type_map = array(
+            $instanceId => 'mon_affichage',
+        );
+
+        $mon_articles_test_post_status_map = array(
+            $instanceId => 'publish',
+        );
+
+        $_POST = array(
+            'security'    => 'nonce',
+            'instance_id' => (string) $instanceId,
+            'category'    => 'external-category',
+            'current_url' => 'http://example.com/page',
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        try {
+            $plugin->filter_articles_callback();
+            $this->fail('Expected JSON error response.');
+        } catch (\MyArticlesJsonResponse $response) {
+            $this->assertFalse($response->success, 'Expected the JSON response to be an error.');
+            $this->assertSame(403, $response->status_code);
+            $this->assertArrayHasKey('message', $response->data);
+            $this->assertNotEmpty($response->data['message']);
+        }
+    }
+
     public function test_filter_articles_returns_error_for_unpublished_instance(): void
     {
         global $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
