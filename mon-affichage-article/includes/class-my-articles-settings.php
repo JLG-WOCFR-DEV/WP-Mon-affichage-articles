@@ -91,7 +91,7 @@ class My_Articles_Settings {
 
     public function sanitize( $input ) {
         $sanitized_input = [];
-        $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow']) ? $input['display_mode'] : 'grid';
+        $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
         $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
         $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] )
             ? min( 50, max( 0, absint( $input['posts_per_page'] ) ) )
@@ -126,6 +126,7 @@ class My_Articles_Settings {
         <select id="display_mode" name="<?php echo esc_attr($this->option_name); ?>[display_mode]">
             <option value="grid" <?php selected($current_mode, 'grid'); ?>><?php esc_html_e('Grille', 'mon-articles'); ?></option>
             <option value="slideshow" <?php selected($current_mode, 'slideshow'); ?>><?php esc_html_e('Diaporama', 'mon-articles'); ?></option>
+            <option value="list" <?php selected($current_mode, 'list'); ?>><?php esc_html_e('Liste', 'mon-articles'); ?></option>
         </select>
         <p class="description"><?php esc_html_e('Choisissez comment afficher les articles.', 'mon-articles'); ?></p>
         <?php
