@@ -219,14 +219,47 @@ final class Mon_Affichage_Articles {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $options            = My_Articles_Shortcode::normalize_instance_options(
-            $options_meta,
-            array(
-                'requested_category'  => $category_slug,
-                'allow_external_requested_category' => true,
-                'force_collect_terms' => true,
-            )
+
+        $has_filter_categories = false;
+        if ( isset( $options_meta['filter_categories'] ) ) {
+            $raw_filter_categories = $options_meta['filter_categories'];
+
+            if ( is_string( $raw_filter_categories ) ) {
+                $raw_filter_categories = explode( ',', $raw_filter_categories );
+            }
+
+            if ( is_array( $raw_filter_categories ) ) {
+                $normalized_filter_categories = array_values( array_filter( array_map( 'absint', $raw_filter_categories ) ) );
+                $has_filter_categories        = ! empty( $normalized_filter_categories );
+            }
+        }
+
+        $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
+
+        $normalize_context = array(
+            'requested_category'  => $category_slug,
+            'force_collect_terms' => true,
         );
+
+        if ( $allows_requested_category ) {
+            $normalize_context['allow_external_requested_category'] = true;
+        }
+
+        $options = My_Articles_Shortcode::normalize_instance_options(
+            $options_meta,
+            $normalize_context
+        );
+
+        if ( ! $allows_requested_category && '' !== $category_slug ) {
+            $default_term = isset( $options['default_term'] ) ? (string) $options['default_term'] : '';
+
+            if ( '' === $default_term || $category_slug !== $default_term ) {
+                wp_send_json_error(
+                    array( 'message' => __( 'Catégorie non autorisée.', 'mon-articles' ) ),
+                    403
+                );
+            }
+        }
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
             wp_send_json_error(
