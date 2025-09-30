@@ -32,7 +32,7 @@
 .my-articles-filter-nav.filter-align-center ul { justify-content: center; }
 .my-articles-filter-nav.filter-align-right ul { justify-content: flex-end; }
 
-.my-articles-filter-nav li a {
+.my-articles-filter-nav button {
     display: block;
     padding: 5px 12px;
     margin: 0 0 5px 5px;
@@ -42,12 +42,18 @@
     border-radius: 4px;
     font-size: 13px;
     transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
 }
 
-.my-articles-filter-nav li.active a,
-.my-articles-filter-nav li a:hover {
+.my-articles-filter-nav button:hover,
+.my-articles-filter-nav button:focus,
+.my-articles-filter-nav button:focus-visible,
+.my-articles-filter-nav li.active button,
+.my-articles-filter-nav button[aria-selected="true"] {
     color: #fff;
     background: #333;
+    outline: none;
 }
 
 /* *** CORRECTIF SLIDESHOW & HAUTEURS (v9) *** */

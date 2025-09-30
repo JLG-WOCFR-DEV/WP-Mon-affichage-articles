@@ -33,24 +33,48 @@
         feedback.text(message).addClass('is-error').show();
     }
 
-    $(document).on('click', '.my-articles-filter-nav a', function (e) {
-        e.preventDefault();
-
-        var filterLink = $(this);
-        var filterItem = filterLink.parent();
+    function handleFilterActivation(filterButton) {
+        var button = $(filterButton);
+        var filterItem = button.closest('li');
         var navList = filterItem.closest('ul');
         var previousActiveItem = navList.find('li.active').first();
-        var categorySlug = filterLink.data('category');
-        var wrapper = filterLink.closest('.my-articles-wrapper');
-        var instanceId = wrapper.data('instance-id');
-        var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
+        var previousActiveButton = navList.find('button[aria-selected="true"]').first();
 
-        if (filterItem.hasClass('active')) {
-            return; // Ne rien faire si on clique sur le filtre déjà actif
+        if (filterItem.is(previousActiveItem)) {
+            return null;
         }
 
         navList.find('li').removeClass('active');
+        navList.find('button').attr('aria-selected', 'false');
+
         filterItem.addClass('active');
+        button.attr('aria-selected', 'true');
+
+        return {
+            filterItem: filterItem,
+            previousActiveItem: previousActiveItem,
+            previousActiveButton: previousActiveButton,
+            button: button
+        };
+    }
+
+    $(document).on('click', '.my-articles-filter-nav button', function (e) {
+        e.preventDefault();
+
+        var activationContext = handleFilterActivation(this);
+
+        if (!activationContext) {
+            return;
+        }
+
+        var filterButton = activationContext.button;
+        var filterItem = activationContext.filterItem;
+        var previousActiveItem = activationContext.previousActiveItem;
+        var previousActiveButton = activationContext.previousActiveButton;
+        var categorySlug = filterButton.data('category');
+        var wrapper = filterButton.closest('.my-articles-wrapper');
+        var instanceId = wrapper.data('instance-id');
+        var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
 
         $.ajax({
             url: filterSettings.ajax_url,
@@ -197,8 +221,12 @@
                     }
                 } else {
                     filterItem.removeClass('active');
+                    filterButton.attr('aria-selected', 'false');
                     if (previousActiveItem && previousActiveItem.length) {
                         previousActiveItem.addClass('active');
+                    }
+                    if (previousActiveButton && previousActiveButton.length) {
+                        previousActiveButton.attr('aria-selected', 'true');
                     }
 
                     contentArea.css('opacity', 1);
@@ -211,8 +239,12 @@
             },
             error: function (jqXHR) {
                 filterItem.removeClass('active');
+                filterButton.attr('aria-selected', 'false');
                 if (previousActiveItem && previousActiveItem.length) {
                     previousActiveItem.addClass('active');
+                }
+                if (previousActiveButton && previousActiveButton.length) {
+                    previousActiveButton.attr('aria-selected', 'true');
                 }
 
                 contentArea.css('opacity', 1);
@@ -229,6 +261,15 @@
                 showError(wrapper, errorMessage);
             }
         });
+    });
+
+    $(document).on('keydown', '.my-articles-filter-nav button', function (e) {
+        var key = e.key || e.keyCode;
+
+        if (key === 'Enter' || key === ' ' || key === 'Spacebar' || key === 13 || key === 32) {
+            e.preventDefault();
+            $(this).trigger('click');
+        }
     });
 
 })(jQuery);
