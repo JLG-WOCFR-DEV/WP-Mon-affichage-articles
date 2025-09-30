@@ -80,16 +80,36 @@
             return;
         }
 
-        swiper.params.slidesPerView = effectiveColumns.mobile;
-        swiper.params.breakpoints = swiper.params.breakpoints || {};
+        const hasParams = swiper.params && typeof swiper.params === 'object';
 
-        Object.keys(SWIPER_BREAKPOINTS).forEach(function (key) {
-            const breakpointValue = SWIPER_BREAKPOINTS[key];
-            const slides = effectiveColumns[key];
+        if (hasParams) {
+            swiper.params.slidesPerView = effectiveColumns.mobile;
+            swiper.params.breakpoints = swiper.params.breakpoints || {};
 
-            swiper.params.breakpoints[breakpointValue] = swiper.params.breakpoints[breakpointValue] || {};
-            swiper.params.breakpoints[breakpointValue].slidesPerView = slides;
-        });
+            Object.keys(SWIPER_BREAKPOINTS).forEach(function (key) {
+                const breakpointValue = SWIPER_BREAKPOINTS[key];
+                const slides = effectiveColumns[key];
+
+                swiper.params.breakpoints[breakpointValue] = swiper.params.breakpoints[breakpointValue] || {};
+                swiper.params.breakpoints[breakpointValue].slidesPerView = slides;
+            });
+        } else {
+            swiper.options = swiper.options || {};
+            swiper.options.slidesPerView = effectiveColumns.mobile;
+
+            const breakpointStore = swiper.options.breakpoints || swiper.breakpoints || {};
+
+            swiper.options.breakpoints = breakpointStore;
+            swiper.breakpoints = breakpointStore;
+
+            Object.keys(SWIPER_BREAKPOINTS).forEach(function (key) {
+                const breakpointValue = SWIPER_BREAKPOINTS[key];
+                const slides = effectiveColumns[key];
+
+                breakpointStore[breakpointValue] = breakpointStore[breakpointValue] || {};
+                breakpointStore[breakpointValue].slidesPerView = slides;
+            });
+        }
 
         if (typeof swiper.update === 'function') {
             swiper.update();
