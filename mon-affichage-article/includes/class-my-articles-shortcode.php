@@ -443,6 +443,26 @@ class My_Articles_Shortcode {
     }
 
     public static function normalize_instance_options( $raw_options, $context = array() ) {
+        if ( ! is_array( $context ) ) {
+            $context = array();
+        }
+
+        $external_requested_category = '';
+
+        if ( array_key_exists( 'requested_category', $context ) ) {
+            $raw_requested_category = $context['requested_category'];
+
+            if ( is_scalar( $raw_requested_category ) ) {
+                $external_requested_category = sanitize_title( (string) $raw_requested_category );
+            }
+
+            $context['requested_category'] = $external_requested_category;
+        }
+
+        if ( array_key_exists( 'allow_external_requested_category', $context ) ) {
+            $context['allow_external_requested_category'] = ! empty( $context['allow_external_requested_category'] ) ? 1 : 0;
+        }
+
         $cache_key = self::build_normalized_options_cache_key( $raw_options, $context );
 
         if ( isset( self::$normalized_options_cache[ $cache_key ] ) ) {
@@ -539,8 +559,17 @@ class My_Articles_Shortcode {
         $default_term = $options['term'];
         $requested_category = '';
 
-        if ( isset( $context['requested_category'] ) ) {
-            $requested_category = sanitize_title( (string) $context['requested_category'] );
+        $has_external_requested_category = '' !== $external_requested_category;
+        $allow_external_requested_category = ! empty( $context['allow_external_requested_category'] );
+
+        if ( $has_external_requested_category ) {
+            if (
+                $allow_external_requested_category
+                || ! empty( $options['show_category_filter'] )
+                || ! empty( $filter_categories )
+            ) {
+                $requested_category = $external_requested_category;
+            }
         }
 
         $force_collect_terms = ! empty( $context['force_collect_terms'] );
@@ -675,9 +704,35 @@ class My_Articles_Shortcode {
             return '';
         }
 
-        $category_query_var = 'my_articles_cat_' . $id;
-        $requested_category = '';
-        if ( isset( $_GET[ $category_query_var ] ) ) {
+        $options_meta = get_post_meta( $id, '_my_articles_settings', true );
+        if ( ! is_array( $options_meta ) ) {
+            $options_meta = array();
+        }
+
+        if ( ! empty( $overrides ) ) {
+            $options_meta = array_merge( $options_meta, $overrides );
+        }
+
+        $has_filter_categories = false;
+        if ( isset( $options_meta['filter_categories'] ) ) {
+            $raw_filter_categories = $options_meta['filter_categories'];
+
+            if ( is_string( $raw_filter_categories ) ) {
+                $raw_filter_categories = explode( ',', $raw_filter_categories );
+            }
+
+            if ( is_array( $raw_filter_categories ) ) {
+                $normalized_filter_categories = array_values( array_filter( array_map( 'absint', $raw_filter_categories ) ) );
+                $has_filter_categories       = ! empty( $normalized_filter_categories );
+            }
+        }
+
+        $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
+
+        $category_query_var   = 'my_articles_cat_' . $id;
+        $requested_category   = '';
+
+        if ( $allows_requested_category && isset( $_GET[ $category_query_var ] ) ) {
             $raw_requested_category = wp_unslash( $_GET[ $category_query_var ] );
 
             if ( is_scalar( $raw_requested_category ) ) {
@@ -692,19 +747,17 @@ class My_Articles_Shortcode {
             }
         }
 
-        $options_meta = get_post_meta( $id, '_my_articles_settings', true );
-        if ( ! is_array( $options_meta ) ) {
-            $options_meta = array();
+        $normalize_context = array(
+            'allow_external_requested_category' => $allows_requested_category,
+        );
+
+        if ( '' !== $requested_category ) {
+            $normalize_context['requested_category'] = $requested_category;
         }
 
-        if ( ! empty( $overrides ) ) {
-            $options_meta = array_merge( $options_meta, $overrides );
-        }
-        $options      = self::normalize_instance_options(
+        $options = self::normalize_instance_options(
             $options_meta,
-            array(
-                'requested_category' => $requested_category,
-            )
+            $normalize_context
         );
 
         $resolved_taxonomy = $options['resolved_taxonomy'];

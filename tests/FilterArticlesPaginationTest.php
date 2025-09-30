@@ -424,6 +424,26 @@ final class FilterArticlesPaginationTest extends TestCase
         }
     }
 
+    public function test_requested_category_query_var_is_ignored_when_instance_has_no_filters(): void
+    {
+        $rawOptions = array(
+            'post_type'            => 'post',
+            'term'                 => 'configured-category',
+            'show_category_filter' => 0,
+            'filter_categories'    => array(),
+        );
+
+        $options = My_Articles_Shortcode::normalize_instance_options(
+            $rawOptions,
+            array(
+                'requested_category' => 'external-category',
+            )
+        );
+
+        $this->assertSame('configured-category', $options['term']);
+        $this->assertSame('', $options['requested_category']);
+    }
+
     public function test_filter_articles_returns_error_for_unpublished_instance(): void
     {
         global $mon_articles_test_post_type_map, $mon_articles_test_post_status_map;
