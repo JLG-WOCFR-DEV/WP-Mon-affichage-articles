@@ -160,11 +160,80 @@
         updateWrapper(wrapper);
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        const wrappers = document.querySelectorAll('.my-articles-wrapper');
-        wrappers.forEach(initWrapper);
+    let listenersBound = false;
 
+    function bindGlobalListeners() {
+        if (listenersBound) {
+            return;
+        }
+
+        listenersBound = true;
         window.addEventListener('resize', scheduleGlobalUpdate);
         window.addEventListener('orientationchange', scheduleGlobalUpdate);
-    });
+    }
+
+    function collectCandidateWrappers(target) {
+        const collection = new Set();
+
+        function addFromNode(node) {
+            if (!node) {
+                return;
+            }
+
+            if (node.classList && node.classList.contains('my-articles-wrapper')) {
+                collection.add(node);
+            }
+
+            if (typeof node.querySelectorAll === 'function') {
+                node.querySelectorAll('.my-articles-wrapper').forEach(function (wrapper) {
+                    collection.add(wrapper);
+                });
+            }
+        }
+
+        if (!target) {
+            document.querySelectorAll('.my-articles-wrapper').forEach(function (wrapper) {
+                collection.add(wrapper);
+            });
+            return Array.from(collection);
+        }
+
+        if (target.jquery) {
+            target.each(function (index, element) {
+                addFromNode(element);
+            });
+            return Array.from(collection);
+        }
+
+        if (typeof target.length === 'number' && typeof target !== 'string') {
+            Array.prototype.forEach.call(target, function (item) {
+                addFromNode(item);
+            });
+            return Array.from(collection);
+        }
+
+        addFromNode(target);
+        return Array.from(collection);
+    }
+
+    function initWrappers(target) {
+        bindGlobalListeners();
+
+        const wrappers = collectCandidateWrappers(target);
+        wrappers.forEach(initWrapper);
+
+        return wrappers.length;
+    }
+
+    function handleDomReady() {
+        initWrappers();
+    }
+
+    window.myArticlesInitWrappers = initWrappers;
+
+    if (document.readyState !== 'loading') {
+        handleDomReady();
+    } else {
+        document.addEventListener('DOMContentLoaded', handleDomReady);
+    }
 })();
