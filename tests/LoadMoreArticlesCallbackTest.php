@@ -326,6 +326,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             'display_mode' => 'grid',
             'posts_per_page' => $perPage,
             'post_type' => 'post',
+            'pagination_mode' => 'load_more',
         );
 
         $normalizedOptions = array(
@@ -335,7 +336,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             'term' => '',
             'posts_per_page' => $perPage,
             'is_unlimited' => false,
-            'pagination_mode' => 'none',
+            'pagination_mode' => 'load_more',
             'post_type' => 'post',
             'ignore_native_sticky' => 0,
             'unlimited_query_cap' => $perPage,
@@ -463,6 +464,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             'display_mode' => 'grid',
             'posts_per_page' => $perPage,
             'post_type' => 'post',
+            'pagination_mode' => 'load_more',
         );
 
         $normalizedOptions = array(
@@ -472,7 +474,7 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             'term' => '',
             'posts_per_page' => $perPage,
             'is_unlimited' => false,
-            'pagination_mode' => 'none',
+            'pagination_mode' => 'load_more',
             'post_type' => 'post',
             'ignore_native_sticky' => 0,
             'unlimited_query_cap' => $perPage,
@@ -586,6 +588,82 @@ final class LoadMoreArticlesCallbackTest extends TestCase
             $this->assertSame(2, $payload['total_pages']);
             $this->assertSame(0, $payload['next_page']);
         }
+    }
+
+    public function test_load_more_fails_when_pagination_mode_not_enabled(): void
+    {
+        global $mon_articles_test_wp_query_factory;
+
+        $instanceId = 987;
+
+        $rawOptions = array(
+            'display_mode' => 'grid',
+            'posts_per_page' => 3,
+            'post_type' => 'post',
+            'pagination_mode' => 'none',
+        );
+
+        $normalizedOptions = array(
+            'display_mode' => 'grid',
+            'resolved_taxonomy' => '',
+            'default_term' => '',
+            'term' => '',
+            'posts_per_page' => 3,
+            'is_unlimited' => false,
+            'pagination_mode' => 'none',
+            'post_type' => 'post',
+            'ignore_native_sticky' => 0,
+            'unlimited_query_cap' => 3,
+            'show_category_filter' => 0,
+            'filter_categories' => array(),
+            'all_excluded_ids' => array(),
+            'allowed_filter_term_slugs' => array(),
+            'is_requested_category_valid' => true,
+        );
+
+        $requestedCategory = '';
+        $this->seedInstanceOptions($instanceId, $rawOptions, $normalizedOptions, $requestedCategory);
+
+        $factoryInvocations = 0;
+        $mon_articles_test_wp_query_factory = static function (array $args) use (&$factoryInvocations): array {
+            $factoryInvocations++;
+
+            return array(
+                'posts' => array(),
+                'found_posts' => 0,
+            );
+        };
+
+        $shortcodeStub = new class {
+            public function build_display_state(array $options, array $args = array()): array
+            {
+                throw new \RuntimeException('build_display_state should not be called when load more is disabled.');
+            }
+        };
+
+        $this->setShortcodeInstance($shortcodeStub);
+
+        $_POST = array(
+            'instance_id' => (string) $instanceId,
+            'paged' => '1',
+            'pinned_ids' => '',
+            'category' => '',
+            'security' => 'nonce',
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        try {
+            $plugin->load_more_articles_callback();
+            $this->fail('Expected JSON error response when load more is disabled.');
+        } catch (\MyArticlesJsonResponse $response) {
+            $this->assertFalse($response->success, 'The response should indicate failure.');
+            $this->assertSame(400, $response->status_code);
+            $this->assertArrayHasKey('message', $response->data);
+            $this->assertNotEmpty($response->data['message']);
+        }
+
+        $this->assertSame(0, $factoryInvocations, 'WP_Query should not be triggered when load more is disabled.');
     }
 
     public function test_load_more_returns_error_for_unpublished_instance(): void

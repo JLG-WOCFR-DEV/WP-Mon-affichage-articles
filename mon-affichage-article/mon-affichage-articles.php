@@ -380,7 +380,23 @@ final class Mon_Affichage_Articles {
             );
         }
 
+        $pagination_mode = isset( $options['pagination_mode'] ) ? $options['pagination_mode'] : 'none';
+
+        if ( 'load_more' !== $pagination_mode ) {
+            wp_send_json_error(
+                array( 'message' => __( 'Le chargement progressif est désactivé pour cette instance.', 'mon-articles' ) ),
+                400
+            );
+        }
+
         $display_mode = $options['display_mode'];
+
+        if ( ! in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
+            wp_send_json_error(
+                array( 'message' => __( 'Le mode d\'affichage sélectionné est incompatible avec "Charger plus".', 'mon-articles' ) ),
+                400
+            );
+        }
 
         $seen_pinned_ids = array();
         if ( ! empty( $pinned_ids_str ) ) {
