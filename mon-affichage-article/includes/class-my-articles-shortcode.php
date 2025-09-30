@@ -873,11 +873,11 @@ class My_Articles_Shortcode {
             echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
             $default_cat   = $options['term'] ?? '';
             $is_all_active = '' === $default_cat || 'all' === $default_cat;
-            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><a href="#" data-category="all">' . esc_html__( 'Tout', 'mon-articles' ) . '</a></li>';
+            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button type="button" data-category="all" aria-pressed="' . ( $is_all_active ? 'true' : 'false' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
 
             foreach ( $available_categories as $category ) {
                 $is_active = ( $default_cat === $category->slug );
-                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><a href="#" data-category="' . esc_attr( $category->slug ) . '">' . esc_html( $category->name ) . '</a></li>';
+                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><button type="button" data-category="' . esc_attr( $category->slug ) . '" aria-pressed="' . ( $is_active ? 'true' : 'false' ) . '">' . esc_html( $category->name ) . '</button></li>';
             }
 
             echo '</ul></nav>';
