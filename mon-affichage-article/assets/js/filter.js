@@ -33,6 +33,47 @@
         feedback.text(message).addClass('is-error').show();
     }
 
+    function updateInstanceQueryParams(instanceId, params) {
+        if (typeof window === 'undefined' || !window.history) {
+            return;
+        }
+
+        var historyApi = window.history;
+        var historyMethod = null;
+
+        if (typeof historyApi.replaceState === 'function') {
+            historyMethod = 'replaceState';
+        } else if (typeof historyApi.pushState === 'function') {
+            historyMethod = 'pushState';
+        }
+
+        if (!historyMethod) {
+            return;
+        }
+
+        try {
+            var currentUrl = window.location && window.location.href ? window.location.href : '';
+            if (!currentUrl) {
+                return;
+            }
+
+            var url = new URL(currentUrl);
+
+            Object.keys(params || {}).forEach(function (key) {
+                var value = params[key];
+                if (value === null || typeof value === 'undefined' || value === '') {
+                    url.searchParams.delete(key);
+                } else {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            historyApi[historyMethod](null, '', url.toString());
+        } catch (error) {
+            // Silencieusement ignorer les erreurs (navigateurs plus anciens)
+        }
+    }
+
     $(document).on('click', '.my-articles-filter-nav a', function (e) {
         e.preventDefault();
 
@@ -194,6 +235,13 @@
                                 }
                             });
                         }
+                    }
+
+                    if (instanceId) {
+                        var queryParams = {};
+                        queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
+                        queryParams['paged_' + instanceId] = '1';
+                        updateInstanceQueryParams(instanceId, queryParams);
                     }
                 } else {
                     filterItem.removeClass('active');
