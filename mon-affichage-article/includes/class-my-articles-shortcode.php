@@ -763,8 +763,20 @@ class My_Articles_Shortcode {
         $resolved_taxonomy = $options['resolved_taxonomy'];
         $available_categories = $options['available_categories'];
 
+        $should_enqueue_url_state = !empty($options['show_category_filter']) || 'load_more' === $options['pagination_mode'];
+
+        if ( $should_enqueue_url_state ) {
+            wp_enqueue_script(
+                'my-articles-url-state',
+                MY_ARTICLES_PLUGIN_URL . 'assets/js/utils/url-state.js',
+                [],
+                MY_ARTICLES_VERSION,
+                true
+            );
+        }
+
         if ( !empty($options['show_category_filter']) ) {
-            wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
+            wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery', 'my-articles-url-state'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
                 'my-articles-filter',
                 'myArticlesFilter',
@@ -777,7 +789,7 @@ class My_Articles_Shortcode {
         }
 
         if ( $options['pagination_mode'] === 'load_more' ) {
-            wp_enqueue_script('my-articles-load-more', MY_ARTICLES_PLUGIN_URL . 'assets/js/load-more.js', ['jquery'], MY_ARTICLES_VERSION, true);
+            wp_enqueue_script('my-articles-load-more', MY_ARTICLES_PLUGIN_URL . 'assets/js/load-more.js', ['jquery', 'my-articles-url-state'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
                 'my-articles-load-more',
                 'myArticlesLoadMore',

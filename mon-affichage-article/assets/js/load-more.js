@@ -3,6 +3,9 @@
     'use strict';
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
+    var updateInstanceQueryParams = (typeof window !== 'undefined' && window.MyArticlesUtils && typeof window.MyArticlesUtils.updateInstanceQueryParams === 'function')
+        ? window.MyArticlesUtils.updateInstanceQueryParams
+        : function () {};
 
     function getFeedbackElement(wrapper) {
         var feedback = wrapper.find('.my-articles-feedback');
@@ -31,47 +34,6 @@
     function showError(wrapper, message) {
         var feedback = getFeedbackElement(wrapper);
         feedback.text(message).addClass('is-error').show();
-    }
-
-    function updateInstanceQueryParams(instanceId, params) {
-        if (typeof window === 'undefined' || !window.history) {
-            return;
-        }
-
-        var historyApi = window.history;
-        var historyMethod = null;
-
-        if (typeof historyApi.replaceState === 'function') {
-            historyMethod = 'replaceState';
-        } else if (typeof historyApi.pushState === 'function') {
-            historyMethod = 'pushState';
-        }
-
-        if (!historyMethod) {
-            return;
-        }
-
-        try {
-            var currentUrl = window.location && window.location.href ? window.location.href : '';
-            if (!currentUrl) {
-                return;
-            }
-
-            var url = new URL(currentUrl);
-
-            Object.keys(params || {}).forEach(function (key) {
-                var value = params[key];
-                if (value === null || typeof value === 'undefined' || value === '') {
-                    url.searchParams.delete(key);
-                } else {
-                    url.searchParams.set(key, value);
-                }
-            });
-
-            historyApi[historyMethod](null, '', url.toString());
-        } catch (error) {
-            // Silencieusement ignorer les erreurs pour les navigateurs ne supportant pas l'API
-        }
     }
 
     $(document).on('click', '.my-articles-load-more-btn', function (e) {
