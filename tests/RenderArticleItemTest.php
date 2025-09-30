@@ -77,5 +77,33 @@ final class RenderArticleItemTest extends TestCase
         $this->assertStringContainsString('loading="lazy"', $html);
         $this->assertStringNotContainsString('loading="eager"', $html);
     }
+
+    public function test_excerpt_length_zero_omits_ellipsis_but_keeps_read_more(): void
+    {
+        $reflection = new \ReflectionClass(My_Articles_Shortcode::class);
+        $shortcode = $reflection->newInstanceWithoutConstructor();
+
+        $options = array(
+            'display_mode'       => 'list',
+            'show_category'      => false,
+            'show_author'        => false,
+            'show_date'          => false,
+            'show_excerpt'       => true,
+            'excerpt_length'     => 0,
+            'excerpt_more_text'  => 'Lire la suite',
+            'resolved_taxonomy'  => '',
+            'enable_lazy_load'   => false,
+            'pinned_show_badge'  => false,
+        );
+
+        ob_start();
+        $shortcode->render_article_item($options, false);
+        $output = ob_get_clean();
+
+        $this->assertIsString($output);
+        $this->assertStringContainsString('<div class="my-article-excerpt">', $output);
+        $this->assertStringContainsString('class="my-article-read-more"', $output);
+        $this->assertStringNotContainsString('…', $output);
+    }
 }
 

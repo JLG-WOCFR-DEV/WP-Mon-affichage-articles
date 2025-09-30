@@ -1171,14 +1171,38 @@ class My_Articles_Shortcode {
                     <?php if ($options['show_date']) echo '<span class="article-date">' . esc_html(get_the_date()) . '</span>'; ?>
                 </div>
             <?php endif; ?>
-            <?php if (!empty($options['show_excerpt'])): ?>
+            <?php
+            if (!empty($options['show_excerpt'])) {
+                $excerpt_length  = isset($options['excerpt_length']) ? (int) $options['excerpt_length'] : 0;
+                $raw_excerpt     = get_the_excerpt();
+                $trimmed_excerpt = '';
+                $has_read_more   = ! empty($options['excerpt_more_text']);
+
+                if ($excerpt_length > 0) {
+                    $trimmed_excerpt = wp_trim_words($raw_excerpt, $excerpt_length, $excerpt_more);
+                }
+
+                $has_excerpt_content = '' !== trim(strip_tags($trimmed_excerpt));
+
+                if ($has_excerpt_content || $has_read_more) {
+                    ?>
                 <div class="my-article-excerpt">
-                    <?php echo wp_kses_post(wp_trim_words(get_the_excerpt(), (int)$options['excerpt_length'], $excerpt_more)); ?>
-                    <?php if (!empty($options['excerpt_more_text'])): ?>
+                    <?php
+                    if ($has_excerpt_content) {
+                        echo wp_kses_post($trimmed_excerpt);
+                    }
+
+                    if ($has_read_more) {
+                        ?>
                         <a href="<?php echo $escaped_link; ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
-                    <?php endif; ?>
+                        <?php
+                    }
+                    ?>
                 </div>
-            <?php endif; ?>
+                <?php
+                }
+            }
+            ?>
         </div>
         <?php
     }
