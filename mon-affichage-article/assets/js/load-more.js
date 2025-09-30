@@ -33,6 +33,47 @@
         feedback.text(message).addClass('is-error').show();
     }
 
+    function updateInstanceQueryParams(instanceId, params) {
+        if (typeof window === 'undefined' || !window.history) {
+            return;
+        }
+
+        var historyApi = window.history;
+        var historyMethod = null;
+
+        if (typeof historyApi.replaceState === 'function') {
+            historyMethod = 'replaceState';
+        } else if (typeof historyApi.pushState === 'function') {
+            historyMethod = 'pushState';
+        }
+
+        if (!historyMethod) {
+            return;
+        }
+
+        try {
+            var currentUrl = window.location && window.location.href ? window.location.href : '';
+            if (!currentUrl) {
+                return;
+            }
+
+            var url = new URL(currentUrl);
+
+            Object.keys(params || {}).forEach(function (key) {
+                var value = params[key];
+                if (value === null || typeof value === 'undefined' || value === '') {
+                    url.searchParams.delete(key);
+                } else {
+                    url.searchParams.set(key, value);
+                }
+            });
+
+            historyApi[historyMethod](null, '', url.toString());
+        } catch (error) {
+            // Silencieusement ignorer les erreurs pour les navigateurs ne supportant pas l'API
+        }
+    }
+
     $(document).on('click', '.my-articles-load-more-btn', function (e) {
         e.preventDefault();
 
@@ -52,6 +93,7 @@
         var totalPages = parseInt(button.data('total-pages'), 10) || 0;
         var pinnedIds = button.data('pinned-ids');
         var category = button.data('category');
+        var requestedPage = paged;
 
         if (!totalPages || (paged && paged > totalPages)) {
             button.hide();
@@ -158,6 +200,12 @@
 
                     var loadMoreText = loadMoreSettings.loadMoreText || originalButtonText;
                     button.text(loadMoreText);
+
+                    if (instanceId && requestedPage > 0) {
+                        var historyParams = {};
+                        historyParams['paged_' + instanceId] = String(requestedPage);
+                        updateInstanceQueryParams(instanceId, historyParams);
+                    }
 
                     if (nextPageFromServer !== null) {
                         paged = nextPageFromServer;
