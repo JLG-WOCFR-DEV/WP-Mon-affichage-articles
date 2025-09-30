@@ -70,6 +70,18 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
         );
     }
 
+    public function test_sanitize_preserves_list_display_mode(): void
+    {
+        $settings = My_Articles_Settings::get_instance();
+        $result = $settings->sanitize(array('display_mode' => 'list'));
+
+        self::assertSame(
+            'list',
+            $result['display_mode'] ?? null,
+            'The sanitize routine should allow the list display mode to persist.'
+        );
+    }
+
     public function test_normalize_instance_options_treats_zero_as_unlimited(): void
     {
         $options = My_Articles_Shortcode::normalize_instance_options(
