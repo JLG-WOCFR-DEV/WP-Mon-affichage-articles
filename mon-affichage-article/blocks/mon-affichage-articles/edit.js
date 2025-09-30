@@ -6,6 +6,8 @@
         return {};
     };
     var PanelBody = wp.components.PanelBody;
+    var ComboboxControl = wp.components.ComboboxControl;
+    var Button = wp.components.Button;
     var SelectControl = wp.components.SelectControl;
     var ToggleControl = wp.components.ToggleControl;
     var RangeControl = wp.components.RangeControl;
@@ -15,15 +17,17 @@
     var Fragment = wp.element.Fragment;
     var el = wp.element.createElement;
     var useSelect = wp.data.useSelect;
+    var useState = wp.element.useState;
+    var useEffect = wp.element.useEffect;
     var ServerSideRender = wp.serverSideRender;
 
-    var MODULE_QUERY = {
-        per_page: 100,
+    var MODULE_QUERY_DEFAULTS = {
         orderby: 'title',
         order: 'asc',
         status: 'publish',
         context: 'view',
     };
+    var MODULES_PER_PAGE = 20;
 
     registerBlockType('mon-affichage/articles', {
         edit: function (props) {
@@ -31,23 +35,113 @@
             var setAttributes = props.setAttributes;
             var blockProps = useBlockProps({ className: 'my-articles-block' });
 
-            var data = useSelect(function (select) {
+            var _useState = useState('');
+            var searchValue = _useState[0];
+            var setSearchValue = _useState[1];
+
+            var _useState2 = useState(1);
+            var currentPage = _useState2[0];
+            var setCurrentPage = _useState2[1];
+
+            var _useState3 = useState([]);
+            var fetchedInstances = _useState3[0];
+            var setFetchedInstances = _useState3[1];
+
+            var _useState4 = useState(true);
+            var hasMoreResults = _useState4[0];
+            var setHasMoreResults = _useState4[1];
+
+            var listData = useSelect(function (select) {
+                var core = select('core');
+                var dataStore = select('core/data');
+                var query = Object.assign({}, MODULE_QUERY_DEFAULTS, {
+                    per_page: MODULES_PER_PAGE,
+                    page: currentPage,
+                });
+
+                if (searchValue) {
+                    query.search = searchValue;
+                }
+
+                return {
+                    instances: core.getEntityRecords('postType', 'mon_affichage', query),
+                    isResolving: dataStore.isResolving('core', 'getEntityRecords', ['postType', 'mon_affichage', query]),
+                };
+            }, [searchValue, currentPage]);
+
+            var selectedData = useSelect(function (select) {
                 var core = select('core');
                 var dataStore = select('core/data');
 
                 return {
-                    instances: core.getEntityRecords('postType', 'mon_affichage', MODULE_QUERY),
-                    isResolving: dataStore.isResolving('core', 'getEntityRecords', ['postType', 'mon_affichage', MODULE_QUERY]),
                     selectedInstance: attributes.instanceId ? core.getEntityRecord('postType', 'mon_affichage', attributes.instanceId) : null,
+                    isResolvingSelected: attributes.instanceId
+                        ? dataStore.isResolving('core', 'getEntityRecord', ['postType', 'mon_affichage', attributes.instanceId])
+                        : false,
                 };
             }, [attributes.instanceId]);
 
-            var instances = data && Array.isArray(data.instances) ? data.instances : [];
+            useEffect(
+                function () {
+                    if (!listData) {
+                        return;
+                    }
+
+                    if (!Array.isArray(listData.instances)) {
+                        if (!listData.isResolving && currentPage === 1) {
+                            setFetchedInstances([]);
+                            setHasMoreResults(false);
+                        }
+                        return;
+                    }
+
+                    setFetchedInstances(function (prevInstances) {
+                        if (currentPage === 1) {
+                            return listData.instances.slice();
+                        }
+
+                        var existingIds = {};
+                        prevInstances.forEach(function (item) {
+                            existingIds[item.id] = true;
+                        });
+
+                        var merged = prevInstances.slice();
+
+                        listData.instances.forEach(function (item) {
+                            if (!existingIds[item.id]) {
+                                merged.push(item);
+                            }
+                        });
+
+                        return merged;
+                    });
+
+                    setHasMoreResults(listData.instances.length === MODULES_PER_PAGE);
+                },
+                [listData && listData.instances, listData && listData.isResolving, currentPage]
+            );
+
+            var instances = Array.isArray(fetchedInstances) ? fetchedInstances : [];
             var instanceOptions = instances.map(function (post) {
                 var title = post && post.title && post.title.rendered ? post.title.rendered : __('(Sans titre)', 'mon-articles');
                 return { label: title, value: String(post.id) };
             });
-            instanceOptions.unshift({ label: __('Sélectionner un module', 'mon-articles'), value: '0' });
+
+            if (attributes.instanceId && selectedData && selectedData.selectedInstance) {
+                var selectedId = String(attributes.instanceId);
+                var found = instanceOptions.some(function (option) {
+                    return option.value === selectedId;
+                });
+
+                if (!found) {
+                    var selectedTitle = selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
+                        ? selectedData.selectedInstance.title.rendered
+                        : __('(Sans titre)', 'mon-articles');
+                    instanceOptions.unshift({ label: selectedTitle, value: selectedId });
+                }
+            }
+
+            var showLoadMoreButton = instances.length > 0 || (listData && listData.isResolving) || currentPage > 1;
 
             var inspectorControls = el(
                 InspectorControls,
@@ -55,16 +149,47 @@
                 el(
                     PanelBody,
                     { title: __('Module', 'mon-articles'), initialOpen: true },
-                    el(SelectControl, {
-                        label: __('Instance', 'mon-articles'),
-                        value: String(attributes.instanceId || 0),
-                        options: instanceOptions,
-                        onChange: function (value) {
-                            var parsed = parseInt(value, 10);
-                            setAttributes({ instanceId: parsed > 0 ? parsed : 0 });
-                        },
-                        help: __('Sélectionnez le contenu « mon_affichage » à afficher.', 'mon-articles'),
-                    })
+                    el(
+                        Fragment,
+                        {},
+                        el(ComboboxControl, {
+                            label: __('Instance', 'mon-articles'),
+                            value: attributes.instanceId ? String(attributes.instanceId) : '',
+                            options: instanceOptions,
+                            onChange: function (value) {
+                                var parsed = parseInt(value, 10);
+                                setAttributes({ instanceId: parsed > 0 ? parsed : 0 });
+                            },
+                            onFilterValueChange: function (value) {
+                                setSearchValue(value || '');
+                                setCurrentPage(1);
+                                setFetchedInstances([]);
+                                setHasMoreResults(true);
+                            },
+                            help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
+                        }),
+                        listData && listData.isResolving
+                            ? el('div', { className: 'my-articles-block__module-loading' }, el(Spinner, { key: 'module-spinner' }))
+                            : null,
+                        showLoadMoreButton
+                            ? el(
+                                  Button,
+                                  {
+                                      variant: 'secondary',
+                                      onClick: function () {
+                                          setCurrentPage(function (prevPage) {
+                                              return prevPage + 1;
+                                          });
+                                      },
+                                      disabled: !hasMoreResults || (listData && listData.isResolving),
+                                      className: 'my-articles-block__module-load-more',
+                                  },
+                                  hasMoreResults
+                                      ? __('Charger plus de résultats', 'mon-articles')
+                                      : __('Tous les contenus sont chargés', 'mon-articles')
+                              )
+                            : null
+                    )
                 ),
                 el(
                     PanelBody,
@@ -180,7 +305,7 @@
             if (!attributes.instanceId) {
                 var placeholderChildren = [];
 
-                if (data && data.isResolving) {
+                if (listData && listData.isResolving && instances.length === 0) {
                     placeholderChildren.push(el(Spinner, { key: 'spinner' }));
                 } else if (instances.length === 0) {
                     placeholderChildren.push(
@@ -201,17 +326,17 @@
                     },
                     placeholderChildren
                 );
-            } else if (data && data.isResolving && !data.selectedInstance) {
+            } else if (selectedData && selectedData.isResolvingSelected && !selectedData.selectedInstance) {
                 previewContent = el(Spinner, { key: 'spinner-loading' });
-            } else if (!data || !data.selectedInstance) {
+            } else if (!selectedData || !selectedData.selectedInstance) {
                 previewContent = el(
                     Notice,
                     { status: 'warning', isDismissible: false },
                     __('Le module sélectionné est introuvable.', 'mon-articles')
                 );
             } else if (ServerSideRender) {
-                var title = data.selectedInstance.title && data.selectedInstance.title.rendered
-                    ? data.selectedInstance.title.rendered
+                var title = selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
+                    ? selectedData.selectedInstance.title.rendered
                     : __('(Sans titre)', 'mon-articles');
 
                 previewContent = el(

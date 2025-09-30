@@ -20,6 +20,7 @@ Utiliser le shortcode :
 1. Depuis l'éditeur Gutenberg, ajouter le bloc **Tuiles – LCV**.
 2. Sélectionner l'instance `mon_affichage` à afficher via le panneau latéral.
 3. Ajuster les principaux réglages (mode d'affichage, filtres, pagination...) depuis les contrôles du bloc.
+4. Utiliser le champ de recherche du panneau **Module** pour retrouver un contenu `mon_affichage`. Les résultats sont chargés par lots (20 éléments) depuis l'API REST et le bouton « Charger plus de résultats » permet de parcourir l'ensemble des contenus disponibles.
 
 ### Attributs disponibles dans l'éditeur
 
