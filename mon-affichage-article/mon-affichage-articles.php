@@ -223,6 +223,7 @@ final class Mon_Affichage_Articles {
             $options_meta,
             array(
                 'requested_category'  => $category_slug,
+                'allow_external_requested_category' => true,
                 'force_collect_terms' => true,
             )
         );
