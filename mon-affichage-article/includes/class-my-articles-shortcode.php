@@ -618,8 +618,51 @@ class My_Articles_Shortcode {
     }
 
     public function render_shortcode( $atts ) {
-        $atts = shortcode_atts( array( 'id' => 0 ), $atts, 'mon_affichage_articles' );
+        $atts = shortcode_atts(
+            array(
+                'id'        => 0,
+                'overrides' => array(),
+            ),
+            $atts,
+            'mon_affichage_articles'
+        );
         $id   = absint( $atts['id'] );
+        $overrides = array();
+
+        if ( ! empty( $atts['overrides'] ) && is_array( $atts['overrides'] ) ) {
+            $defaults = self::get_default_options();
+
+            foreach ( $atts['overrides'] as $key => $value ) {
+                if ( ! array_key_exists( $key, $defaults ) ) {
+                    continue;
+                }
+
+                $default_value = $defaults[ $key ];
+
+                if ( is_array( $default_value ) ) {
+                    if ( is_array( $value ) ) {
+                        $overrides[ $key ] = $value;
+                    }
+                    continue;
+                }
+
+                if ( is_int( $default_value ) ) {
+                    if ( is_bool( $value ) ) {
+                        $overrides[ $key ] = $value ? 1 : 0;
+                    } else {
+                        $overrides[ $key ] = (int) $value;
+                    }
+                    continue;
+                }
+
+                if ( is_float( $default_value ) ) {
+                    $overrides[ $key ] = (float) $value;
+                    continue;
+                }
+
+                $overrides[ $key ] = (string) $value;
+            }
+        }
 
         if ( ! $id || 'mon_affichage' !== get_post_type( $id ) ) {
             return '';
@@ -649,7 +692,14 @@ class My_Articles_Shortcode {
             }
         }
 
-        $options_meta = (array) get_post_meta( $id, '_my_articles_settings', true );
+        $options_meta = get_post_meta( $id, '_my_articles_settings', true );
+        if ( ! is_array( $options_meta ) ) {
+            $options_meta = array();
+        }
+
+        if ( ! empty( $overrides ) ) {
+            $options_meta = array_merge( $options_meta, $overrides );
+        }
         $options      = self::normalize_instance_options(
             $options_meta,
             array(

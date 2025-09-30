@@ -15,6 +15,21 @@ Utiliser le shortcode :
 [mon_affichage_articles id="123"]
 ```
 
+## Utilisation dans l'éditeur de blocs
+
+1. Depuis l'éditeur Gutenberg, ajouter le bloc **Tuiles – LCV**.
+2. Sélectionner l'instance `mon_affichage` à afficher via le panneau latéral.
+3. Ajuster les principaux réglages (mode d'affichage, filtres, pagination...) depuis les contrôles du bloc.
+
+### Attributs disponibles dans l'éditeur
+
+- **display_mode** (`grid`, `list`, `slideshow`)
+- **posts_per_page** (nombre d'articles, `0` pour illimité)
+- **pagination_mode** (`none`, `load_more`, `numbered`)
+- **show_category_filter** (activation du filtre par taxonomie et alignement associé)
+- **show_category**, **show_author**, **show_date** (affichage des métadonnées)
+- **show_excerpt** et **excerpt_length** (affichage et longueur de l'extrait)
+
 Options principales :
 
 - **Filtre de catégorie** : afficher une liste de catégories si l'option est activée.

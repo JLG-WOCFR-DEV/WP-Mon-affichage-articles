@@ -1,0 +1,14 @@
+.wp-block-mon-affichage-articles {
+    border: 1px dashed #d1d5db;
+    padding: 16px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-block-preview {
+    background: #f9fafb;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-block-placeholder {
+    color: #4b5563;
+}
