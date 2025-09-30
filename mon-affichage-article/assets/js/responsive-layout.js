@@ -76,7 +76,7 @@
         }
 
         const swiper = window.mySwiperInstances[instanceId];
-        if (!swiper) {
+        if (!swiper || !swiper.params) {
             return;
         }
 

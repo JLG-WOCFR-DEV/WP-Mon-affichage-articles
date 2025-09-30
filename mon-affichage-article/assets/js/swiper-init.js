@@ -79,6 +79,7 @@
         const existingInstance = window.mySwiperInstances[instanceId];
         if (existingInstance && typeof existingInstance.destroy === 'function') {
             existingInstance.destroy(true, true);
+            delete window.mySwiperInstances[instanceId];
         }
 
         if (wrapper.classList) {
