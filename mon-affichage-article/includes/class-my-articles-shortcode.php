@@ -802,6 +802,9 @@ class My_Articles_Shortcode {
                     'ajax_url'  => admin_url('admin-ajax.php'),
                     'nonce'     => wp_create_nonce('my_articles_filter_nonce'),
                     'errorText' => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'countSingle' => __( '%s article affiché.', 'mon-articles' ),
+                    'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
+                    'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
                 ]
             );
         }
@@ -817,6 +820,12 @@ class My_Articles_Shortcode {
                     'loadingText'  => __( 'Chargement...', 'mon-articles' ),
                     'loadMoreText' => esc_html__( 'Charger plus', 'mon-articles' ),
                     'errorText'    => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'totalSingle'  => __( '%s article affiché au total.', 'mon-articles' ),
+                    'totalPlural'  => __( '%s articles affichés au total.', 'mon-articles' ),
+                    'addedSingle'  => __( '%s article ajouté.', 'mon-articles' ),
+                    'addedPlural'  => __( '%s articles ajoutés.', 'mon-articles' ),
+                    'noAdditional' => __( 'Aucun article supplémentaire.', 'mon-articles' ),
+                    'none'         => __( 'Aucun article à afficher.', 'mon-articles' ),
                 ]
             );
         }
