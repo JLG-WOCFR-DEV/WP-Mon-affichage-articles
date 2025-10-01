@@ -74,12 +74,57 @@
         }
     }
 
-    function buildFilterFeedbackMessage(totalCount) {
-        if (totalCount > 0) {
-            return totalCount === 1 ? '1 article affiché.' : totalCount + ' articles affichés.';
+    function formatCountMessage(template, count) {
+        if (typeof template !== 'string' || template.length === 0) {
+            return '';
         }
 
-        return 'Aucun article à afficher.';
+        if (template.indexOf('%d') !== -1) {
+            return template.replace(/%d/g, String(count));
+        }
+
+        if (template.indexOf('%s') !== -1) {
+            return template.replace(/%s/g, String(count));
+        }
+
+        return template;
+    }
+
+    function resolveFilterLabel(key, fallback) {
+        if (filterSettings && Object.prototype.hasOwnProperty.call(filterSettings, key)) {
+            var value = filterSettings[key];
+            if (typeof value === 'string' && value.length > 0) {
+                return value;
+            }
+        }
+
+        return fallback;
+    }
+
+    function buildFilterFeedbackMessage(totalCount) {
+        var fallbackSingle = '%s article affiché.';
+        var fallbackPlural = '%s articles affichés.';
+        var fallbackNone = 'Aucun article à afficher.';
+
+        var singleLabel = resolveFilterLabel('countSingle', fallbackSingle);
+        var pluralLabel = resolveFilterLabel('countPlural', fallbackPlural);
+        var noneLabel = resolveFilterLabel('countNone', fallbackNone);
+
+        if (totalCount > 0) {
+            if (totalCount === 1) {
+                var formattedSingle = formatCountMessage(singleLabel, totalCount) || formatCountMessage(fallbackSingle, totalCount);
+                return formattedSingle || fallbackSingle.replace('%s', String(totalCount));
+            }
+
+            var formattedPlural = formatCountMessage(pluralLabel, totalCount) || formatCountMessage(fallbackPlural, totalCount);
+            if (formattedPlural) {
+                return formattedPlural;
+            }
+
+            return fallbackPlural.replace('%s', String(totalCount));
+        }
+
+        return noneLabel || fallbackNone;
     }
 
     function focusElement($element) {

@@ -74,13 +74,78 @@
         }
     }
 
+    function formatLoadMoreTemplate(template, count) {
+        if (typeof template !== 'string' || template.length === 0) {
+            return '';
+        }
+
+        if (template.indexOf('%d') !== -1) {
+            return template.replace(/%d/g, String(count));
+        }
+
+        if (template.indexOf('%s') !== -1) {
+            return template.replace(/%s/g, String(count));
+        }
+
+        return template;
+    }
+
+    function resolveLoadMoreLabel(key, fallback) {
+        if (loadMoreSettings && Object.prototype.hasOwnProperty.call(loadMoreSettings, key)) {
+            var value = loadMoreSettings[key];
+            if (typeof value === 'string' && value.length > 0) {
+                return value;
+            }
+        }
+
+        return fallback;
+    }
+
     function buildLoadMoreFeedbackMessage(totalCount, addedCount) {
-        var totalLabel = totalCount === 1 ? '1 article affiché au total.' : totalCount + ' articles affichés au total.';
+        var fallbackTotalSingle = '%s article affiché au total.';
+        var fallbackTotalPlural = '%s articles affichés au total.';
+        var fallbackAddedSingle = '%s article ajouté.';
+        var fallbackAddedPlural = '%s articles ajoutés.';
+        var fallbackNoAdditional = 'Aucun article supplémentaire.';
+        var fallbackNone = 'Aucun article à afficher.';
+
+        var totalSingleLabel = resolveLoadMoreLabel('totalSingle', fallbackTotalSingle);
+        var totalPluralLabel = resolveLoadMoreLabel('totalPlural', fallbackTotalPlural);
+        var addedSingleLabel = resolveLoadMoreLabel('addedSingle', fallbackAddedSingle);
+        var addedPluralLabel = resolveLoadMoreLabel('addedPlural', fallbackAddedPlural);
+        var noAdditionalLabel = resolveLoadMoreLabel('noAdditional', fallbackNoAdditional);
+        var noneLabel = resolveLoadMoreLabel('none', fallbackNone);
+
+        var totalLabel = '';
+        if (totalCount > 0) {
+            if (totalCount === 1) {
+                totalLabel = formatLoadMoreTemplate(totalSingleLabel, totalCount) || formatLoadMoreTemplate(fallbackTotalSingle, totalCount);
+                if (!totalLabel) {
+                    totalLabel = fallbackTotalSingle.replace('%s', String(totalCount));
+                }
+            } else {
+                totalLabel = formatLoadMoreTemplate(totalPluralLabel, totalCount) || formatLoadMoreTemplate(fallbackTotalPlural, totalCount);
+                if (!totalLabel) {
+                    totalLabel = fallbackTotalPlural.replace('%s', String(totalCount));
+                }
+            }
+        }
 
         if (addedCount > 0) {
-            var addedLabel = addedCount === 1 ? '1 article ajouté.' : addedCount + ' articles ajoutés.';
+            var addedLabel = '';
+            if (addedCount === 1) {
+                addedLabel = formatLoadMoreTemplate(addedSingleLabel, addedCount) || formatLoadMoreTemplate(fallbackAddedSingle, addedCount);
+                if (!addedLabel) {
+                    addedLabel = fallbackAddedSingle.replace('%s', String(addedCount));
+                }
+            } else {
+                addedLabel = formatLoadMoreTemplate(addedPluralLabel, addedCount) || formatLoadMoreTemplate(fallbackAddedPlural, addedCount);
+                if (!addedLabel) {
+                    addedLabel = fallbackAddedPlural.replace('%s', String(addedCount));
+                }
+            }
 
-            if (totalCount > 0) {
+            if (totalLabel) {
                 return addedLabel + ' ' + totalLabel;
             }
 
@@ -88,10 +153,18 @@
         }
 
         if (totalCount > 0) {
-            return 'Aucun article supplémentaire. ' + totalLabel;
+            if (totalLabel) {
+                if (noAdditionalLabel.slice(-1) === ' ') {
+                    return noAdditionalLabel + totalLabel;
+                }
+
+                return noAdditionalLabel + ' ' + totalLabel;
+            }
+
+            return noAdditionalLabel;
         }
 
-        return 'Aucun article à afficher.';
+        return noneLabel || fallbackNone;
     }
 
     function focusElement($element) {
