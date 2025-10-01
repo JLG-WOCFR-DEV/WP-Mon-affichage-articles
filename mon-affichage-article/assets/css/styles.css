@@ -75,29 +75,32 @@
 
 .my-articles-feedback {
     margin: 16px 0;
-    padding: 12px 16px;
-    border-radius: 6px;
-    border: 1px solid rgba(34, 34, 34, 0.15);
-    background: rgba(34, 34, 34, 0.04);
+    padding: 14px 18px;
+    border-radius: 8px;
+    border: 1px solid rgba(31, 41, 51, 0.18);
+    background: rgba(31, 41, 51, 0.05);
     color: #1f2933;
-    line-height: 1.5;
-    display: none;
+    line-height: 1.6;
     position: relative;
+    font-size: 0.95rem;
+    display: none;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
 }
 
 .my-articles-feedback::before {
     content: '\2139';
     font-size: 18px;
-    margin-right: 8px;
+    margin-right: 10px;
     display: inline-block;
     vertical-align: middle;
     color: inherit;
 }
 
 .my-articles-feedback.is-error {
-    background: #fef2f2;
+    background: #fee2e2;
     border-color: #dc2626;
-    color: #b91c1c;
+    color: #7f1d1d;
+    box-shadow: 0 10px 24px rgba(220, 38, 38, 0.12);
 }
 
 .my-articles-feedback.is-error::before {
@@ -134,12 +137,14 @@
 
 @media (max-width: 767px) {
     .my-articles-feedback {
-        font-size: 16px;
-        padding: 14px 18px;
+        font-size: 1.05rem;
+        line-height: 1.7;
+        padding: 16px 22px;
     }
 
     .my-articles-feedback::before {
-        font-size: 20px;
+        font-size: 22px;
+        margin-right: 12px;
     }
 
     .my-articles-filter-nav li a,
