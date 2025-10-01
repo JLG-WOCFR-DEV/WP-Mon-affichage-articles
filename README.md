@@ -50,6 +50,30 @@ mon-affichage-article/
 └── mon-affichage-articles.php
 ```
 
+## Internationalisation
+
+Le fichier binaire `mon-articles-fr_FR.mo` n'est plus stocké directement dans le dépôt afin d'éviter les conflits lors des revues de code. Les chaînes localisées sont conservées sous forme encodée (`languages/mon-articles-fr_FR.mo.base64`).
+
+### Décoder le fichier `.mo`
+
+```bash
+base64 --decode mon-affichage-article/languages/mon-articles-fr_FR.mo.base64 \
+  > /chemin/vers/mon-articles-fr_FR.mo
+```
+
+### Régénérer l'encodage après mise à jour des traductions
+
+1. Mettre à jour les traductions (par exemple dans un fichier `.po`).
+2. Compiler le fichier `.mo` correspondant.
+3. Ré-encoder le binaire :
+
+   ```bash
+   base64 /chemin/vers/mon-articles-fr_FR.mo \
+     > mon-affichage-article/languages/mon-articles-fr_FR.mo.base64
+   ```
+
+Veiller à ne pas ajouter le fichier `.mo` généré au dépôt (il est ignoré par Git) et à ne commiter que la version encodée.
+
 ## Tests
 
 - **Tests PHP** : `composer test`

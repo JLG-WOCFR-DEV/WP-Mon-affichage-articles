@@ -733,7 +733,59 @@ final class Mon_Affichage_Articles {
     }
 
     public function load_textdomain() {
-        load_plugin_textdomain( 'mon-articles', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+        $domain = 'mon-articles';
+        $locale = apply_filters( 'plugin_locale', determine_locale(), $domain );
+
+        $base64_filename = sprintf( '%1$s-%2$s.mo.base64', $domain, $locale );
+        $base64_path     = MY_ARTICLES_PLUGIN_DIR . 'languages/' . $base64_filename;
+
+        if ( ! file_exists( $base64_path ) ) {
+            return load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+        }
+
+        $uploads = wp_upload_dir();
+
+        if ( empty( $uploads['error'] ) && ! empty( $uploads['basedir'] ) ) {
+            $target_dir = trailingslashit( $uploads['basedir'] ) . 'mon-affichage-articles/languages/';
+        } else {
+            $target_dir = MY_ARTICLES_PLUGIN_DIR . 'languages/generated/';
+        }
+
+        if ( ! wp_mkdir_p( $target_dir ) ) {
+            return load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+        }
+
+        $mo_filename = sprintf( '%1$s-%2$s.mo', $domain, $locale );
+        $mo_path     = $target_dir . $mo_filename;
+
+        $base64_mtime = @filemtime( $base64_path );
+        $mo_mtime     = @filemtime( $mo_path );
+
+        $needs_refresh = ! file_exists( $mo_path );
+
+        if ( ! $needs_refresh && $base64_mtime && $mo_mtime ) {
+            $needs_refresh = $base64_mtime > $mo_mtime;
+        }
+
+        if ( $needs_refresh ) {
+            $encoded = file_get_contents( $base64_path );
+
+            if ( false === $encoded ) {
+                return load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+            }
+
+            $decoded = base64_decode( trim( $encoded ), true );
+
+            if ( false === $decoded ) {
+                return load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+            }
+
+            if ( false === file_put_contents( $mo_path, $decoded ) ) {
+                return load_plugin_textdomain( $domain, false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+            }
+        }
+
+        return load_textdomain( $domain, $mo_path );
     }
 }
 
