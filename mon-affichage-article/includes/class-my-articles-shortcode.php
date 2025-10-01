@@ -387,6 +387,7 @@ class My_Articles_Shortcode {
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
             'filter_categories' => array(),
+            'aria_label' => '',
             'pinned_posts' => array(),
             'pinned_border_color' => '#eab308',
             'pinned_posts_ignore_filter' => 0,
@@ -477,6 +478,12 @@ class My_Articles_Shortcode {
 
         $defaults = self::get_default_options();
         $options  = wp_parse_args( (array) $raw_options, $defaults );
+
+        $aria_label = '';
+        if ( isset( $options['aria_label'] ) && is_string( $options['aria_label'] ) ) {
+            $aria_label = trim( sanitize_text_field( $options['aria_label'] ) );
+        }
+        $options['aria_label'] = $aria_label;
 
         $allowed_display_modes = array( 'grid', 'list', 'slideshow' );
         $display_mode          = $options['display_mode'] ?? $defaults['display_mode'];
@@ -719,6 +726,23 @@ class My_Articles_Shortcode {
             $options_meta = array_merge( $options_meta, $overrides );
         }
 
+        $default_aria_label = trim( wp_strip_all_tags( get_the_title( $id ) ) );
+        if ( '' === $default_aria_label ) {
+            /* translators: %d: module (post) ID. */
+            $default_aria_label = sprintf( __( 'Module d\'articles %d', 'mon-articles' ), $id );
+        }
+
+        $resolved_aria_label = '';
+        if ( isset( $options_meta['aria_label'] ) && is_string( $options_meta['aria_label'] ) ) {
+            $resolved_aria_label = trim( sanitize_text_field( $options_meta['aria_label'] ) );
+        }
+
+        if ( '' === $resolved_aria_label ) {
+            $resolved_aria_label = sanitize_text_field( $default_aria_label );
+        }
+
+        $options_meta['aria_label'] = $resolved_aria_label;
+
         $has_filter_categories = false;
         if ( isset( $options_meta['filter_categories'] ) ) {
             $raw_filter_categories = $options_meta['filter_categories'];
@@ -865,6 +889,10 @@ class My_Articles_Shortcode {
             'data-cols-desktop'    => $columns_desktop,
             'data-cols-ultrawide'  => $columns_ultrawide,
             'data-min-card-width'  => $min_card_width,
+            'role'                 => 'region',
+            'aria-live'            => 'polite',
+            'aria-label'           => $resolved_aria_label,
+            'aria-busy'            => 'false',
         );
 
         $wrapper_attribute_strings = array();
