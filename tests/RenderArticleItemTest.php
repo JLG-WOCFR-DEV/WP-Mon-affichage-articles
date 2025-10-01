@@ -13,9 +13,10 @@ final class RenderArticleItemTest extends TestCase
     {
         parent::tearDown();
 
-        global $mon_articles_test_term_list_callback;
+        global $mon_articles_test_term_list_callback, $mon_articles_test_post_meta_map;
 
         $mon_articles_test_term_list_callback = null;
+        $mon_articles_test_post_meta_map      = null;
     }
 
     public function test_render_article_item_ignores_wp_error_term_list(): void
@@ -76,6 +77,27 @@ final class RenderArticleItemTest extends TestCase
 
         $this->assertStringContainsString('loading="lazy"', $html);
         $this->assertStringNotContainsString('loading="eager"', $html);
+    }
+
+    public function test_thumbnail_uses_custom_alt_text(): void
+    {
+        global $mon_articles_test_post_meta_map;
+
+        $mon_articles_test_post_meta_map = array(
+            321 => array(
+                '_wp_attachment_image_alt' => 'Texte alternatif personnalisé',
+            ),
+        );
+
+        $reflection = new \ReflectionClass(My_Articles_Shortcode::class);
+        $shortcode = $reflection->newInstanceWithoutConstructor();
+
+        $method = $reflection->getMethod('get_article_thumbnail_html');
+        $method->setAccessible(true);
+
+        $html = $method->invoke($shortcode, 321, 'Titre de secours', false);
+
+        $this->assertStringContainsString('alt="Texte alternatif personnalisé"', $html);
     }
 
     public function test_excerpt_length_zero_omits_ellipsis_but_keeps_read_more(): void

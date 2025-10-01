@@ -475,7 +475,7 @@ if (!function_exists('get_post_thumbnail_id')) {
 }
 
 if (!function_exists('the_post_thumbnail')) {
-    function the_post_thumbnail($size = 'post-thumbnail')
+    function the_post_thumbnail($size = 'post-thumbnail', $attr = '')
     {
         // No-op.
     }
@@ -498,6 +498,27 @@ if (!function_exists('get_the_term_list')) {
         }
 
         return '';
+    }
+}
+
+if (!function_exists('get_the_terms')) {
+    function get_the_terms($post_id, $taxonomy)
+    {
+        global $mon_articles_test_term_list_callback;
+
+        if (is_callable($mon_articles_test_term_list_callback)) {
+            $result = $mon_articles_test_term_list_callback($post_id, $taxonomy, '', '', '');
+
+            if ($result instanceof \WP_Error) {
+                return $result;
+            }
+
+            if (is_array($result)) {
+                return $result;
+            }
+        }
+
+        return array();
     }
 }
 
