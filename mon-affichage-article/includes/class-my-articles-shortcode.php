@@ -1143,7 +1143,8 @@ class My_Articles_Shortcode {
                     if ( '' !== $thumbnail_html ) {
                         echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                     } else {
-                        the_post_thumbnail('large');
+                        $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
+                        the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
                     }
                 else: ?>
                     <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
@@ -1202,9 +1203,26 @@ class My_Articles_Shortcode {
         <?php
     }
 
+    private function resolve_thumbnail_alt_text( $image_id, $title_attr ) {
+        $raw_alt = get_post_meta( $image_id, '_wp_attachment_image_alt', true );
+
+        if ( ! is_string( $raw_alt ) ) {
+            $raw_alt = '';
+        } else {
+            $raw_alt = trim( $raw_alt );
+        }
+
+        if ( '' === $raw_alt ) {
+            $raw_alt = $title_attr;
+        }
+
+        return $raw_alt;
+    }
+
     private function get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load ) {
         $size            = 'large';
         $placeholder_src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+        $alt_text        = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
 
         if ( $enable_lazy_load ) {
             $image_data = wp_get_attachment_image_src( $image_id, $size );
@@ -1222,7 +1240,7 @@ class My_Articles_Shortcode {
             $attributes = array(
                 'src'        => $placeholder_src,
                 'class'      => 'attachment-large size-large wp-post-image lazyload',
-                'alt'        => $title_attr,
+                'alt'        => $alt_text,
                 'data-sizes' => 'auto',
                 'data-src'   => $image_src,
                 'decoding'   => 'async',
@@ -1268,7 +1286,7 @@ class My_Articles_Shortcode {
 
         $attributes = array(
             'class'    => 'attachment-large size-large wp-post-image',
-            'alt'      => $title_attr,
+            'alt'      => $alt_text,
             'decoding' => 'async',
             'loading'  => 'eager',
         );
