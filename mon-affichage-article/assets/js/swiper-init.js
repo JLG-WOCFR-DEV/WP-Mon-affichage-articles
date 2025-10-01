@@ -84,6 +84,7 @@
 
         if (wrapper.classList) {
             wrapper.classList.remove('swiper-initialized');
+            wrapper.classList.add('swiper-is-loading');
         }
 
         const instance = new Swiper(settings.container_selector, {
@@ -107,6 +108,7 @@
                 init: function () {
                     const mainWrapper = document.querySelector('#my-articles-wrapper-' + instanceId);
                     if (mainWrapper) {
+                        mainWrapper.classList.remove('swiper-is-loading');
                         mainWrapper.classList.add('swiper-initialized');
                     }
                 },
