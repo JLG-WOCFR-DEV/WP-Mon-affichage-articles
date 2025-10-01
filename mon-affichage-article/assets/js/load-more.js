@@ -207,6 +207,7 @@
                 button.prop('disabled', true);
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'true');
+                    wrapper.addClass('my-articles-wrapper--loading');
                 }
                 clearFeedback(wrapper);
             },
@@ -335,6 +336,7 @@
             complete: function () {
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'false');
+                    wrapper.removeClass('my-articles-wrapper--loading');
                 }
             }
         });

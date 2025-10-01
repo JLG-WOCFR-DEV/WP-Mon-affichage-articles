@@ -184,6 +184,7 @@
                 contentArea.css('opacity', 0.5);
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'true');
+                    wrapper.addClass('my-articles-wrapper--loading');
                 }
                 clearFeedback(wrapper);
             },
@@ -340,6 +341,7 @@
                 contentArea.css('opacity', 1);
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'false');
+                    wrapper.removeClass('my-articles-wrapper--loading');
                 }
             }
         });
