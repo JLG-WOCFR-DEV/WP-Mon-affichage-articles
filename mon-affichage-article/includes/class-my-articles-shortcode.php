@@ -1043,6 +1043,8 @@ class My_Articles_Shortcode {
 
         echo '<div class="' . esc_attr( $container_class ) . '">';
 
+        echo $this->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+
         if ( $pinned_query instanceof WP_Query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() && ( ! $should_limit || $rendered_count < $render_limit ) ) {
                 $pinned_query->the_post();
@@ -1076,6 +1078,41 @@ class My_Articles_Shortcode {
         }
 
         return $displayed_pinned_ids;
+    }
+
+    public function get_skeleton_placeholder_markup( $container_class, array $options, $render_limit ) {
+        $layout = false !== strpos( $container_class, 'list' ) ? 'list' : 'grid';
+        $placeholder_count = (int) $render_limit;
+
+        if ( $placeholder_count <= 0 ) {
+            $placeholder_count = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 0;
+        }
+
+        if ( $placeholder_count <= 0 ) {
+            $placeholder_count = 6;
+        }
+
+        $placeholder_count = min( max( $placeholder_count, 3 ), 12 );
+
+        ob_start();
+
+        echo '<div class="my-articles-skeleton my-articles-skeleton--' . esc_attr( $layout ) . '" aria-hidden="true" role="presentation">';
+
+        for ( $i = 0; $i < $placeholder_count; $i++ ) {
+            echo '<div class="my-articles-skeleton__item">';
+            echo '<div class="my-articles-skeleton__thumbnail"></div>';
+            echo '<div class="my-articles-skeleton__body">';
+            echo '<span class="my-articles-skeleton__line my-articles-skeleton__line--title"></span>';
+            echo '<span class="my-articles-skeleton__line my-articles-skeleton__line--meta"></span>';
+            echo '<span class="my-articles-skeleton__line"></span>';
+            echo '<span class="my-articles-skeleton__line my-articles-skeleton__line--short"></span>';
+            echo '</div>';
+            echo '</div>';
+        }
+
+        echo '</div>';
+
+        return ob_get_clean();
     }
 
     private function render_list($pinned_query, $regular_query, $options, $posts_per_page) {
