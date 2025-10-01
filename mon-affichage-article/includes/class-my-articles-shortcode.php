@@ -399,7 +399,7 @@ class My_Articles_Shortcode {
             'list_content_padding_top' => 0, 'list_content_padding_right' => 0,
             'list_content_padding_bottom' => 0, 'list_content_padding_left' => 0,
             'border_radius' => 12, 'title_font_size' => 16,
-            'meta_font_size' => 12, 'show_category' => 1, 'show_author' => 1, 'show_date' => 1,
+            'meta_font_size' => 14, 'show_category' => 1, 'show_author' => 1, 'show_date' => 1,
             'show_excerpt' => 0,
             'excerpt_length' => 25,
             'excerpt_more_text' => 'Lire la suite',
