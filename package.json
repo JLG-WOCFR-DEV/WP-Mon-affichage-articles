@@ -1,0 +1,38 @@
+{
+  "name": "wp-mon-affichage-articles",
+  "version": "1.0.0",
+  "description": "Affiche les articles d'une catégorie spécifique via un shortcode, avec un design personnalisable.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "npm run test:js",
+    "test:js": "jest"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "roots": [
+      "<rootDir>/mon-affichage-article/assets/js"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ],
+    "moduleFileExtensions": [
+      "js",
+      "json"
+    ],
+    "collectCoverageFrom": [
+      "mon-affichage-article/assets/js/**/*.js",
+      "!mon-affichage-article/assets/js/**/__tests__/**"
+    ]
+  }
+}
