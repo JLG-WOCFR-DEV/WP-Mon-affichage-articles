@@ -234,10 +234,9 @@
                 current_url: window.location && window.location.href ? window.location.href : ''
             },
             beforeSend: function () {
-                contentArea.css('opacity', 0.5);
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'true');
-                    wrapper.addClass('my-articles-wrapper--loading');
+                    wrapper.addClass('is-loading');
                 }
                 clearFeedback(wrapper);
             },
@@ -245,7 +244,6 @@
                 if (response.success) {
                     var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
                     contentArea.html(response.data.html);
-                    contentArea.css('opacity', 1);
 
                     var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
                     totalPages = isNaN(totalPages) ? 0 : totalPages;
@@ -365,7 +363,6 @@
                         previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
                     }
 
-                    contentArea.css('opacity', 1);
 
                     var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
                     var responseMessage = (response.data && response.data.message) ? response.data.message : '';
@@ -381,7 +378,6 @@
                     previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
                 }
 
-                contentArea.css('opacity', 1);
                 var errorMessage = '';
 
                 if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
@@ -395,10 +391,9 @@
                 showError(wrapper, errorMessage);
             },
             complete: function () {
-                contentArea.css('opacity', 1);
                 if (wrapper && wrapper.length) {
                     wrapper.attr('aria-busy', 'false');
-                    wrapper.removeClass('my-articles-wrapper--loading');
+                    wrapper.removeClass('is-loading');
                 }
             }
         });

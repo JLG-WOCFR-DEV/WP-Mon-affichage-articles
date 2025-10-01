@@ -102,6 +102,7 @@ final class Mon_Affichage_Articles {
             'track_pinned'  => false,
             'wrap_slides'   => ( isset( $options['display_mode'] ) && 'slideshow' === $options['display_mode'] ),
             'skip_empty_state_when_empty' => false,
+            'include_skeleton'            => false,
         );
 
         $args = wp_parse_args( $args, $defaults );
@@ -111,9 +112,19 @@ final class Mon_Affichage_Articles {
         $track_pinned  = ! empty( $args['track_pinned'] );
         $wrap_slides   = ! empty( $args['wrap_slides'] );
         $skip_empty_state = ! empty( $args['skip_empty_state_when_empty'] );
+        $include_skeleton = ! empty( $args['include_skeleton'] );
         $should_limit  = ( $render_limit > 0 && ! $wrap_slides );
 
         ob_start();
+
+        if ( $include_skeleton && ! $wrap_slides ) {
+            $display_mode = $options['display_mode'] ?? 'grid';
+
+            if ( in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
+                $container_class = ( 'list' === $display_mode ) ? 'my-articles-list-content' : 'my-articles-grid-content';
+                echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+            }
+        }
 
         $displayed_posts_count = 0;
         $displayed_pinned_ids  = array();
@@ -349,6 +360,7 @@ final class Mon_Affichage_Articles {
                 'regular_limit' => $state['regular_posts_needed'],
                 'track_pinned'  => true,
                 'wrap_slides'   => ( 'slideshow' === $display_mode ),
+                'include_skeleton' => true,
             )
         );
 
