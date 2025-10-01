@@ -1052,6 +1052,13 @@ class My_Articles_Shortcode {
     private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
         $is_unlimited       = (int) $posts_per_page <= 0;
         $total_posts_needed = $is_unlimited ? PHP_INT_MAX : (int) $posts_per_page;
+
+        $carousel_label        = esc_attr( __( 'Carrousel des articles', 'mon-articles' ) );
+        $pagination_label      = esc_attr( __( 'Pagination du carrousel', 'mon-articles' ) );
+        $next_slide_label      = esc_attr( __( 'Aller à la diapositive suivante', 'mon-articles' ) );
+        $previous_slide_label  = esc_attr( __( 'Revenir à la diapositive précédente', 'mon-articles' ) );
+
+        echo '<div class="swiper-accessibility-wrapper" role="region" aria-roledescription="carousel" aria-label="' . $carousel_label . '">';
         echo '<div class="swiper-container"><div class="swiper-wrapper">';
         $post_count = 0;
 
@@ -1079,7 +1086,12 @@ class My_Articles_Shortcode {
             $this->render_empty_state_message( true );
         }
 
-        echo '</div><div class="swiper-pagination"></div><div class="swiper-button-next"></div><div class="swiper-button-prev"></div></div>';
+        echo '</div>';
+        echo '<div class="swiper-pagination" aria-label="' . $pagination_label . '"></div>';
+        echo '<div class="swiper-button-next" aria-label="' . $next_slide_label . '"></div>';
+        echo '<div class="swiper-button-prev" aria-label="' . $previous_slide_label . '"></div>';
+        echo '</div>';
+        echo '</div>';
 
         if ( $pinned_query instanceof WP_Query || $regular_query instanceof WP_Query ) {
             wp_reset_postdata();
@@ -1310,7 +1322,25 @@ class My_Articles_Shortcode {
         wp_enqueue_style('swiper-css');
         wp_enqueue_script('swiper-js');
         wp_enqueue_script('my-articles-swiper-init', MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js', ['swiper-js', 'my-articles-responsive-layout'], MY_ARTICLES_VERSION, true);
-        wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, [ 'columns_mobile' => $options['columns_mobile'], 'columns_tablet' => $options['columns_tablet'], 'columns_desktop' => $options['columns_desktop'], 'columns_ultrawide' => $options['columns_ultrawide'], 'gap_size' => $options['gap_size'], 'container_selector' => '#my-articles-wrapper-' . $instance_id . ' .swiper-container' ]);
+        $localized_settings = array(
+            'columns_mobile'                    => $options['columns_mobile'],
+            'columns_tablet'                    => $options['columns_tablet'],
+            'columns_desktop'                   => $options['columns_desktop'],
+            'columns_ultrawide'                 => $options['columns_ultrawide'],
+            'gap_size'                          => $options['gap_size'],
+            'container_selector'                => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
+            'a11y_prev_slide_message'           => __( 'Diapositive précédente', 'mon-articles' ),
+            'a11y_next_slide_message'           => __( 'Diapositive suivante', 'mon-articles' ),
+            'a11y_first_slide_message'          => __( 'Première diapositive', 'mon-articles' ),
+            'a11y_last_slide_message'           => __( 'Dernière diapositive', 'mon-articles' ),
+            'a11y_pagination_bullet_message'    => __( 'Aller à la diapositive {{index}}', 'mon-articles' ),
+            'a11y_slide_label_message'          => __( 'Diapositive {{index}} sur {{slidesLength}}', 'mon-articles' ),
+            'a11y_container_message'            => __( 'Ce carrousel est navigable au clavier : utilisez les flèches pour changer de diapositive.', 'mon-articles' ),
+            'a11y_container_role_description'   => __( 'Carrousel d\'articles', 'mon-articles' ),
+            'a11y_item_role_description'        => __( 'Diapositive', 'mon-articles' ),
+        );
+
+        wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, $localized_settings);
     }
     
     /**

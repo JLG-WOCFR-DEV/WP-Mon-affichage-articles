@@ -54,6 +54,11 @@ mon-affichage-article/
 - **Tests PHP** : `composer test`
 - **Tests JS** : `npm run test:js`
 
+## Accessibilité
+
+- Le mode diaporama expose désormais un carrousel conforme aux recommandations ARIA (région labellisée, boutons de navigation et pagination explicitement décrits).
+- La navigation clavier est activée par défaut dans Swiper et les messages d’assistance sont personnalisés pour les lecteurs d’écran.
+
 ## Hooks AJAX
 
 - `filter_articles`

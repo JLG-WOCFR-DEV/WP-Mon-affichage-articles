@@ -161,6 +161,11 @@
             slidesPerView: settings.columns_mobile,
             spaceBetween: settings.gap_size,
             loop: true,
+            watchOverflow: true,
+            keyboard: {
+                enabled: true,
+                onlyInViewport: true,
+            },
             pagination: {
                 el: settings.container_selector + ' .swiper-pagination',
                 clickable: true,
@@ -168,6 +173,18 @@
             navigation: {
                 nextEl: settings.container_selector + ' .swiper-button-next',
                 prevEl: settings.container_selector + ' .swiper-button-prev',
+            },
+            a11y: {
+                enabled: true,
+                prevSlideMessage: settings.a11y_prev_slide_message,
+                nextSlideMessage: settings.a11y_next_slide_message,
+                firstSlideMessage: settings.a11y_first_slide_message,
+                lastSlideMessage: settings.a11y_last_slide_message,
+                paginationBulletMessage: settings.a11y_pagination_bullet_message,
+                slideLabelMessage: settings.a11y_slide_label_message,
+                containerMessage: settings.a11y_container_message,
+                containerRoleDescriptionMessage: settings.a11y_container_role_description,
+                itemRoleDescriptionMessage: settings.a11y_item_role_description,
             },
             breakpoints: {
                 768: { slidesPerView: settings.columns_tablet, spaceBetween: settings.gap_size },
