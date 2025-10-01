@@ -298,6 +298,17 @@
     box-shadow: 0 8px 20px var(--my-articles-shadow-color-hover);
 }
 
+@media (prefers-reduced-motion: reduce) {
+    .my-article-item {
+        transition: none;
+    }
+
+    .my-article-item:hover,
+    .my-article-item:focus-within {
+        transform: none;
+    }
+}
+
 .my-article-item:focus-within {
     box-shadow: 0 0 0 3px var(--my-articles-focus-ring-color, #1a73e8), 0 8px 20px var(--my-articles-shadow-color-hover);
 }
