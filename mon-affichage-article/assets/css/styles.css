@@ -444,6 +444,11 @@
     transition: background 0.3s ease;
 }
 
+.my-articles-load-more-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px #ffffff, 0 0 0 6px #1f75fe;
+}
+
 .my-articles-load-more-btn:hover {
     background: #555;
 }
@@ -468,6 +473,14 @@
     text-decoration: none;
     border-radius: 4px;
     transition: all 0.2s ease;
+}
+
+.my-articles-pagination .page-numbers:focus-visible {
+    outline: none;
+    border-color: #1f75fe;
+    box-shadow: 0 0 0 3px rgba(31, 117, 254, 0.35);
+    background: #f7fbff;
+    color: #1b2a4b;
 }
 
 .my-articles-pagination .page-numbers:hover {
