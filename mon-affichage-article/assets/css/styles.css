@@ -245,6 +245,14 @@
         margin-bottom: 15px;
         flex-basis: auto;
     }
+
+    .my-article-item .article-meta {
+        font-size: clamp(14px, var(--my-articles-meta-font-size), var(--my-articles-meta-font-size));
+    }
+
+    .my-article-item .my-article-excerpt {
+        font-size: clamp(14px, var(--my-articles-excerpt-font-size), var(--my-articles-excerpt-font-size));
+    }
 }
 
 .my-articles-load-more-container {
