@@ -20,6 +20,7 @@ define( 'MY_ARTICLES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 final class Mon_Affichage_Articles {
     private static $instance;
+    private $cache_namespace = null;
 
     public static function get_instance() {
         if ( ! isset( self::$instance ) ) {
@@ -53,6 +54,11 @@ final class Mon_Affichage_Articles {
 
         add_action( 'wp_ajax_load_more_articles', array( $this, 'load_more_articles_callback' ) );
         add_action( 'wp_ajax_nopriv_load_more_articles', array( $this, 'load_more_articles_callback' ) );
+
+        add_action( 'save_post', array( $this, 'handle_post_save_cache_invalidation' ), 10, 3 );
+        add_action( 'clean_post_cache', array( $this, 'handle_clean_post_cache_invalidation' ), 10, 2 );
+        add_action( 'set_object_terms', array( $this, 'handle_set_object_terms_cache_invalidation' ), 10, 6 );
+        add_action( 'clean_object_term_cache', array( $this, 'handle_clean_object_term_cache_invalidation' ), 10, 3 );
 
         My_Articles_Settings::get_instance();
         My_Articles_Metaboxes::get_instance();
@@ -273,6 +279,19 @@ final class Mon_Affichage_Articles {
         $default_term      = $options['default_term'];
         $active_category   = $options['term'];
 
+        $cache_key = $this->generate_response_cache_key(
+            $instance_id,
+            $active_category,
+            1,
+            $display_mode
+        );
+
+        $cached_response = $this->get_cached_response( $cache_key );
+
+        if ( is_array( $cached_response ) ) {
+            wp_send_json_success( $cached_response );
+        }
+
         $state = $shortcode_instance->build_display_state(
             $options,
             array(
@@ -368,15 +387,29 @@ final class Mon_Affichage_Articles {
             );
         }
 
-        wp_send_json_success(
-            [
-                'html'             => $html,
-                'total_pages'      => $total_pages,
-                'next_page'        => $next_page,
-                'pinned_ids'       => $pinned_ids_string,
-                'pagination_html'  => $pagination_html,
-            ]
+        $response = array(
+            'html'            => $html,
+            'total_pages'     => $total_pages,
+            'next_page'       => $next_page,
+            'pinned_ids'      => $pinned_ids_string,
+            'pagination_html' => $pagination_html,
         );
+
+        $this->set_cached_response(
+            $cache_key,
+            $response,
+            $this->get_cache_expiration(
+                array(
+                    'instance_id'   => $instance_id,
+                    'category_slug' => $active_category,
+                    'paged'         => 1,
+                    'display_mode'  => $display_mode,
+                    'context'       => 'filter_articles',
+                )
+            )
+        );
+
+        wp_send_json_success( $response );
     }
 
     public function load_more_articles_callback() {
@@ -436,6 +469,22 @@ final class Mon_Affichage_Articles {
             $seen_pinned_ids = array_map( 'absint', array_filter( array_map( 'trim', explode( ',', $pinned_ids_str ) ) ) );
             $seen_pinned_ids = array_values( array_unique( array_filter( $seen_pinned_ids ) ) );
         }
+
+        $active_category = isset( $options['term'] ) ? $options['term'] : '';
+
+        $cache_key = $this->generate_response_cache_key(
+            $instance_id,
+            $active_category,
+            $paged,
+            $display_mode,
+            ! empty( $seen_pinned_ids ) ? implode( ',', array_map( 'absint', $seen_pinned_ids ) ) : ''
+        );
+
+        $cached_response = $this->get_cached_response( $cache_key );
+
+        if ( is_array( $cached_response ) ) {
+            wp_send_json_success( $cached_response );
+        }
         $state = $shortcode_instance->build_display_state(
             $options,
             array(
@@ -481,14 +530,158 @@ final class Mon_Affichage_Articles {
             $next_page = $paged + 1;
         }
 
-        wp_send_json_success(
-            [
-                'html'        => $html,
-                'pinned_ids'  => $pinned_ids_string,
-                'total_pages' => $total_pages,
-                'next_page'   => $next_page,
-            ]
+        $response = array(
+            'html'        => $html,
+            'pinned_ids'  => $pinned_ids_string,
+            'total_pages' => $total_pages,
+            'next_page'   => $next_page,
         );
+
+        $this->set_cached_response(
+            $cache_key,
+            $response,
+            $this->get_cache_expiration(
+                array(
+                    'instance_id'   => $instance_id,
+                    'category_slug' => $active_category,
+                    'paged'         => $paged,
+                    'display_mode'  => $display_mode,
+                    'context'       => 'load_more_articles',
+                )
+            )
+        );
+
+        wp_send_json_success( $response );
+    }
+
+    private function generate_response_cache_key( $instance_id, $category_slug, $paged, $display_mode, $extra = '' ) {
+        $namespace = $this->get_cache_namespace();
+
+        $payload = array(
+            'instance' => absint( $instance_id ),
+            'category' => (string) $category_slug,
+            'paged'    => absint( $paged ),
+            'mode'     => (string) $display_mode,
+            'extra'    => (string) $extra,
+        );
+
+        $hash = md5( wp_json_encode( $payload ) );
+
+        return sprintf( 'my_articles_%s_%s', $namespace, $hash );
+    }
+
+    private function get_cache_namespace() {
+        if ( null === $this->cache_namespace ) {
+            $namespace = get_option( 'my_articles_cache_namespace', '' );
+
+            if ( empty( $namespace ) ) {
+                $namespace = wp_generate_password( 12, false );
+                update_option( 'my_articles_cache_namespace', $namespace );
+            }
+
+            $this->cache_namespace = $namespace;
+        }
+
+        return $this->cache_namespace;
+    }
+
+    private function refresh_cache_namespace() {
+        $this->cache_namespace = wp_generate_password( 12, false );
+        update_option( 'my_articles_cache_namespace', $this->cache_namespace );
+
+        do_action( 'my_articles_response_cache_flushed' );
+    }
+
+    private function get_cached_response( $cache_key ) {
+        $cached = wp_cache_get( $cache_key, 'my_articles_response' );
+
+        if ( false !== $cached ) {
+            return $cached;
+        }
+
+        $transient = get_transient( $cache_key );
+
+        if ( false !== $transient ) {
+            wp_cache_set( $cache_key, $transient, 'my_articles_response', 0 );
+        }
+
+        return $transient;
+    }
+
+    private function set_cached_response( $cache_key, $data, $expiration ) {
+        $expiration = absint( $expiration );
+
+        wp_cache_set( $cache_key, $data, 'my_articles_response', $expiration );
+        set_transient( $cache_key, $data, $expiration );
+    }
+
+    private function get_cache_expiration( $context = array() ) {
+        $default_expiration = HOUR_IN_SECONDS;
+
+        $expiration = apply_filters( 'my_articles_response_cache_expiration', $default_expiration, $context );
+
+        if ( ! is_numeric( $expiration ) ) {
+            return $default_expiration;
+        }
+
+        $expiration = (int) $expiration;
+
+        if ( $expiration < 0 ) {
+            $expiration = 0;
+        }
+
+        return $expiration;
+    }
+
+    public function handle_post_save_cache_invalidation( $post_id, $post, $update ) {
+        if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+            return;
+        }
+
+        $post_type = get_post_type( $post_id );
+
+        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+            $this->refresh_cache_namespace();
+        }
+    }
+
+    public function handle_clean_post_cache_invalidation( $post_id, $post ) {
+        $post_type = null;
+
+        if ( $post instanceof WP_Post ) {
+            $post_type = $post->post_type;
+        }
+
+        if ( null === $post_type ) {
+            $post_type = get_post_type( $post_id );
+        }
+
+        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+            $this->refresh_cache_namespace();
+        }
+    }
+
+    public function handle_set_object_terms_cache_invalidation( $object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids ) {
+        $post_type = get_post_type( $object_id );
+
+        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+            $this->refresh_cache_namespace();
+        }
+    }
+
+    public function handle_clean_object_term_cache_invalidation( $object_ids, $taxonomies, $clean_terms ) {
+        if ( empty( $object_ids ) ) {
+            return;
+        }
+
+        foreach ( (array) $object_ids as $object_id ) {
+            $post_type = get_post_type( $object_id );
+
+            if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+                $this->refresh_cache_namespace();
+                break;
+            }
+        }
     }
 
     public function get_post_type_taxonomies_callback() {
