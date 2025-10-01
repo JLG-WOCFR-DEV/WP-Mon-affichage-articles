@@ -1,4 +1,56 @@
 // Fichier: assets/js/filter.js
+
+function updateInstanceQueryParams(instanceId, params, targetWindow) {
+    var win = targetWindow || (typeof window !== 'undefined' ? window : null);
+
+    if (!win || !win.history) {
+        return;
+    }
+
+    var historyApi = win.history;
+    var historyMethod = null;
+
+    if (typeof historyApi.replaceState === 'function') {
+        historyMethod = 'replaceState';
+    } else if (typeof historyApi.pushState === 'function') {
+        historyMethod = 'pushState';
+    }
+
+    if (!historyMethod) {
+        return;
+    }
+
+    try {
+        var currentUrl = win.location && win.location.href ? win.location.href : '';
+        if (!currentUrl) {
+            return;
+        }
+
+        var url = new URL(currentUrl);
+
+        Object.keys(params || {}).forEach(function (key) {
+            var value = params[key];
+            if (value === null || typeof value === 'undefined' || value === '') {
+                url.searchParams.delete(key);
+            } else {
+                url.searchParams.set(key, value);
+            }
+        });
+
+        historyApi[historyMethod](null, '', url.toString());
+    } catch (error) {
+        // Silencieusement ignorer les erreurs (navigateurs plus anciens)
+    }
+}
+
+function buildFilterFeedbackMessage(totalCount) {
+    if (totalCount > 0) {
+        return totalCount === 1 ? '1 article affiché.' : totalCount + ' articles affichés.';
+    }
+
+    return 'Aucun article à afficher.';
+}
+
 (function ($) {
     'use strict';
 
@@ -31,55 +83,6 @@
     function showError(wrapper, message) {
         var feedback = getFeedbackElement(wrapper);
         feedback.text(message).addClass('is-error').show();
-    }
-
-    function updateInstanceQueryParams(instanceId, params) {
-        if (typeof window === 'undefined' || !window.history) {
-            return;
-        }
-
-        var historyApi = window.history;
-        var historyMethod = null;
-
-        if (typeof historyApi.replaceState === 'function') {
-            historyMethod = 'replaceState';
-        } else if (typeof historyApi.pushState === 'function') {
-            historyMethod = 'pushState';
-        }
-
-        if (!historyMethod) {
-            return;
-        }
-
-        try {
-            var currentUrl = window.location && window.location.href ? window.location.href : '';
-            if (!currentUrl) {
-                return;
-            }
-
-            var url = new URL(currentUrl);
-
-            Object.keys(params || {}).forEach(function (key) {
-                var value = params[key];
-                if (value === null || typeof value === 'undefined' || value === '') {
-                    url.searchParams.delete(key);
-                } else {
-                    url.searchParams.set(key, value);
-                }
-            });
-
-            historyApi[historyMethod](null, '', url.toString());
-        } catch (error) {
-            // Silencieusement ignorer les erreurs (navigateurs plus anciens)
-        }
-    }
-
-    function buildFilterFeedbackMessage(totalCount) {
-        if (totalCount > 0) {
-            return totalCount === 1 ? '1 article affiché.' : totalCount + ' articles affichés.';
-        }
-
-        return 'Aucun article à afficher.';
     }
 
     function focusElement($element) {
@@ -182,6 +185,8 @@
             },
             beforeSend: function () {
                 contentArea.css('opacity', 0.5);
+                contentArea.attr('aria-busy', 'true');
+                wrapper.attr('aria-busy', 'true');
                 clearFeedback(wrapper);
             },
             success: function (response) {
@@ -189,6 +194,8 @@
                     var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
                     contentArea.html(response.data.html);
                     contentArea.css('opacity', 1);
+                    contentArea.attr('aria-busy', 'false');
+                    wrapper.attr('aria-busy', 'false');
 
                     var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
                     totalPages = isNaN(totalPages) ? 0 : totalPages;
@@ -305,6 +312,8 @@
                     }
 
                     contentArea.css('opacity', 1);
+                    contentArea.attr('aria-busy', 'false');
+                    wrapper.attr('aria-busy', 'false');
 
                     var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
                     var responseMessage = (response.data && response.data.message) ? response.data.message : '';
@@ -321,6 +330,8 @@
                 }
 
                 contentArea.css('opacity', 1);
+                contentArea.attr('aria-busy', 'false');
+                wrapper.attr('aria-busy', 'false');
                 var errorMessage = '';
 
                 if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
@@ -337,3 +348,10 @@
     });
 
 })(jQuery);
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        buildFilterFeedbackMessage: buildFilterFeedbackMessage,
+        updateInstanceQueryParams: updateInstanceQueryParams
+    };
+}
