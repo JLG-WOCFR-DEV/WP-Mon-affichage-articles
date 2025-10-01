@@ -24,13 +24,21 @@
     function clearFeedback(wrapper) {
         var feedback = wrapper.find('.my-articles-feedback');
         if (feedback.length) {
-            feedback.removeClass('is-error').text('').hide();
+            feedback.removeClass('is-error')
+                .removeAttr('role')
+                .attr('aria-live', 'polite')
+                .text('')
+                .hide();
         }
     }
 
     function showError(wrapper, message) {
         var feedback = getFeedbackElement(wrapper);
-        feedback.text(message).addClass('is-error').show();
+        feedback.text(message)
+            .addClass('is-error')
+            .attr('role', 'alert')
+            .attr('aria-live', 'assertive')
+            .show();
     }
 
     function updateInstanceQueryParams(instanceId, params) {
@@ -317,7 +325,11 @@
 
                     var feedbackMessage = buildLoadMoreFeedbackMessage(totalArticles, addedCount);
                     var feedbackElement = getFeedbackElement(wrapper);
-                    feedbackElement.removeClass('is-error').text(feedbackMessage).show();
+                    feedbackElement.removeClass('is-error')
+                        .removeAttr('role')
+                        .attr('aria-live', 'polite')
+                        .text(feedbackMessage)
+                        .show();
 
                     focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
 
