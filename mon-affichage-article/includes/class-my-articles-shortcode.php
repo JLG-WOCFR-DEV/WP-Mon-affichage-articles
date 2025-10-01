@@ -1105,7 +1105,7 @@ class My_Articles_Shortcode {
         $enable_lazy_load = !empty($options['enable_lazy_load']);
         $excerpt_more = __( '…', 'mon-articles' );
         ?>
-        <div class="<?php echo esc_attr($item_classes); ?>">
+        <article class="<?php echo esc_attr($item_classes); ?>">
             <?php
             if ($display_mode === 'list') {
                 $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more);
@@ -1113,27 +1113,27 @@ class My_Articles_Shortcode {
                 $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '');
             }
             ?>
-        </div>
+        </article>
         <?php
     }
 
     private function render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more) {
-        $permalink      = get_permalink();
-        $escaped_link   = esc_url( $permalink );
-        $raw_title      = get_the_title();
-        $title_attr     = esc_attr( $raw_title );
-        $title_display  = esc_html( $raw_title );
-        $term_list_html = '';
+        $permalink     = get_permalink();
+        $escaped_link  = esc_url( $permalink );
+        $raw_title     = get_the_title();
+        $title_attr    = esc_attr( $raw_title );
+        $title_display = esc_html( $raw_title );
+        $term_names    = array();
 
         if ( $options['show_category'] && ! empty( $taxonomy ) ) {
-            $term_list_html = get_the_term_list( get_the_ID(), $taxonomy, '', ', ' );
+            $terms = get_the_terms( get_the_ID(), $taxonomy );
 
-            if ( is_wp_error( $term_list_html ) ) {
-                $term_list_html = '';
+            if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
+                $term_names = array_map( 'sanitize_text_field', wp_list_pluck( $terms, 'name' ) );
             }
         }
         ?>
-        <a href="<?php echo $escaped_link; ?>" class="article-thumbnail-link">
+        <a href="<?php echo $escaped_link; ?>" class="my-article-link">
             <div class="article-thumbnail-wrapper">
                 <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
                 <?php if (has_post_thumbnail()):
@@ -1150,60 +1150,55 @@ class My_Articles_Shortcode {
                     <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
                 <?php endif; ?>
             </div>
-        </a>
-        <div class="<?php echo esc_attr($wrapper_class); ?>">
-            <h2 class="article-title"><a href="<?php echo $escaped_link; ?>"><?php echo $title_display; ?></a></h2>
-            <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
-                <div class="article-meta">
-                    <?php if ($options['show_category'] && !empty($taxonomy) && !empty($term_list_html)) echo '<span class="article-category">' . wp_kses_post($term_list_html) . '</span>'; ?>
-                    <?php
-                    if ( $options['show_author'] ) {
-                        $author_url  = esc_url( get_author_posts_url( get_the_author_meta( 'ID' ) ) );
-                        $author_name = esc_html( get_the_author() );
-                        printf(
-                            '<span class="article-author">%s <a href="%s">%s</a></span>',
-                            esc_html__( 'par', 'mon-articles' ),
-                            $author_url,
-                            $author_name
-                        );
-                    }
-                    ?>
-                    <?php if ($options['show_date']) echo '<span class="article-date">' . esc_html(get_the_date()) . '</span>'; ?>
-                </div>
-            <?php endif; ?>
-            <?php
-            if (!empty($options['show_excerpt'])) {
-                $excerpt_length  = isset($options['excerpt_length']) ? (int) $options['excerpt_length'] : 0;
-                $raw_excerpt     = get_the_excerpt();
-                $trimmed_excerpt = '';
-                $has_read_more   = ! empty($options['excerpt_more_text']);
-
-                if ($excerpt_length > 0) {
-                    $trimmed_excerpt = wp_trim_words($raw_excerpt, $excerpt_length, $excerpt_more);
-                }
-
-                $has_excerpt_content = '' !== trim(strip_tags($trimmed_excerpt));
-
-                if ($has_excerpt_content || $has_read_more) {
-                    ?>
-                <div class="my-article-excerpt">
-                    <?php
-                    if ($has_excerpt_content) {
-                        echo wp_kses_post($trimmed_excerpt);
-                    }
-
-                    if ($has_read_more) {
-                        ?>
-                        <a href="<?php echo $escaped_link; ?>" class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></a>
-                        <?php
-                    }
-                    ?>
-                </div>
+            <div class="<?php echo esc_attr($wrapper_class); ?>">
+                <h2 class="article-title"><?php echo $title_display; ?></h2>
+                <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
+                    <div class="article-meta">
+                        <?php if ($options['show_category'] && !empty($taxonomy) && !empty($term_names)) : ?>
+                            <span class="article-category"><?php echo esc_html( implode( ', ', $term_names ) ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $options['show_author'] ) : ?>
+                            <span class="article-author"><?php printf('%s %s', esc_html__( 'par', 'mon-articles' ), esc_html( get_the_author() ) ); ?></span>
+                        <?php endif; ?>
+                        <?php if ($options['show_date']) : ?>
+                            <span class="article-date"><?php echo esc_html(get_the_date()); ?></span>
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
                 <?php
+                if (!empty($options['show_excerpt'])) {
+                    $excerpt_length  = isset($options['excerpt_length']) ? (int) $options['excerpt_length'] : 0;
+                    $raw_excerpt     = get_the_excerpt();
+                    $trimmed_excerpt = '';
+                    $has_read_more   = ! empty($options['excerpt_more_text']);
+
+                    if ($excerpt_length > 0) {
+                        $trimmed_excerpt = wp_trim_words($raw_excerpt, $excerpt_length, $excerpt_more);
+                    }
+
+                    $has_excerpt_content = '' !== trim(strip_tags($trimmed_excerpt));
+
+                    if ($has_excerpt_content || $has_read_more) {
+                        ?>
+                    <div class="my-article-excerpt">
+                        <?php
+                        if ($has_excerpt_content) {
+                            echo wp_kses_post($trimmed_excerpt);
+                        }
+
+                        if ($has_read_more) {
+                            ?>
+                            <span class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></span>
+                            <?php
+                        }
+                        ?>
+                    </div>
+                    <?php
+                    }
                 }
-            }
-            ?>
-        </div>
+                ?>
+            </div>
+        </a>
         <?php
     }
 
