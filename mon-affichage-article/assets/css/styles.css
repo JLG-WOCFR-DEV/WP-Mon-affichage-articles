@@ -370,6 +370,11 @@
     margin-top: 8px;
 }
 
+.my-article-item:hover .article-meta,
+.my-article-item:focus-within .article-meta {
+    color: var(--my-articles-meta-hover-color);
+}
+
 .my-article-item .my-article-excerpt {
     font-size: var(--my-articles-excerpt-font-size);
     color: var(--my-articles-excerpt-color);
