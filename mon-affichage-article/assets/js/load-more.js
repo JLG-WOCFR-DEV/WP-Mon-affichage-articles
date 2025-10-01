@@ -205,6 +205,9 @@
                 var loadingText = loadMoreSettings.loadingText || originalButtonText;
                 button.text(loadingText);
                 button.prop('disabled', true);
+                if (wrapper && wrapper.length) {
+                    wrapper.attr('aria-busy', 'true');
+                }
                 clearFeedback(wrapper);
             },
             success: function (response) {
@@ -328,6 +331,11 @@
                 button.prop('disabled', false);
                 showError(wrapper, errorMessage);
                 console.error(errorMessage);
+            },
+            complete: function () {
+                if (wrapper && wrapper.length) {
+                    wrapper.attr('aria-busy', 'false');
+                }
             }
         });
     });

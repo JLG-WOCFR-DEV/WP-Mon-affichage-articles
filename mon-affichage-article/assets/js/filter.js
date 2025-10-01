@@ -182,6 +182,9 @@
             },
             beforeSend: function () {
                 contentArea.css('opacity', 0.5);
+                if (wrapper && wrapper.length) {
+                    wrapper.attr('aria-busy', 'true');
+                }
                 clearFeedback(wrapper);
             },
             success: function (response) {
@@ -332,6 +335,12 @@
                 }
 
                 showError(wrapper, errorMessage);
+            },
+            complete: function () {
+                contentArea.css('opacity', 1);
+                if (wrapper && wrapper.length) {
+                    wrapper.attr('aria-busy', 'false');
+                }
             }
         });
     });

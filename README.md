@@ -37,6 +37,7 @@ Options principales :
 - **Pagination** : modes `load_more` (bouton « Charger plus ») ou `numbered` (pagination classique).
 - **Articles épinglés** : possibilité d'épingler certains articles, avec option d'ignorer les filtres.
 - **Lazy load** : chargement différé des images pour optimiser les performances.
+- **Étiquette ARIA** : personnalisez le libellé utilisé par les lecteurs d'écran (par défaut, le titre du module est utilisé).
 
 > ℹ️ **Diaporama et mode illimité** : lorsque `display_mode` vaut `slideshow`, la récupération des contenus respecte toujours le plafond défini par l'option `unlimited_query_cap` (50 par défaut via le filtre `my_articles_unlimited_batch_size`). Cela évite de charger un nombre excessif d'articles d'un coup tout en conservant un mode quasi illimité.
 
@@ -58,6 +59,7 @@ mon-affichage-article/
 
 - Le mode diaporama expose désormais un carrousel conforme aux recommandations ARIA (région labellisée, boutons de navigation et pagination explicitement décrits).
 - La navigation clavier est activée par défaut dans Swiper et les messages d’assistance sont personnalisés pour les lecteurs d’écran.
+- Chaque module est annoncé comme région dynamique (`role="region"`, `aria-live="polite"`, `aria-busy`) et peut utiliser une étiquette ARIA personnalisée pour faciliter l’identification par les lecteurs d’écran. Les modules existants héritent automatiquement de leur titre tant que le champ dédié reste vide.
 
 ## Hooks AJAX
 

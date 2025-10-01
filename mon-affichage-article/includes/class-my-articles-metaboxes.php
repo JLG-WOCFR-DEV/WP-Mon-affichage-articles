@@ -233,6 +233,34 @@ class My_Articles_Metaboxes {
         echo '<p class="my-articles-columns-warning__message" aria-live="polite"></p>';
         echo '</div>';
 
+        echo '<hr><h3>' . esc_html__( 'Accessibilité', 'mon-articles' ) . '</h3>';
+
+        $default_aria_label = '';
+        if ( isset( $post->ID ) ) {
+            $default_aria_label = trim( wp_strip_all_tags( get_the_title( $post ) ) );
+        }
+
+        if ( '' === $default_aria_label ) {
+            $default_aria_label = __( 'Module d\'articles', 'mon-articles' );
+        }
+
+        /* translators: %s: module title. */
+        $aria_description = sprintf(
+            esc_html__( 'Texte lu par les lecteurs d’écran pour identifier ce module. Laissez vide pour utiliser le titre du module (« %s »).', 'mon-articles' ),
+            $default_aria_label
+        );
+
+        $this->render_field(
+            'aria_label',
+            esc_html__( 'Étiquette ARIA', 'mon-articles' ),
+            'text',
+            $opts,
+            [
+                'placeholder' => $default_aria_label,
+                'description' => $aria_description,
+            ]
+        );
+
         echo '<hr><h3>' . esc_html__('Apparence & Performances', 'mon-articles') . '</h3>';
         $this->render_field('module_padding_left', esc_html__('Marge intérieure gauche (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('module_padding_right', esc_html__('Marge intérieure droite (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
@@ -290,7 +318,11 @@ class My_Articles_Metaboxes {
 
         switch ($type) {
             case 'text':
-                printf('<input type="text" id="%s" name="%s" value="%s" class="regular-text" />', esc_attr($id), $name, esc_attr($value));
+                $placeholder_attr = '';
+                if ( isset( $args['placeholder'] ) && '' !== $args['placeholder'] ) {
+                    $placeholder_attr = ' placeholder="' . esc_attr( $args['placeholder'] ) . '"';
+                }
+                printf('<input type="text" id="%s" name="%s" value="%s" class="regular-text"%s />', esc_attr($id), $name, esc_attr($value), $placeholder_attr);
                 if (isset($args['description'])) {
                     echo '<p class="description">' . esc_html($args['description']) . '</p>';
                 }
@@ -433,6 +465,13 @@ class My_Articles_Metaboxes {
         $sanitized['ignore_native_sticky'] = isset( $input['ignore_native_sticky'] ) ? 1 : 0;
         $sanitized['enable_lazy_load'] = isset( $input['enable_lazy_load'] ) ? 1 : 0;
         $sanitized['enable_debug_mode'] = isset( $input['enable_debug_mode'] ) ? 1 : 0;
+
+        $aria_label = '';
+        if ( isset( $input['aria_label'] ) && is_string( $input['aria_label'] ) ) {
+            $aria_label = sanitize_text_field( $input['aria_label'] );
+            $aria_label = trim( $aria_label );
+        }
+        $sanitized['aria_label'] = $aria_label;
 
         $sanitized['display_mode'] = in_array($input['display_mode'] ?? 'grid', ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
         $sanitized['columns_mobile'] = isset( $input['columns_mobile'] ) ? max( 1, absint( $input['columns_mobile'] ) ) : 1;
