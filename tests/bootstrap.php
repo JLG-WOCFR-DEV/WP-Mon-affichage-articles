@@ -432,6 +432,16 @@ if (!function_exists('has_post_thumbnail')) {
     }
 }
 
+if (!function_exists('get_the_terms')) {
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    function get_the_terms($post_id, $taxonomy)
+    {
+        return array();
+    }
+}
+
 if (!function_exists('wp_get_attachment_image_src')) {
     function wp_get_attachment_image_src($attachment_id, $size = 'thumbnail')
     {

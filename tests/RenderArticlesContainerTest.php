@@ -78,4 +78,24 @@ final class RenderArticlesContainerTest extends TestCase
             array('render_grid'),
         );
     }
+
+    public function test_render_slideshow_outputs_accessibility_attributes(): void
+    {
+        $reflection = new \ReflectionClass(My_Articles_Shortcode::class);
+        $shortcode = $reflection->newInstanceWithoutConstructor();
+
+        $method = $reflection->getMethod('render_slideshow');
+        $method->setAccessible(true);
+
+        ob_start();
+        $method->invoke($shortcode, null, null, array(), 0);
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('role="region"', $html);
+        $this->assertStringContainsString('aria-roledescription="carousel"', $html);
+        $this->assertStringContainsString('aria-label="Carrousel des articles"', $html);
+        $this->assertStringContainsString('class="swiper-pagination" aria-label="Pagination du carrousel"', $html);
+        $this->assertStringContainsString('class="swiper-button-next" aria-label="Aller à la diapositive suivante"', $html);
+        $this->assertStringContainsString('class="swiper-button-prev" aria-label="Revenir à la diapositive précédente"', $html);
+    }
 }
