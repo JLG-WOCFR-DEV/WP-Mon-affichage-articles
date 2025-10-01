@@ -97,8 +97,20 @@
 /* *** CORRECTIF SLIDESHOW & HAUTEURS (v9) *** */
 .my-articles-slideshow .swiper-container {
     padding: 20px;
-    margin: -20px;
+    margin: 0;
+    box-sizing: border-box;
     overflow: clip;
+}
+
+.my-articles-slideshow .swiper-container .swiper-button-prev,
+.my-articles-slideshow .swiper-container .swiper-button-next {
+    right: 20px;
+    left: auto;
+}
+
+.my-articles-slideshow .swiper-container .swiper-button-prev {
+    left: 20px;
+    right: auto;
 }
 
 .my-articles-slideshow .swiper-slide {
