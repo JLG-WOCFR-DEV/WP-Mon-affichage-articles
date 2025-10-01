@@ -43,12 +43,12 @@
     padding: 5px 12px;
     margin: 0 0 5px 5px;
     text-decoration: none;
-    color: #555;
-    background: #f0f0f0;
+    color: #222;
+    background: #ffffff;
     border-radius: 4px;
     font-size: 13px;
     transition: all 0.2s ease;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.15);
     cursor: pointer;
     font: inherit;
 }
@@ -89,9 +89,17 @@
 .my-articles-filter-nav li.active button,
 .my-articles-filter-nav li a:hover,
 .my-articles-filter-nav li button:hover,
+.my-articles-filter-nav li a:focus-visible,
 .my-articles-filter-nav li button:focus-visible {
     color: #fff;
-    background: #333;
+    background: #222;
+    border-color: #222;
+}
+
+.my-articles-filter-nav li a:focus-visible,
+.my-articles-filter-nav li button:focus-visible {
+    outline: 2px solid #222;
+    outline-offset: 2px;
 }
 
 /* *** CORRECTIF SLIDESHOW & HAUTEURS (v9) *** */
