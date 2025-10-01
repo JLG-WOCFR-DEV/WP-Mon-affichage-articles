@@ -74,6 +74,93 @@
         }
     }
 
+    function buildLoadMoreFeedbackMessage(totalCount, addedCount) {
+        var totalLabel = totalCount === 1 ? '1 article affiché au total.' : totalCount + ' articles affichés au total.';
+
+        if (addedCount > 0) {
+            var addedLabel = addedCount === 1 ? '1 article ajouté.' : addedCount + ' articles ajoutés.';
+
+            if (totalCount > 0) {
+                return addedLabel + ' ' + totalLabel;
+            }
+
+            return addedLabel;
+        }
+
+        if (totalCount > 0) {
+            return 'Aucun article supplémentaire. ' + totalLabel;
+        }
+
+        return 'Aucun article à afficher.';
+    }
+
+    function focusElement($element) {
+        if (!$element || !$element.length) {
+            return false;
+        }
+
+        var focusable = $element;
+
+        if (!$element.is('a, button, input, select, textarea, [tabindex], [contenteditable="true"]')) {
+            focusable = $element.find('a, button, input, select, textarea, [tabindex], [contenteditable="true"]').filter(':visible').first();
+
+            if (!focusable.length) {
+                focusable = $element;
+
+                if (!focusable.attr('tabindex')) {
+                    focusable.attr('tabindex', '-1');
+                }
+            }
+        }
+
+        if (!focusable.length || !focusable.is(':visible')) {
+            return false;
+        }
+
+        focusable.trigger('focus');
+
+        return true;
+    }
+
+    function findSectionTitle(wrapper) {
+        var selectors = '[data-my-articles-role="section-title"], .my-articles-section-title, .my-articles-title';
+        var sectionTitle = wrapper.find(selectors).filter(function () {
+            return $(this).closest('.my-article-item').length === 0;
+        }).first();
+
+        if (sectionTitle.length) {
+            return sectionTitle;
+        }
+
+        sectionTitle = wrapper.children('h1, h2, h3, h4, h5, h6').filter(function () {
+            return $(this).closest('.my-article-item').length === 0;
+        }).first();
+
+        return sectionTitle;
+    }
+
+    function focusOnFirstArticleOrTitle(wrapper, contentArea, preferredArticle) {
+        var targetArticle = null;
+
+        if (preferredArticle && preferredArticle.length) {
+            targetArticle = preferredArticle;
+        } else {
+            targetArticle = contentArea.find('.my-article-item').first();
+        }
+
+        if (targetArticle && targetArticle.length && focusElement(targetArticle)) {
+            return;
+        }
+
+        var sectionTitle = findSectionTitle(wrapper);
+
+        if (sectionTitle && sectionTitle.length && focusElement(sectionTitle)) {
+            return;
+        }
+
+        focusElement(wrapper);
+    }
+
     $(document).on('click', '.my-articles-load-more-btn', function (e) {
         e.preventDefault();
 
@@ -87,6 +174,8 @@
             originalButtonText = button.text();
             button.data('original-text', originalButtonText);
         }
+
+        var previousArticleCount = contentArea.find('.my-article-item').length;
 
         var instanceId = button.data('instance-id');
         var paged = parseInt(button.data('paged'), 10) || 0;
@@ -135,6 +224,25 @@
                     if (typeof window.myArticlesInitSwipers === 'function') {
                         window.myArticlesInitSwipers(wrapperElement);
                     }
+
+                    var totalArticles = contentArea.find('.my-article-item').length;
+                    var addedCount = totalArticles - previousArticleCount;
+                    if (addedCount < 0) {
+                        addedCount = 0;
+                    }
+
+                    var focusArticle = null;
+                    if (addedCount > 0) {
+                        focusArticle = contentArea.find('.my-article-item').eq(previousArticleCount);
+                    } else {
+                        focusArticle = contentArea.find('.my-article-item').first();
+                    }
+
+                    var feedbackMessage = buildLoadMoreFeedbackMessage(totalArticles, addedCount);
+                    var feedbackElement = getFeedbackElement(wrapper);
+                    feedbackElement.removeClass('is-error').text(feedbackMessage).show();
+
+                    focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
 
                     if (typeof responseData.pinned_ids !== 'undefined') {
                         var updatedPinnedIds = responseData.pinned_ids;
@@ -193,7 +301,6 @@
                     }
 
                     button.prop('disabled', false);
-                    clearFeedback(wrapper);
                 } else {
                     var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
                     var responseMessage = (response.data && response.data.message) ? response.data.message : '';
