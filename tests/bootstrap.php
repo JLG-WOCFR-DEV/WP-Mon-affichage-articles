@@ -540,6 +540,13 @@ if (!function_exists('get_the_excerpt')) {
     }
 }
 
+if (!function_exists('get_the_terms')) {
+    function get_the_terms($post = null, $taxonomy = '')
+    {
+        return array();
+    }
+}
+
 if (!function_exists('wp_trim_words')) {
     function wp_trim_words($text, $num_words = 55, $more = null)
     {
