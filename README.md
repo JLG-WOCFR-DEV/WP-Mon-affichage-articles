@@ -38,6 +38,8 @@ Options principales :
 - **Articles épinglés** : possibilité d'épingler certains articles, avec option d'ignorer les filtres.
 - **Lazy load** : chargement différé des images pour optimiser les performances.
 
+> ℹ️ **Diaporama et mode illimité** : lorsque `display_mode` vaut `slideshow`, la récupération des contenus respecte toujours le plafond défini par l'option `unlimited_query_cap` (50 par défaut via le filtre `my_articles_unlimited_batch_size`). Cela évite de charger un nombre excessif d'articles d'un coup tout en conservant un mode quasi illimité.
+
 ## Structure du projet
 
 ```

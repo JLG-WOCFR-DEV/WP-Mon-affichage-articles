@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MonAffichageArticles\Tests;
 
 use Mon_Affichage_Articles;
+use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use WP_Query;
@@ -77,5 +78,60 @@ class RenderArticlesForResponseTest extends TestCase
 
         $this->assertSame('', $result['html']);
         $this->assertSame(0, $result['displayed_posts_count']);
+    }
+
+    public function test_unlimited_slideshow_is_capped_by_query_limit(): void
+    {
+        global $mon_articles_test_wp_query_factory;
+
+        $factoryBackup = $mon_articles_test_wp_query_factory ?? null;
+        $capturedArgs = array();
+
+        $mon_articles_test_wp_query_factory = static function (array $args) use (&$capturedArgs): array {
+            $capturedArgs[] = $args;
+
+            return array(
+                'posts' => array(),
+                'found_posts' => 0,
+            );
+        };
+
+        $state = array();
+
+        $reflection = new ReflectionClass(My_Articles_Shortcode::class);
+        $instanceProperty = $reflection->getProperty('instance');
+        $instanceProperty->setAccessible(true);
+        $previousInstance = $instanceProperty->getValue();
+        $instanceProperty->setValue(null, null);
+
+        try {
+            $shortcode = My_Articles_Shortcode::get_instance();
+
+            $options = array(
+                'display_mode' => 'slideshow',
+                'is_unlimited' => true,
+                'post_type' => 'post',
+                'resolved_taxonomy' => '',
+                'term' => '',
+                'ignore_native_sticky' => 0,
+                'all_excluded_ids' => array(),
+                'exclude_post_ids' => array(),
+                'pinned_posts' => array(),
+                'unlimited_query_cap' => 7,
+            );
+
+            $state = $shortcode->build_display_state($options);
+        } finally {
+            $mon_articles_test_wp_query_factory = $factoryBackup;
+            $instanceProperty->setValue(null, $previousInstance);
+        }
+
+        $this->assertSame(7, $state['effective_posts_per_page']);
+        $this->assertSame(7, $state['render_limit']);
+        $this->assertTrue($state['should_limit_display']);
+
+        $this->assertNotEmpty($capturedArgs);
+        $regularQueryArgs = array_pop($capturedArgs);
+        $this->assertSame(7, $regularQueryArgs['posts_per_page']);
     }
 }

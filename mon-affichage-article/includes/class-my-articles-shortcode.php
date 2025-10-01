@@ -171,8 +171,14 @@ class My_Articles_Shortcode {
             $batch_cap = max( 1, $batch_cap );
         }
 
+        $should_enforce_unlimited = ! empty( $args['enforce_unlimited_batch'] );
+
+        if ( 'slideshow' === ( $options['display_mode'] ?? '' ) ) {
+            $should_enforce_unlimited = true;
+        }
+
         if ( $is_unlimited ) {
-            if ( ! empty( $args['enforce_unlimited_batch'] ) ) {
+            if ( $should_enforce_unlimited ) {
                 $effective_limit           = $batch_cap;
                 $effective_posts_per_page  = $batch_cap;
                 $should_limit_display      = true;
