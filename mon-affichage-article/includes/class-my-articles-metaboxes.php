@@ -143,6 +143,46 @@ class My_Articles_Metaboxes {
                 'description' => esc_html__( 'Le nombre exact ou approximatif selon le comportement choisi. Utilisez 0 pour un affichage illimité.', 'mon-articles' ),
             ]
         );
+        $this->render_field(
+            'orderby',
+            esc_html__( 'Ordre de tri', 'mon-articles' ),
+            'select',
+            $opts,
+            [
+                'default'     => 'date',
+                'options'     => [
+                    'date'       => __( 'Date de publication', 'mon-articles' ),
+                    'title'      => __( 'Titre', 'mon-articles' ),
+                    'menu_order' => __( 'Ordre du menu', 'mon-articles' ),
+                    'meta_value' => __( 'Méta personnalisée', 'mon-articles' ),
+                ],
+                'description' => __( 'Choisissez le champ principal utilisé pour trier les contenus.', 'mon-articles' ),
+            ]
+        );
+        $this->render_field(
+            'order',
+            esc_html__( 'Sens du tri', 'mon-articles' ),
+            'select',
+            $opts,
+            [
+                'default' => 'DESC',
+                'options' => [
+                    'DESC' => __( 'Décroissant (Z → A)', 'mon-articles' ),
+                    'ASC'  => __( 'Croissant (A → Z)', 'mon-articles' ),
+                ],
+            ]
+        );
+        $this->render_field(
+            'meta_key',
+            esc_html__( 'Clé de méta personnalisée', 'mon-articles' ),
+            'text',
+            $opts,
+            [
+                'default'       => '',
+                'wrapper_class' => 'meta-key-option',
+                'description'   => __( 'Renseignez la clé utilisée lors d\'un tri par méta personnalisée.', 'mon-articles' ),
+            ]
+        );
         $this->render_field('pagination_mode', esc_html__('Type de pagination', 'mon-articles'), 'select', $opts, [
             'default'     => 'none',
             'options'     => [
@@ -436,6 +476,16 @@ class My_Articles_Metaboxes {
             ? min( 50, max( 0, absint( $input['posts_per_page'] ) ) )
             : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';
+        $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value' );
+        $sanitized['orderby'] = isset( $input['orderby'] ) && in_array( $input['orderby'], $allowed_orderby, true ) ? $input['orderby'] : 'date';
+        $order = isset( $input['order'] ) ? strtoupper( (string) $input['order'] ) : 'DESC';
+        $sanitized['order'] = in_array( $order, array( 'ASC', 'DESC' ), true ) ? $order : 'DESC';
+        $meta_key = '';
+        if ( isset( $input['meta_key'] ) ) {
+            $meta_key = sanitize_text_field( (string) $input['meta_key'] );
+            $meta_key = trim( $meta_key );
+        }
+        $sanitized['meta_key'] = $meta_key;
         $sanitized['show_category_filter'] = isset( $input['show_category_filter'] ) ? 1 : 0;
         $sanitized['filter_alignment'] = isset($input['filter_alignment']) && in_array($input['filter_alignment'], ['left', 'center', 'right']) ? $input['filter_alignment'] : 'right';
         

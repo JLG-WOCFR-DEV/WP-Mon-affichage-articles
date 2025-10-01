@@ -26,6 +26,21 @@
         }
     }
 
+    function toggleMetaKeyOption() {
+        var $orderbySelect = $('#orderby');
+        var $metaKeyOption = $('.meta-key-option');
+
+        if (!$metaKeyOption.length) {
+            return;
+        }
+
+        if ($orderbySelect.length && $orderbySelect.val() === 'meta_value') {
+            $metaKeyOption.show();
+        } else {
+            $metaKeyOption.hide();
+        }
+    }
+
     var columnSelectors = '#columns_mobile, #columns_tablet, #columns_desktop, #columns_ultrawide';
     var columnsConfigDefaults = {
         minColumnWidth: 240,
@@ -120,11 +135,13 @@
     // Écouteurs d'événements
     $(document).on('change', '#pinned_show_badge', toggleBadgeOptions);
     $(document).on('change', '#show_excerpt', toggleExcerptOptions);
+    $(document).on('change', '#orderby', toggleMetaKeyOption);
 
     // Exécution au chargement de la page pour définir l'état initial
     $(document).ready(function() {
         toggleBadgeOptions();
         toggleExcerptOptions();
+        toggleMetaKeyOption();
         initColumnsWarnings();
     });
 

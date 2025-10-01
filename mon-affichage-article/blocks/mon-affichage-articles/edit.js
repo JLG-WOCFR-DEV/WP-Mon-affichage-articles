@@ -11,6 +11,7 @@
     var SelectControl = wp.components.SelectControl;
     var ToggleControl = wp.components.ToggleControl;
     var RangeControl = wp.components.RangeControl;
+    var TextControl = wp.components.TextControl;
     var Placeholder = wp.components.Placeholder;
     var Spinner = wp.components.Spinner;
     var Notice = wp.components.Notice;
@@ -232,6 +233,44 @@
                             setAttributes({ pagination_mode: value });
                         },
                     })
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Tri & ordre', 'mon-articles'), initialOpen: false },
+                    el(SelectControl, {
+                        label: __('Ordre de tri', 'mon-articles'),
+                        value: attributes.orderby || 'date',
+                        options: [
+                            { label: __('Date de publication', 'mon-articles'), value: 'date' },
+                            { label: __('Titre', 'mon-articles'), value: 'title' },
+                            { label: __('Ordre du menu', 'mon-articles'), value: 'menu_order' },
+                            { label: __('Méta personnalisée', 'mon-articles'), value: 'meta_value' },
+                        ],
+                        onChange: function (value) {
+                            setAttributes({ orderby: value });
+                        },
+                    }),
+                    el(SelectControl, {
+                        label: __('Sens du tri', 'mon-articles'),
+                        value: attributes.order || 'DESC',
+                        options: [
+                            { label: __('Décroissant (Z → A)', 'mon-articles'), value: 'DESC' },
+                            { label: __('Croissant (A → Z)', 'mon-articles'), value: 'ASC' },
+                        ],
+                        onChange: function (value) {
+                            setAttributes({ order: value });
+                        },
+                    }),
+                    'meta_value' === (attributes.orderby || 'date')
+                        ? el(TextControl, {
+                              label: __('Clé de méta personnalisée', 'mon-articles'),
+                              value: attributes.meta_key || '',
+                              onChange: function (value) {
+                                  setAttributes({ meta_key: value || '' });
+                              },
+                              help: __('Renseignez la clé utilisée pour le tri par méta.', 'mon-articles'),
+                          })
+                        : null
                 ),
                 el(
                     PanelBody,
