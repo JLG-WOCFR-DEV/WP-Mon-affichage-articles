@@ -1,6 +1,72 @@
 // Fichier: assets/js/swiper-init.js
-(function () {
+(function (root, factory) {
+    if (typeof module === 'object' && module.exports) {
+        module.exports = factory(root || (typeof globalThis !== 'undefined' ? globalThis : {}));
+    } else {
+        factory(root);
+    }
+})(typeof window !== 'undefined' ? window : this, function (root) {
     'use strict';
+
+    const doc = root && root.document;
+
+    function ensureArray(value) {
+        if (!value) {
+            return [];
+        }
+
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (typeof value.length === 'number' && typeof value !== 'string') {
+            return Array.prototype.slice.call(value);
+        }
+
+        return [value];
+    }
+
+    function preloadSlideMedia(slide) {
+        if (!slide || typeof slide.querySelectorAll !== 'function') {
+            return;
+        }
+
+        const candidates = slide.querySelectorAll('[data-src], [data-srcset], [data-background-image]');
+
+        candidates.forEach(function (element) {
+            const dataset = element.dataset || {};
+
+            if (dataset.src && !element.getAttribute('src')) {
+                element.setAttribute('src', dataset.src);
+            }
+
+            if (dataset.srcset && !element.getAttribute('srcset')) {
+                element.setAttribute('srcset', dataset.srcset);
+            }
+
+            if (dataset.backgroundImage && element.style) {
+                element.style.backgroundImage = 'url(' + dataset.backgroundImage + ')';
+            }
+        });
+    }
+
+    function preloadNeighbouringSlides(swiper, explicitIndex) {
+        if (!swiper) {
+            return;
+        }
+
+        const slides = ensureArray(swiper.slides);
+        const index = typeof explicitIndex === 'number' ? explicitIndex : swiper.activeIndex || 0;
+
+        [index - 1, index + 1].forEach(function (candidateIndex) {
+            const slide = slides[candidateIndex];
+            if (!slide) {
+                return;
+            }
+
+            preloadSlideMedia(slide);
+        });
+    }
 
     function getInstanceId(wrapper) {
         if (!wrapper) {
@@ -37,8 +103,8 @@
             }
         }
 
-        if (!target) {
-            document.querySelectorAll('.my-articles-wrapper.my-articles-slideshow').forEach(function (wrapper) {
+        if (!target && doc) {
+            doc.querySelectorAll('.my-articles-wrapper.my-articles-slideshow').forEach(function (wrapper) {
                 found.add(wrapper);
             });
             return Array.from(found);
@@ -69,17 +135,21 @@
         }
 
         const settingsObjectName = 'myArticlesSwiperSettings_' + instanceId;
-        const settings = window[settingsObjectName];
+        const settings = root ? root[settingsObjectName] : undefined;
         if (!settings) {
             return null;
         }
 
-        window.mySwiperInstances = window.mySwiperInstances || {};
+        if (root) {
+            root.mySwiperInstances = root.mySwiperInstances || {};
+        }
 
-        const existingInstance = window.mySwiperInstances[instanceId];
+        const instanceStore = root ? root.mySwiperInstances : {};
+
+        const existingInstance = instanceStore[instanceId];
         if (existingInstance && typeof existingInstance.destroy === 'function') {
             existingInstance.destroy(true, true);
-            delete window.mySwiperInstances[instanceId];
+            delete instanceStore[instanceId];
         }
 
         if (wrapper.classList) {
@@ -106,16 +176,25 @@
             },
             on: {
                 init: function () {
-                    const mainWrapper = document.querySelector('#my-articles-wrapper-' + instanceId);
+                    if (!doc) {
+                        return;
+                    }
+
+                    const mainWrapper = doc.querySelector('#my-articles-wrapper-' + instanceId);
                     if (mainWrapper) {
                         mainWrapper.classList.remove('swiper-is-loading');
                         mainWrapper.classList.add('swiper-initialized');
                     }
+
+                    preloadNeighbouringSlides(this);
+                },
+                slideChange: function () {
+                    preloadNeighbouringSlides(this);
                 },
             },
         });
 
-        window.mySwiperInstances[instanceId] = instance;
+        instanceStore[instanceId] = instance;
         return instance;
     }
 
@@ -128,11 +207,23 @@
         initSwipers();
     }
 
-    window.myArticlesInitSwipers = initSwipers;
-
-    if (document.readyState !== 'loading') {
-        handleDomReady();
-    } else {
-        document.addEventListener('DOMContentLoaded', handleDomReady);
+    if (root) {
+        root.myArticlesInitSwipers = initSwipers;
     }
-})();
+
+    if (doc) {
+        if (doc.readyState !== 'loading') {
+            handleDomReady();
+        } else {
+            doc.addEventListener('DOMContentLoaded', handleDomReady);
+        }
+    }
+
+    return {
+        preloadNeighbouringSlides: preloadNeighbouringSlides,
+        initSwipers: initSwipers,
+        initSwiperForWrapper: initSwiperForWrapper,
+        collectWrappers: collectWrappers,
+        getInstanceId: getInstanceId,
+    };
+});

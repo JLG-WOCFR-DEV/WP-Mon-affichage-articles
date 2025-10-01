@@ -47,6 +47,11 @@ mon-affichage-article/
 └── mon-affichage-articles.php
 ```
 
+## Tests
+
+- **Tests PHP** : `composer test`
+- **Tests JS** : `npm run test:js`
+
 ## Hooks AJAX
 
 - `filter_articles`
