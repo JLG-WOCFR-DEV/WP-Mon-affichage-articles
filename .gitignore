@@ -1,3 +1,4 @@
 /vendor/
 /.phpunit.result.cache
 /node_modules/
+mon-affichage-article/languages/mon-articles-fr_FR.mo
