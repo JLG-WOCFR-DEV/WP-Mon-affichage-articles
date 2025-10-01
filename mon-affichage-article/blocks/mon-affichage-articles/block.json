@@ -27,6 +27,18 @@
             "type": "integer",
             "default": 10
         },
+        "orderby": {
+            "type": "string",
+            "default": "date"
+        },
+        "order": {
+            "type": "string",
+            "default": "DESC"
+        },
+        "meta_key": {
+            "type": "string",
+            "default": ""
+        },
         "show_category_filter": {
             "type": "boolean",
             "default": false

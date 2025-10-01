@@ -63,6 +63,23 @@ class My_Articles_Shortcode {
 
         $query_args = array_merge( $base_args, $overrides );
 
+        if ( ! isset( $query_args['orderby'] ) && ! empty( $options['orderby'] ) ) {
+            $query_args['orderby'] = $options['orderby'];
+        }
+
+        if ( ! isset( $query_args['order'] ) && ! empty( $options['order'] ) ) {
+            $query_args['order'] = $options['order'];
+        }
+
+        if (
+            ! isset( $query_args['meta_key'] )
+            && isset( $query_args['orderby'] )
+            && 'meta_value' === $query_args['orderby']
+            && ! empty( $options['meta_key'] )
+        ) {
+            $query_args['meta_key'] = $options['meta_key'];
+        }
+
         $resolved_taxonomy = $options['resolved_taxonomy'] ?? '';
         $active_category   = null === $active_category ? ( $options['term'] ?? '' ) : $active_category;
 
@@ -383,6 +400,9 @@ class My_Articles_Shortcode {
             'term' => '',
             'counting_behavior' => 'exact',
             'posts_per_page' => 10,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'meta_key' => '',
             'pagination_mode' => 'none',
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
@@ -501,6 +521,34 @@ class My_Articles_Shortcode {
         $options['taxonomy'] = $taxonomy;
 
         $options['term'] = sanitize_title( $options['term'] ?? '' );
+
+        $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value' );
+        $requested_orderby = isset( $options['orderby'] ) ? (string) $options['orderby'] : $defaults['orderby'];
+        if ( ! in_array( $requested_orderby, $allowed_orderby, true ) ) {
+            $requested_orderby = $defaults['orderby'];
+        }
+
+        $meta_key = '';
+        if ( isset( $options['meta_key'] ) && is_scalar( $options['meta_key'] ) ) {
+            $meta_key = trim( sanitize_text_field( (string) $options['meta_key'] ) );
+        }
+
+        if ( 'meta_value' === $requested_orderby ) {
+            if ( '' === $meta_key ) {
+                $requested_orderby = $defaults['orderby'];
+            }
+        } else {
+            $meta_key = '';
+        }
+
+        $options['orderby']  = $requested_orderby;
+        $options['meta_key'] = $meta_key;
+
+        $order = isset( $options['order'] ) ? strtoupper( (string) $options['order'] ) : $defaults['order'];
+        if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
+            $order = $defaults['order'];
+        }
+        $options['order'] = $order;
 
         $options['resolved_taxonomy'] = self::resolve_taxonomy( $options );
 
