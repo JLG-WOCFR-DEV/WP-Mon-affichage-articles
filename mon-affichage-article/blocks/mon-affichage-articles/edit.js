@@ -20,7 +20,54 @@
     var useSelect = wp.data.useSelect;
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
+    var useRef = wp.element.useRef;
+    var useCallback = wp.element.useCallback;
     var ServerSideRender = wp.serverSideRender;
+
+    var SSRContentWrapper = function (props) {
+        var onChange = props.onChange;
+        var children = props.children;
+        var containerRef = useRef(null);
+        var wrapperProps = {};
+
+        Object.keys(props).forEach(function (key) {
+            if (key !== 'onChange' && key !== 'children') {
+                wrapperProps[key] = props[key];
+            }
+        });
+
+        useEffect(
+            function () {
+                if (!containerRef.current || typeof onChange !== 'function' || typeof MutationObserver === 'undefined') {
+                    return undefined;
+                }
+
+                var observer = new MutationObserver(function () {
+                    onChange();
+                });
+
+                observer.observe(containerRef.current, { childList: true, subtree: true });
+
+                return function () {
+                    observer.disconnect();
+                };
+            },
+            [onChange]
+        );
+
+        useEffect(
+            function () {
+                if (typeof onChange === 'function') {
+                    onChange();
+                }
+            },
+            [onChange]
+        );
+
+        wrapperProps.ref = containerRef;
+
+        return el('div', wrapperProps, children);
+    };
 
     var MODULE_QUERY_DEFAULTS = {
         orderby: 'title',
@@ -51,6 +98,10 @@
             var _useState4 = useState(true);
             var hasMoreResults = _useState4[0];
             var setHasMoreResults = _useState4[1];
+
+            var _useState5 = useState(0);
+            var previewRenderCount = _useState5[0];
+            var setPreviewRenderCount = _useState5[1];
 
             var listData = useSelect(function (select) {
                 var core = select('core');
@@ -120,6 +171,32 @@
                     setHasMoreResults(listData.instances.length === MODULES_PER_PAGE);
                 },
                 [listData && listData.instances, listData && listData.isResolving, currentPage]
+            );
+
+            useEffect(
+                function () {
+                    if (typeof window === 'undefined') {
+                        return;
+                    }
+
+                    if (typeof window.myArticlesInitWrappers === 'function') {
+                        window.myArticlesInitWrappers();
+                    }
+
+                    if (typeof window.myArticlesInitSwipers === 'function') {
+                        window.myArticlesInitSwipers();
+                    }
+                },
+                [previewRenderCount]
+            );
+
+            var handlePreviewChange = useCallback(
+                function () {
+                    setPreviewRenderCount(function (count) {
+                        return count + 1;
+                    });
+                },
+                [setPreviewRenderCount]
             );
 
             var instances = Array.isArray(fetchedInstances) ? fetchedInstances : [];
@@ -377,12 +454,15 @@
                 var title = selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
                     ? selectedData.selectedInstance.title.rendered
                     : __('(Sans titre)', 'mon-articles');
-
                 previewContent = el(
                     'div',
                     { className: 'my-articles-block-preview' },
                     el('p', { className: 'my-articles-block-preview__title' }, title),
-                    el(ServerSideRender, { block: 'mon-affichage/articles', attributes: attributes })
+                    el(
+                        SSRContentWrapper,
+                        { onChange: handlePreviewChange },
+                        el(ServerSideRender, { block: 'mon-affichage/articles', attributes: attributes })
+                    )
                 );
             } else {
                 previewContent = el(
