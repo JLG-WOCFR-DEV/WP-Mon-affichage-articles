@@ -202,6 +202,37 @@
         focusElement(wrapper);
     }
 
+    function getApiFetch() {
+        if (typeof window !== 'undefined' && window.wp && typeof window.wp.apiFetch === 'function') {
+            return window.wp.apiFetch;
+        }
+
+        return null;
+    }
+
+    function resolveApiUrl(endpoint) {
+        var normalizedEndpoint = endpoint || '';
+
+        if (normalizedEndpoint.indexOf('/wp-json/') !== 0) {
+            normalizedEndpoint = '/wp-json/' + normalizedEndpoint.replace(/^\/?/, '');
+        }
+
+        if (typeof window !== 'undefined' && window.wpApiSettings && window.wpApiSettings.root) {
+            var root = window.wpApiSettings.root;
+            if (root.slice(-1) === '/') {
+                root = root.slice(0, -1);
+            }
+
+            return root + normalizedEndpoint.replace('/wp-json', '');
+        }
+
+        if (typeof window !== 'undefined' && window.location && window.location.origin) {
+            return window.location.origin + normalizedEndpoint;
+        }
+
+        return normalizedEndpoint;
+    }
+
     $(document).on('click', '.my-articles-filter-nav button, .my-articles-filter-nav a', function (e) {
         e.preventDefault();
 
@@ -223,154 +254,176 @@
         filterItem.addClass('active');
         filterLink.attr('aria-pressed', 'true');
 
-        $.ajax({
-            url: filterSettings.ajax_url,
-            type: 'POST',
-            data: {
-                action: 'filter_articles',
-                security: filterSettings.nonce || '',
-                instance_id: instanceId,
-                category: categorySlug,
-                current_url: window.location && window.location.href ? window.location.href : ''
-            },
-            beforeSend: function () {
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'true');
-                    wrapper.addClass('is-loading');
+        var requestBody = {
+            instance_id: instanceId,
+            category: categorySlug,
+            current_url: (window.location && window.location.href) ? window.location.href : ''
+        };
+
+        var headers = {};
+        if (filterSettings && filterSettings.nonce) {
+            headers['X-WP-Nonce'] = filterSettings.nonce;
+        }
+
+        if (wrapper && wrapper.length) {
+            wrapper.attr('aria-busy', 'true');
+            wrapper.addClass('is-loading');
+        }
+        clearFeedback(wrapper);
+
+        var apiFetch = getApiFetch();
+        var requestPromise;
+
+        if (apiFetch) {
+            requestPromise = apiFetch({
+                path: '/my-articles/v1/filter',
+                method: 'POST',
+                data: requestBody,
+                headers: headers
+            });
+        } else {
+            var fetchFn = (typeof window !== 'undefined' && typeof window.fetch === 'function') ? window.fetch.bind(window) : null;
+
+            if (!fetchFn) {
+                requestPromise = Promise.reject(new Error('Fetch API non disponible.'));
+            } else {
+                requestPromise = fetchFn(resolveApiUrl('my-articles/v1/filter'), {
+                    method: 'POST',
+                    headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
+                    credentials: 'same-origin',
+                    body: JSON.stringify(requestBody)
+                }).then(function (response) {
+                    if (!response.ok) {
+                        return response.json().then(function (errorBody) {
+                            var error = new Error((errorBody && errorBody.message) || 'Request failed');
+                            error.data = errorBody;
+                            throw error;
+                        }).catch(function () {
+                            throw new Error('Request failed');
+                        });
+                    }
+
+                    return response.json();
+                });
+            }
+        }
+
+        requestPromise.then(function (response) {
+            if (response && response.success) {
+                var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
+                contentArea.html(response.data.html);
+
+                var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
+                totalPages = isNaN(totalPages) ? 0 : totalPages;
+                var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 0;
+                nextPage = isNaN(nextPage) ? 0 : nextPage;
+                var pinnedIds = (response.data && typeof response.data.pinned_ids !== 'undefined') ? response.data.pinned_ids : '';
+
+                if (totalPages <= 1) {
+                    var existingLoadMoreContainer = wrapper.find('.my-articles-load-more-container');
+                    if (existingLoadMoreContainer.length) {
+                        existingLoadMoreContainer.remove();
+                    }
                 }
-                clearFeedback(wrapper);
-            },
-            success: function (response) {
-                if (response.success) {
-                    var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
-                    contentArea.html(response.data.html);
 
-                    var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
-                    totalPages = isNaN(totalPages) ? 0 : totalPages;
-                    var nextPage = (response.data && typeof response.data.next_page !== 'undefined') ? parseInt(response.data.next_page, 10) : 0;
-                    nextPage = isNaN(nextPage) ? 0 : nextPage;
-                    var pinnedIds = (response.data && typeof response.data.pinned_ids !== 'undefined') ? response.data.pinned_ids : '';
+                var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
 
-                    if (totalPages <= 1) {
-                        var existingLoadMoreContainer = wrapper.find('.my-articles-load-more-container');
-                        if (existingLoadMoreContainer.length) {
-                            existingLoadMoreContainer.remove();
-                        }
+                if (!loadMoreBtn.length && totalPages > 1) {
+                    var loadMoreText = (typeof myArticlesLoadMore !== 'undefined' && myArticlesLoadMore.loadMoreText) ? myArticlesLoadMore.loadMoreText : 'Charger plus';
+                    var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
+                    var initialNextPage = nextPage > 0 ? nextPage : 2;
+                    var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
+                        .attr('data-instance-id', instanceId)
+                        .attr('data-paged', initialNextPage)
+                        .attr('data-total-pages', totalPages)
+                        .attr('data-pinned-ids', pinnedIds)
+                        .attr('data-category', categorySlug)
+                        .text(loadMoreText);
+
+                    loadMoreContainer.append(newLoadMoreBtn);
+
+                    if (contentArea.length) {
+                        contentArea.last().after(loadMoreContainer);
+                    } else {
+                        wrapper.append(loadMoreContainer);
                     }
 
-                    var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
-
-                    if (!loadMoreBtn.length && totalPages > 1) {
-                        var loadMoreText = (typeof myArticlesLoadMore !== 'undefined' && myArticlesLoadMore.loadMoreText) ? myArticlesLoadMore.loadMoreText : 'Charger plus';
-                        var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
-                        var initialNextPage = nextPage > 0 ? nextPage : 2;
-                        var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
-                            .attr('data-instance-id', instanceId)
-                            .attr('data-paged', initialNextPage)
-                            .attr('data-total-pages', totalPages)
-                            .attr('data-pinned-ids', pinnedIds)
-                            .attr('data-category', categorySlug)
-                            .text(loadMoreText);
-
-                        loadMoreContainer.append(newLoadMoreBtn);
-
-                        if (contentArea.length) {
-                            contentArea.last().after(loadMoreContainer);
-                        } else {
-                            wrapper.append(loadMoreContainer);
-                        }
-
-                        loadMoreBtn = newLoadMoreBtn;
-                    }
-
-                    if (loadMoreBtn.length) {
-                        loadMoreBtn.data('category', categorySlug);
-                        loadMoreBtn.attr('data-category', categorySlug);
-
-                        loadMoreBtn.data('total-pages', totalPages);
-                        loadMoreBtn.attr('data-total-pages', totalPages);
-
-                        loadMoreBtn.data('pinned-ids', pinnedIds);
-                        loadMoreBtn.attr('data-pinned-ids', pinnedIds);
-
-                        if (totalPages > 1) {
-                            if (nextPage < 2) {
-                                nextPage = 2;
-                            }
-                            loadMoreBtn.data('paged', nextPage);
-                            loadMoreBtn.attr('data-paged', nextPage);
-                            loadMoreBtn.show();
-                            loadMoreBtn.prop('disabled', false);
-                        } else {
-                            loadMoreBtn.data('paged', nextPage);
-                            loadMoreBtn.attr('data-paged', nextPage);
-                            loadMoreBtn.hide();
-                            loadMoreBtn.prop('disabled', false);
-
-                            var orphanContainer = loadMoreBtn.closest('.my-articles-load-more-container');
-                            if (orphanContainer.length) {
-                                orphanContainer.remove();
-                            }
-                        }
-                    }
-
-                    if (response.data && typeof response.data.pagination_html !== 'undefined') {
-                        var paginationHtml = response.data.pagination_html;
-                        var paginationElement = wrapper.find('.my-articles-pagination').first();
-
-                        if (typeof paginationHtml === 'string' && paginationHtml.trim().length > 0) {
-                            if (paginationElement.length) {
-                                paginationElement.replaceWith(paginationHtml);
-                            } else if (contentArea.length) {
-                                contentArea.after(paginationHtml);
-                            }
-                        } else if (paginationElement.length) {
-                            paginationElement.remove();
-                        }
-                    }
-
-                    if (typeof window.myArticlesInitWrappers === 'function') {
-                        window.myArticlesInitWrappers(wrapperElement);
-                    }
-
-                    if (typeof window.myArticlesInitSwipers === 'function') {
-                        window.myArticlesInitSwipers(wrapperElement);
-                    }
-
-                    if (instanceId) {
-                        var queryParams = {};
-                        queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
-                        queryParams['paged_' + instanceId] = '1';
-                        updateInstanceQueryParams(instanceId, queryParams);
-                    }
-
-                    var totalArticles = contentArea.find('.my-article-item').length;
-                    var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
-                    var feedbackElement = getFeedbackElement(wrapper);
-                    feedbackElement.removeClass('is-error')
-                        .removeAttr('role')
-                        .attr('aria-live', 'polite')
-                        .text(feedbackMessage)
-                        .show();
-
-                    var firstArticle = contentArea.find('.my-article-item').first();
-                    focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
-                } else {
-                    filterItem.removeClass('active');
-                    filterLink.attr('aria-pressed', 'false');
-                    if (previousActiveItem && previousActiveItem.length) {
-                        previousActiveItem.addClass('active');
-                        previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
-                    }
-
-
-                    var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                    var responseMessage = (response.data && response.data.message) ? response.data.message : '';
-                    var message = responseMessage || fallbackMessage;
-                    showError(wrapper, message);
+                    loadMoreBtn = newLoadMoreBtn;
                 }
-            },
-            error: function (jqXHR) {
+
+                if (loadMoreBtn.length) {
+                    loadMoreBtn.data('category', categorySlug);
+                    loadMoreBtn.attr('data-category', categorySlug);
+
+                    loadMoreBtn.data('total-pages', totalPages);
+                    loadMoreBtn.attr('data-total-pages', totalPages);
+
+                    loadMoreBtn.data('pinned-ids', pinnedIds);
+                    loadMoreBtn.attr('data-pinned-ids', pinnedIds);
+
+                    if (totalPages > 1) {
+                        if (nextPage < 2) {
+                            nextPage = 2;
+                        }
+                        loadMoreBtn.data('paged', nextPage);
+                        loadMoreBtn.attr('data-paged', nextPage);
+                        loadMoreBtn.show();
+                        loadMoreBtn.prop('disabled', false);
+                    } else {
+                        loadMoreBtn.data('paged', nextPage);
+                        loadMoreBtn.attr('data-paged', nextPage);
+                        loadMoreBtn.hide();
+                        loadMoreBtn.prop('disabled', false);
+
+                        var orphanContainer = loadMoreBtn.closest('.my-articles-load-more-container');
+                        if (orphanContainer.length) {
+                            orphanContainer.remove();
+                        }
+                    }
+                }
+
+                if (response.data && typeof response.data.pagination_html !== 'undefined') {
+                    var paginationHtml = response.data.pagination_html;
+                    var paginationElement = wrapper.find('.my-articles-pagination').first();
+
+                    if (typeof paginationHtml === 'string' && paginationHtml.trim().length > 0) {
+                        if (paginationElement.length) {
+                            paginationElement.replaceWith(paginationHtml);
+                        } else if (contentArea.length) {
+                            contentArea.after(paginationHtml);
+                        }
+                    } else if (paginationElement.length) {
+                        paginationElement.remove();
+                    }
+                }
+
+                if (typeof window.myArticlesInitWrappers === 'function') {
+                    window.myArticlesInitWrappers(wrapperElement);
+                }
+
+                if (typeof window.myArticlesInitSwipers === 'function') {
+                    window.myArticlesInitSwipers(wrapperElement);
+                }
+
+                if (instanceId) {
+                    var queryParams = {};
+                    queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
+                    queryParams['paged_' + instanceId] = '1';
+                    updateInstanceQueryParams(instanceId, queryParams);
+                }
+
+                var totalArticles = contentArea.find('.my-article-item').length;
+                var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
+                var feedbackElement = getFeedbackElement(wrapper);
+                feedbackElement.removeClass('is-error')
+                    .removeAttr('role')
+                    .attr('aria-live', 'polite')
+                    .text(feedbackMessage)
+                    .show();
+
+                var firstArticle = contentArea.find('.my-article-item').first();
+                focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
+            } else {
                 filterItem.removeClass('active');
                 filterLink.attr('aria-pressed', 'false');
                 if (previousActiveItem && previousActiveItem.length) {
@@ -378,23 +431,39 @@
                     previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
                 }
 
-                var errorMessage = '';
+                var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                var responseMessage = (response && response.data && response.data.message) ? response.data.message : '';
+                var message = responseMessage || fallbackMessage;
+                showError(wrapper, message);
+            }
+        }).catch(function (error) {
+            filterItem.removeClass('active');
+            filterLink.attr('aria-pressed', 'false');
+            if (previousActiveItem && previousActiveItem.length) {
+                previousActiveItem.addClass('active');
+                previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
+            }
 
-                if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
+            var errorMessage = '';
 
-                if (!errorMessage) {
-                    errorMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                }
+            if (error && error.data && error.data.message) {
+                errorMessage = error.data.message;
+            } else if (error && error.message) {
+                errorMessage = error.message;
+            }
 
-                showError(wrapper, errorMessage);
-            },
-            complete: function () {
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'false');
-                    wrapper.removeClass('is-loading');
-                }
+            if (!errorMessage) {
+                errorMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+            }
+
+            showError(wrapper, errorMessage);
+            if (typeof console !== 'undefined' && console.error) {
+                console.error(errorMessage);
+            }
+        }).finally(function () {
+            if (wrapper && wrapper.length) {
+                wrapper.attr('aria-busy', 'false');
+                wrapper.removeClass('is-loading');
             }
         });
     });
