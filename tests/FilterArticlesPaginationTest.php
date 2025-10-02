@@ -375,6 +375,11 @@ final class FilterArticlesPaginationTest extends TestCase
                 echo '<article class="' . ($is_pinned ? 'pinned' : 'regular') . '"></article>';
             }
 
+            public function get_skeleton_placeholder_markup(string $container_class, array $options, int $render_limit): string
+            {
+                return '';
+            }
+
             public function get_empty_state_html(): string
             {
                 return '<div class="empty">Aucun article</div>';

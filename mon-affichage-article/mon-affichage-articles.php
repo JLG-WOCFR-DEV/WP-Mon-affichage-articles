@@ -652,7 +652,9 @@ final class Mon_Affichage_Articles {
 
         $post_type = get_post_type( $post_id );
 
-        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+        $tracked_post_types = my_articles_get_cache_tracked_post_types();
+
+        if ( in_array( $post_type, $tracked_post_types, true ) ) {
             $this->refresh_cache_namespace();
         }
     }
@@ -668,7 +670,9 @@ final class Mon_Affichage_Articles {
             $post_type = get_post_type( $post_id );
         }
 
-        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+        $tracked_post_types = my_articles_get_cache_tracked_post_types();
+
+        if ( in_array( $post_type, $tracked_post_types, true ) ) {
             $this->refresh_cache_namespace();
         }
     }
@@ -676,7 +680,9 @@ final class Mon_Affichage_Articles {
     public function handle_set_object_terms_cache_invalidation( $object_id, $terms, $tt_ids, $taxonomy, $append, $old_tt_ids ) {
         $post_type = get_post_type( $object_id );
 
-        if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+        $tracked_post_types = my_articles_get_cache_tracked_post_types();
+
+        if ( in_array( $post_type, $tracked_post_types, true ) ) {
             $this->refresh_cache_namespace();
         }
     }
@@ -686,10 +692,16 @@ final class Mon_Affichage_Articles {
             return;
         }
 
+        $tracked_post_types = my_articles_get_cache_tracked_post_types();
+
+        if ( empty( $tracked_post_types ) ) {
+            return;
+        }
+
         foreach ( (array) $object_ids as $object_id ) {
             $post_type = get_post_type( $object_id );
 
-            if ( in_array( $post_type, array( 'post', 'mon_affichage' ), true ) ) {
+            if ( in_array( $post_type, $tracked_post_types, true ) ) {
                 $this->refresh_cache_namespace();
                 break;
             }

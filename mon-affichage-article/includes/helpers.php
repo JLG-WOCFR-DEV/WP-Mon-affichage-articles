@@ -183,6 +183,54 @@ if ( ! function_exists( 'my_articles_get_selectable_post_types' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_get_cache_tracked_post_types' ) ) {
+    /**
+     * Retrieve the list of post types that should trigger a cache invalidation.
+     *
+     * Extensions can filter the list via the `my_articles_cache_tracked_post_types`
+     * hook in order to register their custom post types.
+     *
+     * @return string[] Array of sanitized post type identifiers.
+     */
+    function my_articles_get_cache_tracked_post_types() {
+        $available_post_types = my_articles_get_selectable_post_types();
+
+        $default_post_types = array_keys( $available_post_types );
+
+        if ( empty( $default_post_types ) ) {
+            $default_post_types = array( 'post' );
+        }
+
+        $default_post_types[] = 'mon_affichage';
+        $default_post_types   = array_values( array_unique( $default_post_types ) );
+
+        /**
+         * Filter the list of post types that should invalidate the cache namespace.
+         *
+         * @param string[] $post_types List of post types tracked for cache invalidation.
+         */
+        $tracked_post_types = apply_filters( 'my_articles_cache_tracked_post_types', $default_post_types );
+
+        if ( ! is_array( $tracked_post_types ) ) {
+            $tracked_post_types = $default_post_types;
+        }
+
+        $sanitized_post_types = array();
+
+        foreach ( $tracked_post_types as $post_type ) {
+            $post_type = sanitize_key( $post_type );
+
+            if ( '' === $post_type ) {
+                continue;
+            }
+
+            $sanitized_post_types[ $post_type ] = $post_type;
+        }
+
+        return array_values( $sanitized_post_types );
+    }
+}
+
 if ( ! function_exists( 'my_articles_normalize_post_type' ) ) {
     /**
      * Ensure a post type is valid for the plugin and provide a safe fallback.
