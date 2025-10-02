@@ -56,6 +56,19 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/search',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => array( $this, 'search_posts' ),
+                    'permission_callback' => '__return_true',
+                    'args'                => $this->get_search_args(),
+                ),
+            )
+        );
     }
 
     /**
@@ -110,6 +123,26 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'type'              => 'string',
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_title',
+            ),
+        );
+    }
+
+    /**
+     * Argument definitions for the search endpoint.
+     *
+     * @return array
+     */
+    protected function get_search_args() {
+        return array(
+            'search' => array(
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'post_type' => array(
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_key',
             ),
         );
     }
@@ -186,6 +219,34 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'paged'       => $request->get_param( 'paged' ),
                 'pinned_ids'  => $request->get_param( 'pinned_ids' ),
                 'category'    => $request->get_param( 'category' ),
+            )
+        );
+
+        if ( is_wp_error( $response ) ) {
+            return $response;
+        }
+
+        return rest_ensure_response( $response );
+    }
+
+    /**
+     * Handles search posts requests.
+     *
+     * @param WP_REST_Request $request REST request.
+     *
+     * @return WP_REST_Response|WP_Error
+     */
+    public function search_posts( WP_REST_Request $request ) {
+        $nonce_validation = $this->validate_request_nonce( $request );
+
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
+        }
+
+        $response = $this->plugin->prepare_search_posts_response(
+            array(
+                'search'    => $request->get_param( 'search' ),
+                'post_type' => $request->get_param( 'post_type' ),
             )
         );
 
