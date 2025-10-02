@@ -1101,6 +1101,7 @@ public function prepare_load_more_articles_response( array $args ) {
             'exclude_from_search' => true,
             'publicly_queryable' => false,
             'capability_type' => 'post',
+            'map_meta_cap' => true,
             'show_in_rest' => true,
             'rest_base' => 'mon_affichage',
         ];
