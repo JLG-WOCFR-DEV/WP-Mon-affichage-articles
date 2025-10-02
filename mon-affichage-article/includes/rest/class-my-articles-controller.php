@@ -80,11 +80,6 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
             ),
-            'security'    => array(
-                'type'              => 'string',
-                'required'          => true,
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
         );
     }
 
@@ -116,12 +111,29 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_title',
             ),
-            'security'    => array(
-                'type'              => 'string',
-                'required'          => true,
-                'sanitize_callback' => 'sanitize_text_field',
-            ),
         );
+    }
+
+    /**
+     * Validates the REST nonce sent with the request headers.
+     *
+     * @param WP_REST_Request $request REST request instance.
+     *
+     * @return true|WP_Error
+     */
+    protected function validate_request_nonce( WP_REST_Request $request ) {
+        $raw_nonce = $request->get_header( 'X-WP-Nonce' );
+        $nonce     = is_string( $raw_nonce ) ? sanitize_text_field( wp_unslash( $raw_nonce ) ) : '';
+
+        if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+            return new WP_Error(
+                'my_articles_invalid_nonce',
+                __( 'Nonce invalide.', 'mon-articles' ),
+                array( 'status' => 403 )
+            );
+        }
+
+        return true;
     }
 
     /**
@@ -132,14 +144,10 @@ class My_Articles_Controller extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function filter_articles( WP_REST_Request $request ) {
-        $nonce = (string) $request->get_param( 'security' );
+        $nonce_validation = $this->validate_request_nonce( $request );
 
-        if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'my_articles_filter_nonce' ) ) {
-            return new WP_Error(
-                'my_articles_invalid_nonce',
-                __( 'Nonce invalide.', 'mon-articles' ),
-                array( 'status' => 403 )
-            );
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
         }
 
         $response = $this->plugin->prepare_filter_articles_response(
@@ -166,14 +174,10 @@ class My_Articles_Controller extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function load_more_articles( WP_REST_Request $request ) {
-        $nonce = (string) $request->get_param( 'security' );
+        $nonce_validation = $this->validate_request_nonce( $request );
 
-        if ( empty( $nonce ) || ! wp_verify_nonce( $nonce, 'my_articles_load_more_nonce' ) ) {
-            return new WP_Error(
-                'my_articles_invalid_nonce',
-                __( 'Nonce invalide.', 'mon-articles' ),
-                array( 'status' => 403 )
-            );
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
         }
 
         $response = $this->plugin->prepare_load_more_articles_response(

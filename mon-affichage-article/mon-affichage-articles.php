@@ -458,8 +458,6 @@ public function prepare_filter_articles_response( array $args ) {
     }
 
     public function filter_articles_callback() {
-        check_ajax_referer( 'my_articles_filter_nonce', 'security' );
-
         $instance_id   = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $category_slug = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
         $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
@@ -640,8 +638,6 @@ public function prepare_load_more_articles_response( array $args ) {
     }
 
     public function load_more_articles_callback() {
-        check_ajax_referer( 'my_articles_load_more_nonce', 'security' );
-
         $instance_id = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $paged       = isset( $_POST['paged'] ) ? absint( wp_unslash( $_POST['paged'] ) ) : 1;
         $pinned_ids  = isset( $_POST['pinned_ids'] ) ? wp_unslash( $_POST['pinned_ids'] ) : '';

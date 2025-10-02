@@ -142,11 +142,13 @@ class RenderArticlesForResponseTest extends TestCase
 
     public function test_custom_post_type_update_refreshes_cache_namespace(): void
     {
-        global $mon_articles_test_post_type_map, $mon_articles_test_filters, $mon_articles_test_options;
+        global $mon_articles_test_post_type_map, $mon_articles_test_filters, $mon_articles_test_options, $mon_articles_test_options_store;
 
         $mon_articles_test_filters = array();
         $mon_articles_test_post_type_map = array(123 => 'press_release');
         $mon_articles_test_options = array('my_articles_cache_namespace' => 'initial-namespace');
+        $mon_articles_test_options_store = $mon_articles_test_options;
+        $mon_articles_test_options_store =& $mon_articles_test_options;
 
         \add_filter('my_articles_cache_tracked_post_types', static function (array $post_types): array {
             $post_types[] = 'press_release';
