@@ -80,11 +80,17 @@ if (!function_exists('plugin_dir_url')) {
 if (!function_exists('get_post_types')) {
     function get_post_types($args = array(), $output = 'names', $operator = 'and')
     {
+        $post_types = array(
+            'post'          => (object) array('name' => 'post', 'label' => 'Posts'),
+            'page'          => (object) array('name' => 'page', 'label' => 'Pages'),
+            'mon_affichage' => (object) array('name' => 'mon_affichage', 'label' => 'Affichages'),
+        );
+
         if ('objects' === $output) {
-            return array();
+            return $post_types;
         }
 
-        return array('post', 'page');
+        return array_keys($post_types);
     }
 }
 
@@ -97,10 +103,65 @@ if (!function_exists('post_type_exists')) {
     }
 }
 
-if (!function_exists('apply_filters')) {
-    function apply_filters($hook, $value)
+if (!function_exists('add_filter')) {
+    function add_filter($hook, $callback, $priority = 10, $accepted_args = 1): void
     {
+        global $mon_articles_test_filters;
+
+        if (!is_array($mon_articles_test_filters)) {
+            $mon_articles_test_filters = array();
+        }
+
+        $priority = (int) $priority;
+
+        if (!isset($mon_articles_test_filters[$hook])) {
+            $mon_articles_test_filters[$hook] = array();
+        }
+
+        if (!isset($mon_articles_test_filters[$hook][$priority])) {
+            $mon_articles_test_filters[$hook][$priority] = array();
+        }
+
+        $mon_articles_test_filters[$hook][$priority][] = array(
+            'callback'      => $callback,
+            'accepted_args' => (int) $accepted_args,
+        );
+    }
+}
+
+if (!function_exists('apply_filters')) {
+    function apply_filters($hook, $value, ...$args)
+    {
+        global $mon_articles_test_filters;
+
+        if (!is_array($mon_articles_test_filters) || empty($mon_articles_test_filters[$hook])) {
+            return $value;
+        }
+
+        ksort($mon_articles_test_filters[$hook]);
+
+        foreach ($mon_articles_test_filters[$hook] as $callbacks) {
+            foreach ($callbacks as $callback_data) {
+                $accepted_args = isset($callback_data['accepted_args']) ? (int) $callback_data['accepted_args'] : 1;
+                $parameters    = array($value);
+
+                if ($accepted_args > 1) {
+                    $extra_args = array_slice($args, 0, $accepted_args - 1);
+                    $parameters = array_merge($parameters, $extra_args);
+                }
+
+                $value = call_user_func_array($callback_data['callback'], $parameters);
+            }
+        }
+
         return $value;
+    }
+}
+
+if (!function_exists('do_action')) {
+    function do_action($hook, ...$args): void
+    {
+        // No-op for tests.
     }
 }
 
@@ -222,6 +283,134 @@ if (!function_exists('sanitize_key')) {
         $key = strtolower((string) $key);
 
         return preg_replace('/[^a-z0-9_\-]/', '', $key);
+    }
+}
+
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode($data, $options = 0, $depth = 512)
+    {
+        return json_encode($data, $options, $depth);
+    }
+}
+
+if (!function_exists('wp_is_post_revision')) {
+    function wp_is_post_revision($post_id)
+    {
+        return false;
+    }
+}
+
+if (!function_exists('wp_is_post_autosave')) {
+    function wp_is_post_autosave($post_id)
+    {
+        return false;
+    }
+}
+
+if (!function_exists('wp_generate_password')) {
+    function wp_generate_password($length = 12, $special_chars = true, $extra_special_chars = false)
+    {
+        static $counter = 0;
+
+        $counter++;
+
+        if ($length <= 0) {
+            $length = 12;
+        }
+
+        $hash = md5('mon-articles-' . $counter);
+
+        if ($length > strlen($hash)) {
+            $hash = str_repeat($hash, (int) ceil($length / strlen($hash)));
+        }
+
+        return substr($hash, 0, (int) $length);
+    }
+}
+
+if (!function_exists('wp_cache_get')) {
+    function wp_cache_get($key, $group = '', $force = false, &$found = null)
+    {
+        global $mon_articles_test_wp_cache;
+
+        if (!is_array($mon_articles_test_wp_cache)) {
+            $mon_articles_test_wp_cache = array();
+        }
+
+        $group = (string) $group;
+
+        if (!isset($mon_articles_test_wp_cache[$group])) {
+            $mon_articles_test_wp_cache[$group] = array();
+        }
+
+        if (array_key_exists($key, $mon_articles_test_wp_cache[$group])) {
+            $found = true;
+
+            return $mon_articles_test_wp_cache[$group][$key];
+        }
+
+        $found = false;
+
+        return false;
+    }
+}
+
+if (!function_exists('wp_cache_set')) {
+    function wp_cache_set($key, $value, $group = '', $expire = 0)
+    {
+        global $mon_articles_test_wp_cache;
+
+        if (!is_array($mon_articles_test_wp_cache)) {
+            $mon_articles_test_wp_cache = array();
+        }
+
+        $group = (string) $group;
+
+        if (!isset($mon_articles_test_wp_cache[$group])) {
+            $mon_articles_test_wp_cache[$group] = array();
+        }
+
+        $mon_articles_test_wp_cache[$group][$key] = $value;
+
+        return true;
+    }
+}
+
+if (!function_exists('get_transient')) {
+    function get_transient($transient)
+    {
+        global $mon_articles_test_transients;
+
+        if (!is_array($mon_articles_test_transients) || !array_key_exists($transient, $mon_articles_test_transients)) {
+            return false;
+        }
+
+        return $mon_articles_test_transients[$transient]['value'];
+    }
+}
+
+if (!function_exists('set_transient')) {
+    function set_transient($transient, $value, $expiration = 0)
+    {
+        global $mon_articles_test_transients;
+
+        if (!is_array($mon_articles_test_transients)) {
+            $mon_articles_test_transients = array();
+        }
+
+        $mon_articles_test_transients[$transient] = array(
+            'value'      => $value,
+            'expiration' => (int) $expiration,
+        );
+
+        return true;
+    }
+}
+
+if (!function_exists('add_action')) {
+    function add_action(...$args): void
+    {
+        // No-op for tests.
     }
 }
 

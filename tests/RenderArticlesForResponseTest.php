@@ -25,6 +25,11 @@ class RenderArticlesForResponseTest extends TestCase
                 // no-op for these tests.
             }
 
+            public function get_skeleton_placeholder_markup(string $container_class, array $options, int $render_limit): string
+            {
+                return '';
+            }
+
             public function get_empty_state_html(): string
             {
                 return '<div class="empty">Aucun article</div>';
@@ -133,5 +138,38 @@ class RenderArticlesForResponseTest extends TestCase
         $this->assertNotEmpty($capturedArgs);
         $regularQueryArgs = array_pop($capturedArgs);
         $this->assertSame(7, $regularQueryArgs['posts_per_page']);
+    }
+
+    public function test_custom_post_type_update_refreshes_cache_namespace(): void
+    {
+        global $mon_articles_test_post_type_map, $mon_articles_test_filters, $mon_articles_test_options;
+
+        $mon_articles_test_filters = array();
+        $mon_articles_test_post_type_map = array(123 => 'press_release');
+        $mon_articles_test_options = array('my_articles_cache_namespace' => 'initial-namespace');
+
+        \add_filter('my_articles_cache_tracked_post_types', static function (array $post_types): array {
+            $post_types[] = 'press_release';
+
+            return $post_types;
+        });
+
+        $plugin = new Mon_Affichage_Articles();
+
+        $reflection = new ReflectionClass(Mon_Affichage_Articles::class);
+        $method = $reflection->getMethod('get_cache_namespace');
+        $method->setAccessible(true);
+
+        $initialNamespace = $method->invoke($plugin);
+        $this->assertSame('initial-namespace', $initialNamespace);
+
+        $plugin->handle_post_save_cache_invalidation(123, null, true);
+
+        $refreshedNamespace = $method->invoke($plugin);
+
+        $this->assertNotSame($initialNamespace, $refreshedNamespace);
+        $this->assertSame($refreshedNamespace, $mon_articles_test_options['my_articles_cache_namespace'] ?? null);
+
+        $mon_articles_test_filters = array();
     }
 }
