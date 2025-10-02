@@ -32,14 +32,28 @@
     var SSRContentWrapper = function (props) {
         var onChange = props.onChange;
         var children = props.children;
+        var forwardedRef = props.forwardRef;
         var containerRef = useRef(null);
         var wrapperProps = {};
 
         Object.keys(props).forEach(function (key) {
-            if (key !== 'onChange' && key !== 'children') {
+            if (key !== 'onChange' && key !== 'children' && key !== 'forwardRef') {
                 wrapperProps[key] = props[key];
             }
         });
+
+        var setContainerRef = useCallback(
+            function (node) {
+                containerRef.current = node;
+
+                if (typeof forwardedRef === 'function') {
+                    forwardedRef(node);
+                } else if (forwardedRef && typeof forwardedRef === 'object') {
+                    forwardedRef.current = node;
+                }
+            },
+            [forwardedRef]
+        );
 
         useEffect(
             function () {
@@ -69,7 +83,7 @@
             [onChange]
         );
 
-        wrapperProps.ref = containerRef;
+        wrapperProps.ref = setContainerRef;
 
         return el('div', wrapperProps, children);
     };
@@ -107,6 +121,7 @@
             var _useState5 = useState(0);
             var previewRenderCount = _useState5[0];
             var setPreviewRenderCount = _useState5[1];
+            var ssrAttributesKey = JSON.stringify(attributes || {});
 
             var isDesignPresetLocked = false;
 
@@ -182,6 +197,10 @@
 
             useEffect(
                 function () {
+                    if (!attributes.instanceId) {
+                        return;
+                    }
+
                     if (typeof window === 'undefined') {
                         return;
                     }
@@ -194,7 +213,7 @@
                         window.myArticlesInitSwipers();
                     }
                 },
-                [previewRenderCount]
+                [previewRenderCount, ssrAttributesKey]
             );
 
             var handlePreviewChange = useCallback(
