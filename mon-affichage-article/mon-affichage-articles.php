@@ -25,6 +25,12 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 final class Mon_Affichage_Articles {
     private static $instance;
     private $cache_namespace = null;
+
+    /**
+     * REST controller instance.
+     *
+     * @var My_Articles_Controller
+     */
     private $rest_controller;
 
     public static function get_instance() {
@@ -46,6 +52,15 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
 
         $this->rest_controller = new My_Articles_Controller( $this );
+    }
+
+    /**
+     * Retrieves the REST controller instance.
+     *
+     * @return My_Articles_Controller
+     */
+    public function get_rest_controller() {
+        return $this->rest_controller;
     }
 
     private function add_hooks() {
@@ -235,7 +250,7 @@ final class Mon_Affichage_Articles {
         );
     }
 
-public function prepare_filter_articles_response( array $args ) {
+    public function prepare_filter_articles_response( array $args ) {
         $instance_id   = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $category_slug = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
@@ -486,7 +501,7 @@ public function prepare_filter_articles_response( array $args ) {
         wp_send_json_success( $response );
     }
 
-public function prepare_load_more_articles_response( array $args ) {
+    public function prepare_load_more_articles_response( array $args ) {
         $instance_id = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';

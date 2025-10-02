@@ -424,10 +424,16 @@ if (!function_exists('add_action')) {
 if (!function_exists('get_option')) {
     function get_option(string $option, $default = false)
     {
-        global $mon_articles_test_options_store;
+        global $mon_articles_test_options_store, $mon_articles_test_options;
 
         if (!is_array($mon_articles_test_options_store)) {
-            $mon_articles_test_options_store = array();
+            if (isset($mon_articles_test_options) && is_array($mon_articles_test_options)) {
+                $mon_articles_test_options_store =& $mon_articles_test_options;
+            } else {
+                $mon_articles_test_options_store = array();
+            }
+        } elseif (isset($mon_articles_test_options) && is_array($mon_articles_test_options) && $mon_articles_test_options_store !== $mon_articles_test_options) {
+            $mon_articles_test_options_store =& $mon_articles_test_options;
         }
 
         return $mon_articles_test_options_store[$option] ?? $default;
@@ -437,13 +443,23 @@ if (!function_exists('get_option')) {
 if (!function_exists('update_option')) {
     function update_option(string $option, $value)
     {
-        global $mon_articles_test_options_store;
+        global $mon_articles_test_options_store, $mon_articles_test_options;
 
         if (!is_array($mon_articles_test_options_store)) {
-            $mon_articles_test_options_store = array();
+            if (isset($mon_articles_test_options) && is_array($mon_articles_test_options)) {
+                $mon_articles_test_options_store =& $mon_articles_test_options;
+            } else {
+                $mon_articles_test_options_store = array();
+            }
+        } elseif (isset($mon_articles_test_options) && is_array($mon_articles_test_options) && $mon_articles_test_options_store !== $mon_articles_test_options) {
+            $mon_articles_test_options_store =& $mon_articles_test_options;
         }
 
         $mon_articles_test_options_store[$option] = $value;
+
+        if (isset($mon_articles_test_options) && is_array($mon_articles_test_options) && $mon_articles_test_options !== $mon_articles_test_options_store) {
+            $mon_articles_test_options = $mon_articles_test_options_store;
+        }
 
         return true;
     }
