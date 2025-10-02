@@ -51,5 +51,59 @@ class My_Articles_Enqueue {
         wp_enqueue_script( 'lazysizes' );
         wp_enqueue_script( 'my-articles-responsive-layout' );
         wp_enqueue_script( 'my-articles-debug-helper' );
+
+        $editor_handle = 'mon-affichage-articles-editor-script';
+
+        if ( class_exists( 'My_Articles_Shortcode' ) && function_exists( 'wp_add_inline_script' ) && wp_script_is( $editor_handle, 'registered' ) ) {
+            $presets = My_Articles_Shortcode::get_design_presets();
+            $export  = array();
+
+            if ( is_array( $presets ) ) {
+                foreach ( $presets as $preset_id => $preset ) {
+                    if ( ! is_string( $preset_id ) || '' === $preset_id ) {
+                        continue;
+                    }
+
+                    $label = '';
+
+                    if ( is_array( $preset ) && isset( $preset['label'] ) && is_string( $preset['label'] ) ) {
+                        $label = $preset['label'];
+                    }
+
+                    if ( '' === $label ) {
+                        $label = $preset_id;
+                    }
+
+                    $description = '';
+
+                    if ( is_array( $preset ) && isset( $preset['description'] ) && is_string( $preset['description'] ) ) {
+                        $description = $preset['description'];
+                    }
+
+                    $values = array();
+
+                    if ( is_array( $preset ) && isset( $preset['values'] ) && is_array( $preset['values'] ) ) {
+                        foreach ( $preset['values'] as $key => $value ) {
+                            if ( is_string( $key ) && ( is_scalar( $value ) || is_null( $value ) ) ) {
+                                $values[ $key ] = $value;
+                            }
+                        }
+                    }
+
+                    $export[ $preset_id ] = array(
+                        'label'       => $label,
+                        'description' => $description,
+                        'locked'      => ! empty( $preset['locked'] ),
+                        'values'      => $values,
+                    );
+                }
+            }
+
+            wp_add_inline_script(
+                $editor_handle,
+                'window.myArticlesDesignPresets = ' . wp_json_encode( $export ) . ';',
+                'before'
+            );
+        }
     }
 }

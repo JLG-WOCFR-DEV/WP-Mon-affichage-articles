@@ -11,6 +11,130 @@ class My_Articles_Shortcode {
     private static $lazysizes_enqueued = false;
     private static $normalized_options_cache = array();
     private static $matching_pinned_ids_cache = array();
+    private static $design_presets = null;
+
+    public static function get_design_presets() {
+        if ( null !== self::$design_presets ) {
+            return self::$design_presets;
+        }
+
+        $presets = array(
+            'custom' => array(
+                'label'   => __( 'Personnalisé', 'mon-articles' ),
+                'locked'  => false,
+                'values'  => array(),
+                'description' => __( 'Conservez vos propres réglages de couleurs et d’espacements.', 'mon-articles' ),
+            ),
+            'lcv-classique' => array(
+                'label'       => __( 'Classique LCV', 'mon-articles' ),
+                'locked'      => false,
+                'description' => __( 'Fond clair légèrement bleuté, cartes arrondies et typographie lisible.', 'mon-articles' ),
+                'values'      => array(
+                    'module_bg_color'             => '#f3f4f6',
+                    'vignette_bg_color'           => '#ffffff',
+                    'title_wrapper_bg_color'      => '#ffffff',
+                    'title_color'                 => '#1f2937',
+                    'meta_color'                  => '#6b7280',
+                    'meta_color_hover'            => '#111827',
+                    'excerpt_color'               => '#374151',
+                    'pagination_color'            => '#2563eb',
+                    'shadow_color'                => 'rgba(15,23,42,0.08)',
+                    'shadow_color_hover'          => 'rgba(37,99,235,0.16)',
+                    'module_padding_left'         => 24,
+                    'module_padding_right'        => 24,
+                    'gap_size'                    => 24,
+                    'list_item_gap'               => 28,
+                    'border_radius'               => 18,
+                    'title_font_size'             => 18,
+                    'meta_font_size'              => 13,
+                    'excerpt_font_size'           => 15,
+                    'list_content_padding_top'    => 16,
+                    'list_content_padding_right'  => 16,
+                    'list_content_padding_bottom' => 16,
+                    'list_content_padding_left'   => 16,
+                ),
+            ),
+            'dark-spotlight' => array(
+                'label'       => __( 'Projecteur sombre', 'mon-articles' ),
+                'locked'      => false,
+                'description' => __( 'Contraste élevé, idéal pour des pages sombres ou des encarts immersifs.', 'mon-articles' ),
+                'values'      => array(
+                    'module_bg_color'             => '#111827',
+                    'vignette_bg_color'           => '#1f2937',
+                    'title_wrapper_bg_color'      => '#111827',
+                    'title_color'                 => '#f9fafb',
+                    'meta_color'                  => '#cbd5f5',
+                    'meta_color_hover'            => '#ffffff',
+                    'excerpt_color'               => '#e5e7eb',
+                    'pagination_color'            => '#93c5fd',
+                    'shadow_color'                => 'rgba(0,0,0,0.4)',
+                    'shadow_color_hover'          => 'rgba(30,64,175,0.6)',
+                    'module_padding_left'         => 32,
+                    'module_padding_right'        => 32,
+                    'gap_size'                    => 20,
+                    'list_item_gap'               => 32,
+                    'border_radius'               => 20,
+                    'title_font_size'             => 20,
+                    'meta_font_size'              => 14,
+                    'excerpt_font_size'           => 16,
+                    'list_content_padding_top'    => 20,
+                    'list_content_padding_right'  => 20,
+                    'list_content_padding_bottom' => 20,
+                    'list_content_padding_left'   => 20,
+                ),
+            ),
+            'editorial-focus' => array(
+                'label'       => __( 'Focus éditorial', 'mon-articles' ),
+                'locked'      => true,
+                'description' => __( 'Présentation magazine sobre, optimisée pour les listes avec extraits courts.', 'mon-articles' ),
+                'values'      => array(
+                    'display_mode'                => 'list',
+                    'module_bg_color'             => '#ffffff',
+                    'vignette_bg_color'           => '#ffffff',
+                    'title_wrapper_bg_color'      => '#ffffff',
+                    'title_color'                 => '#111827',
+                    'meta_color'                  => '#6b7280',
+                    'meta_color_hover'            => '#111827',
+                    'excerpt_color'               => '#374151',
+                    'pagination_color'            => '#1d4ed8',
+                    'shadow_color'                => 'rgba(0,0,0,0.04)',
+                    'shadow_color_hover'          => 'rgba(0,0,0,0.08)',
+                    'module_padding_left'         => 16,
+                    'module_padding_right'        => 16,
+                    'gap_size'                    => 20,
+                    'list_item_gap'               => 24,
+                    'border_radius'               => 8,
+                    'title_font_size'             => 18,
+                    'meta_font_size'              => 12,
+                    'excerpt_font_size'           => 14,
+                    'list_content_padding_top'    => 12,
+                    'list_content_padding_right'  => 12,
+                    'list_content_padding_bottom' => 12,
+                    'list_content_padding_left'   => 12,
+                    'show_excerpt'                => 1,
+                    'excerpt_length'              => 22,
+                ),
+            ),
+        );
+
+        self::$design_presets = apply_filters( 'my_articles_design_presets', $presets );
+
+        if ( ! is_array( self::$design_presets ) ) {
+            self::$design_presets = $presets;
+        }
+
+        return self::$design_presets;
+    }
+
+    public static function get_design_preset( $preset_id ) {
+        $presets = self::get_design_presets();
+
+        if ( isset( $presets[ $preset_id ] ) ) {
+            return $presets[ $preset_id ];
+        }
+
+        return null;
+    }
 
     private static function build_normalized_options_cache_key( $raw_options, $context ) {
         return md5( maybe_serialize( array( 'options' => $raw_options, 'context' => $context ) ) );
@@ -404,6 +528,8 @@ class My_Articles_Shortcode {
             'order' => 'DESC',
             'meta_key' => '',
             'pagination_mode' => 'none',
+            'design_preset' => 'custom',
+            'design_preset_locked' => 0,
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
             'filter_categories' => array(),
@@ -474,6 +600,8 @@ class My_Articles_Shortcode {
             $context = array();
         }
 
+        $raw_options = is_array( $raw_options ) ? $raw_options : array();
+
         $external_requested_category = '';
 
         if ( array_key_exists( 'requested_category', $context ) ) {
@@ -497,7 +625,51 @@ class My_Articles_Shortcode {
         }
 
         $defaults = self::get_default_options();
-        $options  = wp_parse_args( (array) $raw_options, $defaults );
+
+        $requested_design_preset = $defaults['design_preset'];
+
+        if ( isset( $raw_options['design_preset'] ) && is_scalar( $raw_options['design_preset'] ) ) {
+            $requested_design_preset = sanitize_key( (string) $raw_options['design_preset'] );
+        }
+
+        $design_presets = self::get_design_presets();
+
+        if ( ! isset( $design_presets[ $requested_design_preset ] ) ) {
+            $requested_design_preset = 'custom';
+        }
+
+        $raw_options['design_preset'] = $requested_design_preset;
+
+        $preset_definition = self::get_design_preset( $requested_design_preset );
+        $preset_values     = array();
+        $is_preset_locked  = false;
+
+        if ( is_array( $preset_definition ) ) {
+            if ( isset( $preset_definition['values'] ) && is_array( $preset_definition['values'] ) ) {
+                $preset_values = $preset_definition['values'];
+            }
+
+            $is_preset_locked = ! empty( $preset_definition['locked'] );
+        }
+
+        $options = wp_parse_args( $raw_options, $defaults );
+
+        if ( ! empty( $preset_values ) ) {
+            if ( $is_preset_locked ) {
+                $options = array_merge( $options, $preset_values );
+            } else {
+                foreach ( $preset_values as $preset_key => $preset_value ) {
+                    if ( array_key_exists( $preset_key, $raw_options ) ) {
+                        continue;
+                    }
+
+                    $options[ $preset_key ] = $preset_value;
+                }
+            }
+        }
+
+        $options['design_preset'] = $requested_design_preset;
+        $options['design_preset_locked'] = $is_preset_locked ? 1 : 0;
 
         $aria_label = '';
         if ( isset( $options['aria_label'] ) && is_string( $options['aria_label'] ) ) {

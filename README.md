@@ -24,6 +24,8 @@ Utiliser le shortcode :
 
 ### Attributs disponibles dans l'éditeur
 
+- **design_preset** (`custom`, `lcv-classique`, `dark-spotlight`, `editorial-focus`)
+  - Contrôle l’application d’un préréglage complet (couleurs, ombres, espacements). Le modèle « Focus éditorial » est verrouillé et fige les réglages associés.
 - **display_mode** (`grid`, `list`, `slideshow`)
 - **posts_per_page** (nombre d'articles, `0` pour illimité)
 - **pagination_mode** (`none`, `load_more`, `numbered`)
@@ -36,6 +38,17 @@ Utiliser le shortcode :
 - **list_content_padding_top/right/bottom/left** (marges internes des éléments en mode liste)
 - **border_radius** (arrondi des cartes), **title_font_size**, **meta_font_size**, **excerpt_font_size** (typographie)
 - Couleurs principales : **module_bg_color**, **vignette_bg_color**, **title_wrapper_bg_color**, **title_color**, **meta_color**, **meta_color_hover**, **excerpt_color**, **pagination_color**, **shadow_color**, **shadow_color_hover**, **pinned_border_color**, **pinned_badge_bg_color**, **pinned_badge_text_color**
+
+### Préréglages de design
+
+Les modèles intégrés permettent de démarrer rapidement avec des combinaisons cohérentes :
+
+- **Personnalisé** (`custom`) : aucun ajustement automatique, vos réglages manuels sont conservés.
+- **Classique LCV** (`lcv-classique`) : fond clair, ombres légères et cartes arrondies.
+- **Projecteur sombre** (`dark-spotlight`) : palette foncée à fort contraste pour des mises en avant immersives.
+- **Focus éditorial** (`editorial-focus`) : présentation magazine verrouillée (mode liste, extraits activés) pour homogénéiser les modules éditoriaux.
+
+Le panneau « Module » de l’éditeur propose un sélecteur de modèle ; les préréglages verrouillés grisent automatiquement les contrôles concernés.
 
 Options principales :
 
@@ -79,6 +92,16 @@ base64 --decode mon-affichage-article/languages/mon-articles-fr_FR.mo.base64 \
    ```
 
 Veiller à ne pas ajouter le fichier `.mo` généré au dépôt (il est ignoré par Git) et à ne commiter que la version encodée.
+
+## Migration des modules existants
+
+Les modules créés avant l’introduction des préréglages conservent leurs réglages manuels. Pour normaliser la nouvelle valeur `design_preset`, vous pouvez exécuter :
+
+```bash
+wp eval-file scripts/migrations/assign-design-preset.php
+```
+
+Le script affecte automatiquement le modèle « Personnalisé » (`custom`) aux contenus `mon_affichage` dépourvus de préréglage.
 
 ## Tests
 
