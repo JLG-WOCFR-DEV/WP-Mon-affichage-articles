@@ -347,6 +347,7 @@
             );
 
             var displayMode = attributes.display_mode || 'grid';
+            var isListMode = displayMode === 'list';
 
             var ensureNumber = function (value, fallback) {
                 return typeof value === 'number' ? value : fallback;
@@ -520,8 +521,8 @@
                             }
                             setAttributes({ columns_mobile: value });
                         }),
-                        disabled: 'list' === displayMode || isAttributeLocked('columns_mobile'),
-                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                        disabled: isListMode || isAttributeLocked('columns_mobile'),
+                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
                         label: __('Colonnes (tablette)', 'mon-articles'),
@@ -535,8 +536,8 @@
                             }
                             setAttributes({ columns_tablet: value });
                         }),
-                        disabled: 'list' === displayMode || isAttributeLocked('columns_tablet'),
-                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                        disabled: isListMode || isAttributeLocked('columns_tablet'),
+                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
                         label: __('Colonnes (desktop)', 'mon-articles'),
@@ -550,8 +551,8 @@
                             }
                             setAttributes({ columns_desktop: value });
                         }),
-                        disabled: 'list' === displayMode || isAttributeLocked('columns_desktop'),
-                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                        disabled: isListMode || isAttributeLocked('columns_desktop'),
+                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
                         label: __('Colonnes (ultra-large)', 'mon-articles'),
@@ -565,8 +566,8 @@
                             }
                             setAttributes({ columns_ultrawide: value });
                         }),
-                        disabled: 'list' === displayMode || isAttributeLocked('columns_ultrawide'),
-                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                        disabled: isListMode || isAttributeLocked('columns_ultrawide'),
+                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
                         label: __('Espacement des vignettes (px)', 'mon-articles'),
@@ -580,7 +581,7 @@
                             }
                             setAttributes({ gap_size: value });
                         }),
-                        disabled: 'list' === displayMode || isAttributeLocked('gap_size'),
+                        disabled: isListMode || isAttributeLocked('gap_size'),
                     }),
                     el(RangeControl, {
                         label: __('Espacement vertical (liste)', 'mon-articles'),
@@ -594,7 +595,7 @@
                             }
                             setAttributes({ list_item_gap: value });
                         }),
-                        disabled: 'list' !== displayMode || isAttributeLocked('list_item_gap'),
+                        disabled: !isListMode || isAttributeLocked('list_item_gap'),
                     })
                 ),
                 el(
@@ -696,7 +697,7 @@
                             }
                             setAttributes({ list_content_padding_top: value });
                         }),
-                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_top'),
+                        disabled: !isListMode || isAttributeLocked('list_content_padding_top'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – droite (px)', 'mon-articles'),
@@ -710,7 +711,7 @@
                             }
                             setAttributes({ list_content_padding_right: value });
                         }),
-                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_right'),
+                        disabled: !isListMode || isAttributeLocked('list_content_padding_right'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – bas (px)', 'mon-articles'),
@@ -724,7 +725,7 @@
                             }
                             setAttributes({ list_content_padding_bottom: value });
                         }),
-                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_bottom'),
+                        disabled: !isListMode || isAttributeLocked('list_content_padding_bottom'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – gauche (px)', 'mon-articles'),
@@ -738,7 +739,7 @@
                             }
                             setAttributes({ list_content_padding_left: value });
                         }),
-                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_left'),
+                        disabled: !isListMode || isAttributeLocked('list_content_padding_left'),
                     })
                 ),
                 el(
@@ -890,7 +891,7 @@
                     }),
                     el(RangeControl, {
                         label: __('Longueur de l’extrait', 'mon-articles'),
-                        value: attributes.excerpt_length,
+                        value: ensureNumber(attributes.excerpt_length, 25),
                         min: 0,
                         max: 100,
                         onChange: withLockedGuard('excerpt_length', function (value) {
