@@ -49,6 +49,80 @@ if (!class_exists('WP_Error')) {
     }
 }
 
+if (!class_exists('WP_REST_Controller')) {
+    class WP_REST_Controller
+    {
+    }
+}
+
+if (!class_exists('WP_REST_Server')) {
+    class WP_REST_Server
+    {
+        public const READABLE = 'GET';
+        public const CREATABLE = 'POST';
+        public const EDITABLE = 'PUT';
+        public const DELETABLE = 'DELETE';
+        public const ALLMETHODS = array('GET', 'POST', 'PUT', 'PATCH', 'DELETE');
+    }
+}
+
+if (!class_exists('WP_REST_Request')) {
+    class WP_REST_Request
+    {
+        /** @var array<string, mixed> */
+        private $params = array();
+
+        /** @var array<string, string> */
+        private $headers = array();
+
+        public function __construct($method = 'GET', $route = '')
+        {
+            $this->params = array();
+            $this->headers = array();
+        }
+
+        public function set_param(string $key, $value): void
+        {
+            $this->params[$key] = $value;
+        }
+
+        /**
+         * @param array<string, mixed> $params
+         */
+        public function set_body_params(array $params): void
+        {
+            foreach ($params as $key => $value) {
+                if (is_string($key)) {
+                    $this->set_param($key, $value);
+                }
+            }
+        }
+
+        /**
+         * @param array<string, string> $headers
+         */
+        public function set_headers(array $headers): void
+        {
+            foreach ($headers as $key => $value) {
+                $normalized = strtolower((string) $key);
+                $this->headers[$normalized] = (string) $value;
+            }
+        }
+
+        public function get_param(string $key)
+        {
+            return $this->params[$key] ?? null;
+        }
+
+        public function get_header(string $key): string
+        {
+            $normalized = strtolower($key);
+
+            return $this->headers[$normalized] ?? '';
+        }
+    }
+}
+
 if (!function_exists('is_wp_error')) {
     function is_wp_error($thing): bool
     {
@@ -56,10 +130,128 @@ if (!function_exists('is_wp_error')) {
     }
 }
 
+if (!function_exists('rest_ensure_response')) {
+    function rest_ensure_response($response)
+    {
+        return $response;
+    }
+}
+
 if (!function_exists('__')) {
     function __($text, $domain = null)
     {
         return $text;
+    }
+}
+
+if (!function_exists('wp_verify_nonce')) {
+    function wp_verify_nonce($nonce, $action = -1)
+    {
+        global $mon_articles_test_nonces;
+
+        if (!is_array($mon_articles_test_nonces)) {
+            return false;
+        }
+
+        $action_key = (string) $action;
+
+        return isset($mon_articles_test_nonces[$action_key]) && $mon_articles_test_nonces[$action_key] === (string) $nonce;
+    }
+}
+
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce($action = -1)
+    {
+        global $mon_articles_test_nonces;
+
+        if (!is_array($mon_articles_test_nonces)) {
+            $mon_articles_test_nonces = array();
+        }
+
+        $action_key = (string) $action;
+        $nonce = md5($action_key . ':nonce');
+        $mon_articles_test_nonces[$action_key] = $nonce;
+
+        return $nonce;
+    }
+}
+
+if (!function_exists('sanitize_text_field')) {
+    function sanitize_text_field($value)
+    {
+        if (is_array($value)) {
+            return array_map('sanitize_text_field', $value);
+        }
+
+        $filtered = strip_tags((string) $value);
+
+        return preg_replace('/[\r\n\t\0\x0B]+/', '', $filtered);
+    }
+}
+
+if (!function_exists('sanitize_title')) {
+    function sanitize_title($title)
+    {
+        $title = strtolower((string) $title);
+        $title = preg_replace('/[^a-z0-9-_]+/', '-', $title);
+
+        return trim((string) $title, '-');
+    }
+}
+
+if (!function_exists('wp_unslash')) {
+    function wp_unslash($value)
+    {
+        if (is_array($value)) {
+            return array_map('wp_unslash', $value);
+        }
+
+        return is_string($value) ? stripslashes($value) : $value;
+    }
+}
+
+if (!function_exists('home_url')) {
+    function home_url($path = '', $scheme = null)
+    {
+        $path = (string) $path;
+
+        return 'http://example.com' . ($path !== '' ? '/' . ltrim($path, '/') : '');
+    }
+}
+
+if (!function_exists('wp_get_referer')) {
+    function wp_get_referer()
+    {
+        return 'http://example.com/referer';
+    }
+}
+
+if (!function_exists('esc_url_raw')) {
+    function esc_url_raw($url)
+    {
+        return (string) $url;
+    }
+}
+
+if (!function_exists('wp_parse_url')) {
+    function wp_parse_url($url, $component = -1)
+    {
+        return parse_url((string) $url, $component);
+    }
+}
+
+if (!function_exists('maybe_serialize')) {
+    function maybe_serialize($data)
+    {
+        if (is_array($data) || is_object($data)) {
+            return serialize($data);
+        }
+
+        if (is_scalar($data) || null === $data) {
+            return $data;
+        }
+
+        return serialize($data);
     }
 }
 
@@ -424,10 +616,16 @@ if (!function_exists('add_action')) {
 if (!function_exists('get_option')) {
     function get_option(string $option, $default = false)
     {
-        global $mon_articles_test_options_store;
+        global $mon_articles_test_options_store, $mon_articles_test_options;
 
         if (!is_array($mon_articles_test_options_store)) {
             $mon_articles_test_options_store = array();
+        }
+
+        if (is_array($mon_articles_test_options)) {
+            foreach ($mon_articles_test_options as $key => $value) {
+                $mon_articles_test_options_store[$key] = $value;
+            }
         }
 
         return $mon_articles_test_options_store[$option] ?? $default;
@@ -437,13 +635,16 @@ if (!function_exists('get_option')) {
 if (!function_exists('update_option')) {
     function update_option(string $option, $value)
     {
-        global $mon_articles_test_options_store;
+        global $mon_articles_test_options_store, $mon_articles_test_options;
 
         if (!is_array($mon_articles_test_options_store)) {
             $mon_articles_test_options_store = array();
         }
 
         $mon_articles_test_options_store[$option] = $value;
+        if (is_array($mon_articles_test_options)) {
+            $mon_articles_test_options[$option] = $value;
+        }
 
         return true;
     }
@@ -1055,3 +1256,4 @@ if (!class_exists('WP_Query')) {
 require_once __DIR__ . '/../mon-affichage-article/mon-affichage-articles.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/rest/class-my-articles-controller.php';
