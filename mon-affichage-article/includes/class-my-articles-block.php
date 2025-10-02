@@ -61,13 +61,10 @@ class My_Articles_Block {
     private function prepare_overrides( array $attributes ) {
         $defaults  = My_Articles_Shortcode::get_default_options();
         $overrides = array();
+        $filtered  = array_intersect_key( $attributes, $defaults );
 
-        foreach ( $defaults as $key => $default_value ) {
-            if ( ! array_key_exists( $key, $attributes ) ) {
-                continue;
-            }
-
-            $raw_value = $attributes[ $key ];
+        foreach ( $filtered as $key => $raw_value ) {
+            $default_value = $defaults[ $key ];
 
             if ( is_array( $default_value ) ) {
                 if ( is_array( $raw_value ) ) {
