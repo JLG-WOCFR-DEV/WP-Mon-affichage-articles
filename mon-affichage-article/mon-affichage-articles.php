@@ -122,7 +122,9 @@ final class Mon_Affichage_Articles {
 
             if ( in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
                 $container_class = ( 'list' === $display_mode ) ? 'my-articles-list-content' : 'my-articles-grid-content';
-                echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+                if ( method_exists( $shortcode_instance, 'get_skeleton_placeholder_markup' ) ) {
+                    echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+                }
             }
         }
 
@@ -212,8 +214,6 @@ final class Mon_Affichage_Articles {
     }
 
     public function filter_articles_callback() {
-        check_ajax_referer( 'my_articles_filter_nonce', 'security' );
-
         $instance_id   = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $category_slug = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
         $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
@@ -425,8 +425,6 @@ final class Mon_Affichage_Articles {
     }
 
     public function load_more_articles_callback() {
-        check_ajax_referer( 'my_articles_load_more_nonce', 'security' );
-
         $instance_id = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $paged = isset( $_POST['paged'] ) ? absint( wp_unslash( $_POST['paged'] ) ) : 1;
         $pinned_ids_str = isset( $_POST['pinned_ids'] ) ? sanitize_text_field( wp_unslash( $_POST['pinned_ids'] ) ) : '';
