@@ -51,6 +51,122 @@
             "type": "string",
             "default": "none"
         },
+        "module_padding_left": {
+            "type": "integer",
+            "default": 0
+        },
+        "module_padding_right": {
+            "type": "integer",
+            "default": 0
+        },
+        "list_content_padding_top": {
+            "type": "integer",
+            "default": 0
+        },
+        "list_content_padding_right": {
+            "type": "integer",
+            "default": 0
+        },
+        "list_content_padding_bottom": {
+            "type": "integer",
+            "default": 0
+        },
+        "list_content_padding_left": {
+            "type": "integer",
+            "default": 0
+        },
+        "columns_mobile": {
+            "type": "integer",
+            "default": 1
+        },
+        "columns_tablet": {
+            "type": "integer",
+            "default": 2
+        },
+        "columns_desktop": {
+            "type": "integer",
+            "default": 3
+        },
+        "columns_ultrawide": {
+            "type": "integer",
+            "default": 4
+        },
+        "gap_size": {
+            "type": "integer",
+            "default": 25
+        },
+        "list_item_gap": {
+            "type": "integer",
+            "default": 25
+        },
+        "border_radius": {
+            "type": "integer",
+            "default": 12
+        },
+        "title_font_size": {
+            "type": "integer",
+            "default": 16
+        },
+        "meta_font_size": {
+            "type": "integer",
+            "default": 14
+        },
+        "excerpt_font_size": {
+            "type": "integer",
+            "default": 14
+        },
+        "module_bg_color": {
+            "type": "string",
+            "default": "rgba(255,255,255,0)"
+        },
+        "vignette_bg_color": {
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "title_wrapper_bg_color": {
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "title_color": {
+            "type": "string",
+            "default": "#333333"
+        },
+        "meta_color": {
+            "type": "string",
+            "default": "#6b7280"
+        },
+        "meta_color_hover": {
+            "type": "string",
+            "default": "#000000"
+        },
+        "pagination_color": {
+            "type": "string",
+            "default": "#333333"
+        },
+        "excerpt_color": {
+            "type": "string",
+            "default": "#4b5563"
+        },
+        "shadow_color": {
+            "type": "string",
+            "default": "rgba(0,0,0,0.07)"
+        },
+        "shadow_color_hover": {
+            "type": "string",
+            "default": "rgba(0,0,0,0.12)"
+        },
+        "pinned_border_color": {
+            "type": "string",
+            "default": "#eab308"
+        },
+        "pinned_badge_bg_color": {
+            "type": "string",
+            "default": "#eab308"
+        },
+        "pinned_badge_text_color": {
+            "type": "string",
+            "default": "#ffffff"
+        },
         "show_excerpt": {
             "type": "boolean",
             "default": false

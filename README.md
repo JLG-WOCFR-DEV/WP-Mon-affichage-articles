@@ -30,6 +30,12 @@ Utiliser le shortcode :
 - **show_category_filter** (activation du filtre par taxonomie et alignement associé)
 - **show_category**, **show_author**, **show_date** (affichage des métadonnées)
 - **show_excerpt** et **excerpt_length** (affichage et longueur de l'extrait)
+- **columns_mobile**, **columns_tablet**, **columns_desktop**, **columns_ultrawide** (colonnes disponibles selon la largeur d'écran)
+- **gap_size** (espacement horizontal en mode grille/diaporama) et **list_item_gap** (espacement vertical en mode liste)
+- **module_padding_left**, **module_padding_right** (marges internes du module)
+- **list_content_padding_top/right/bottom/left** (marges internes des éléments en mode liste)
+- **border_radius** (arrondi des cartes), **title_font_size**, **meta_font_size**, **excerpt_font_size** (typographie)
+- Couleurs principales : **module_bg_color**, **vignette_bg_color**, **title_wrapper_bg_color**, **title_color**, **meta_color**, **meta_color_hover**, **excerpt_color**, **pagination_color**, **shadow_color**, **shadow_color_hover**, **pinned_border_color**, **pinned_badge_bg_color**, **pinned_badge_text_color**
 
 Options principales :
 

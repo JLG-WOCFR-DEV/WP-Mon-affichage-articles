@@ -12,6 +12,8 @@
     var ToggleControl = wp.components.ToggleControl;
     var RangeControl = wp.components.RangeControl;
     var TextControl = wp.components.TextControl;
+    var BaseControl = wp.components.BaseControl;
+    var ColorPicker = wp.components.ColorPicker;
     var Placeholder = wp.components.Placeholder;
     var Spinner = wp.components.Spinner;
     var Notice = wp.components.Notice;
@@ -144,6 +146,63 @@
 
             var showLoadMoreButton = instances.length > 0 || (listData && listData.isResolving) || currentPage > 1;
 
+            var displayMode = attributes.display_mode || 'grid';
+
+            var ensureNumber = function (value, fallback) {
+                return typeof value === 'number' ? value : fallback;
+            };
+
+            var getAttributeValue = function (key, fallback) {
+                var value = attributes[key];
+                return value === undefined || value === null ? fallback : value;
+            };
+
+            var handleColorChange = function (key) {
+                return function (value) {
+                    var colorValue = '';
+
+                    if (typeof value === 'string') {
+                        colorValue = value;
+                    } else if (value && value.rgb) {
+                        var rgb = value.rgb;
+                        if (typeof rgb.a === 'number' && rgb.a < 1) {
+                            colorValue = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + rgb.a.toFixed(2) + ')';
+                        } else if (value.hex) {
+                            colorValue = value.hex;
+                        } else {
+                            colorValue = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
+                        }
+                    } else if (value && value.hex) {
+                        colorValue = value.hex;
+                    } else {
+                        return;
+                    }
+
+                    setAttributes(
+                        (function () {
+                            var result = {};
+                            result[key] = colorValue;
+                            return result;
+                        })()
+                    );
+                };
+            };
+
+            var renderColorControl = function (label, key, options) {
+                options = options || {};
+
+                return el(
+                    BaseControl,
+                    { label: label, key: key, className: 'my-articles-color-control' },
+                    el(ColorPicker, {
+                        color: getAttributeValue(key, options.defaultValue || ''),
+                        disableAlpha: options.disableAlpha || false,
+                        onChange: handleColorChange(key),
+                        onChangeComplete: handleColorChange(key),
+                    })
+                );
+            };
+
             var inspectorControls = el(
                 InspectorControls,
                 {},
@@ -232,6 +291,290 @@
                         onChange: function (value) {
                             setAttributes({ pagination_mode: value });
                         },
+                    })
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Disposition', 'mon-articles'), initialOpen: false },
+                    el(RangeControl, {
+                        label: __('Colonnes (mobile)', 'mon-articles'),
+                        value: ensureNumber(attributes.columns_mobile, 1),
+                        min: 1,
+                        max: 3,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 1;
+                            }
+                            setAttributes({ columns_mobile: value });
+                        },
+                        disabled: 'list' === displayMode,
+                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                    }),
+                    el(RangeControl, {
+                        label: __('Colonnes (tablette)', 'mon-articles'),
+                        value: ensureNumber(attributes.columns_tablet, 2),
+                        min: 1,
+                        max: 4,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 2;
+                            }
+                            setAttributes({ columns_tablet: value });
+                        },
+                        disabled: 'list' === displayMode,
+                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                    }),
+                    el(RangeControl, {
+                        label: __('Colonnes (desktop)', 'mon-articles'),
+                        value: ensureNumber(attributes.columns_desktop, 3),
+                        min: 1,
+                        max: 6,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 3;
+                            }
+                            setAttributes({ columns_desktop: value });
+                        },
+                        disabled: 'list' === displayMode,
+                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                    }),
+                    el(RangeControl, {
+                        label: __('Colonnes (ultra-large)', 'mon-articles'),
+                        value: ensureNumber(attributes.columns_ultrawide, 4),
+                        min: 1,
+                        max: 8,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 4;
+                            }
+                            setAttributes({ columns_ultrawide: value });
+                        },
+                        disabled: 'list' === displayMode,
+                        help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                    }),
+                    el(RangeControl, {
+                        label: __('Espacement des vignettes (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.gap_size, 25),
+                        min: 0,
+                        max: 50,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 25;
+                            }
+                            setAttributes({ gap_size: value });
+                        },
+                        disabled: 'list' === displayMode,
+                    }),
+                    el(RangeControl, {
+                        label: __('Espacement vertical (liste)', 'mon-articles'),
+                        value: ensureNumber(attributes.list_item_gap, 25),
+                        min: 0,
+                        max: 50,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 25;
+                            }
+                            setAttributes({ list_item_gap: value });
+                        },
+                        disabled: 'list' !== displayMode,
+                    })
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Espacements & typographie', 'mon-articles'), initialOpen: false },
+                    el(RangeControl, {
+                        label: __('Marge intérieure gauche (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.module_padding_left, 0),
+                        min: 0,
+                        max: 200,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ module_padding_left: value });
+                        },
+                    }),
+                    el(RangeControl, {
+                        label: __('Marge intérieure droite (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.module_padding_right, 0),
+                        min: 0,
+                        max: 200,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ module_padding_right: value });
+                        },
+                    }),
+                    el(RangeControl, {
+                        label: __('Arrondi des bordures (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.border_radius, 12),
+                        min: 0,
+                        max: 50,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 12;
+                            }
+                            setAttributes({ border_radius: value });
+                        },
+                    }),
+                    el(RangeControl, {
+                        label: __('Taille du titre (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.title_font_size, 16),
+                        min: 10,
+                        max: 40,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 16;
+                            }
+                            setAttributes({ title_font_size: value });
+                        },
+                    }),
+                    el(RangeControl, {
+                        label: __('Taille des métadonnées (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.meta_font_size, 14),
+                        min: 8,
+                        max: 24,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 14;
+                            }
+                            setAttributes({ meta_font_size: value });
+                        },
+                    }),
+                    el(RangeControl, {
+                        label: __('Taille de l’extrait (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.excerpt_font_size, 14),
+                        min: 8,
+                        max: 28,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 14;
+                            }
+                            setAttributes({ excerpt_font_size: value });
+                        },
+                        disabled: !attributes.show_excerpt,
+                    }),
+                    el(RangeControl, {
+                        label: __('Padding contenu liste – haut (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.list_content_padding_top, 0),
+                        min: 0,
+                        max: 100,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ list_content_padding_top: value });
+                        },
+                        disabled: 'list' !== displayMode,
+                    }),
+                    el(RangeControl, {
+                        label: __('Padding contenu liste – droite (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.list_content_padding_right, 0),
+                        min: 0,
+                        max: 100,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ list_content_padding_right: value });
+                        },
+                        disabled: 'list' !== displayMode,
+                    }),
+                    el(RangeControl, {
+                        label: __('Padding contenu liste – bas (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.list_content_padding_bottom, 0),
+                        min: 0,
+                        max: 100,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ list_content_padding_bottom: value });
+                        },
+                        disabled: 'list' !== displayMode,
+                    }),
+                    el(RangeControl, {
+                        label: __('Padding contenu liste – gauche (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.list_content_padding_left, 0),
+                        min: 0,
+                        max: 100,
+                        allowReset: true,
+                        onChange: function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ list_content_padding_left: value });
+                        },
+                        disabled: 'list' !== displayMode,
+                    })
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Couleurs', 'mon-articles'), initialOpen: false },
+                    renderColorControl(__('Fond du module', 'mon-articles'), 'module_bg_color', {
+                        defaultValue: 'rgba(255,255,255,0)',
+                    }),
+                    renderColorControl(__('Fond de la vignette', 'mon-articles'), 'vignette_bg_color', {
+                        defaultValue: '#ffffff',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Fond du bloc titre', 'mon-articles'), 'title_wrapper_bg_color', {
+                        defaultValue: '#ffffff',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Couleur du titre', 'mon-articles'), 'title_color', {
+                        defaultValue: '#333333',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Couleur du texte (méta)', 'mon-articles'), 'meta_color', {
+                        defaultValue: '#6b7280',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Couleur (méta, survol)', 'mon-articles'), 'meta_color_hover', {
+                        defaultValue: '#000000',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Couleur de pagination', 'mon-articles'), 'pagination_color', {
+                        defaultValue: '#333333',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Couleur de l’extrait', 'mon-articles'), 'excerpt_color', {
+                        defaultValue: '#4b5563',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Ombre', 'mon-articles'), 'shadow_color', {
+                        defaultValue: 'rgba(0,0,0,0.07)',
+                    }),
+                    renderColorControl(__('Ombre (survol)', 'mon-articles'), 'shadow_color_hover', {
+                        defaultValue: 'rgba(0,0,0,0.12)',
+                    }),
+                    renderColorControl(__('Bordure (épinglés)', 'mon-articles'), 'pinned_border_color', {
+                        defaultValue: '#eab308',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Fond du badge épinglé', 'mon-articles'), 'pinned_badge_bg_color', {
+                        defaultValue: '#eab308',
+                        disableAlpha: true,
+                    }),
+                    renderColorControl(__('Texte du badge épinglé', 'mon-articles'), 'pinned_badge_text_color', {
+                        defaultValue: '#ffffff',
+                        disableAlpha: true,
                     })
                 ),
                 el(
