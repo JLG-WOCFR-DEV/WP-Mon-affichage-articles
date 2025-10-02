@@ -1075,7 +1075,8 @@ public function prepare_load_more_articles_response( array $args ) {
             'exclude_from_search' => true,
             'publicly_queryable' => false,
             'capability_type' => 'post',
-            'show_in_rest' => false,
+            'show_in_rest' => true,
+            'rest_base' => 'mon_affichage',
         ];
         register_post_type( 'mon_affichage', $args );
     }
