@@ -271,17 +271,17 @@
             return;
         }
 
-        var requestUrl = (loadMoreSettings && typeof loadMoreSettings.ajax_url === 'string') ? loadMoreSettings.ajax_url : '';
+        var requestUrl = (loadMoreSettings && typeof loadMoreSettings.endpoint === 'string') ? loadMoreSettings.endpoint : '';
 
-        if (!requestUrl && loadMoreSettings && typeof loadMoreSettings.rest_root === 'string') {
-            requestUrl = loadMoreSettings.rest_root.replace(/\/+$/, '') + '/my-articles/v1/load-more';
+        if (!requestUrl && loadMoreSettings && typeof loadMoreSettings.restRoot === 'string') {
+            requestUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/load-more';
         }
 
         $.ajax({
             url: requestUrl,
             type: 'POST',
             headers: {
-                'X-WP-Nonce': loadMoreSettings && loadMoreSettings.nonce ? loadMoreSettings.nonce : ''
+                'X-WP-Nonce': loadMoreSettings && loadMoreSettings.restNonce ? loadMoreSettings.restNonce : ''
             },
             data: {
                 instance_id: instanceId,
