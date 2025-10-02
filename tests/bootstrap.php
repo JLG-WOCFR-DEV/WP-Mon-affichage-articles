@@ -9,6 +9,10 @@ if (!defined('WPINC')) {
     define('WPINC', 'wp-includes');
 }
 
+if (!defined('HOUR_IN_SECONDS')) {
+    define('HOUR_IN_SECONDS', 3600);
+}
+
 if (!class_exists('WP_Error')) {
     class WP_Error
     {
@@ -231,7 +235,28 @@ if (!function_exists('add_action')) {
 if (!function_exists('get_option')) {
     function get_option(string $option, $default = false)
     {
-        return $default;
+        global $mon_articles_test_options_store;
+
+        if (!is_array($mon_articles_test_options_store)) {
+            $mon_articles_test_options_store = array();
+        }
+
+        return $mon_articles_test_options_store[$option] ?? $default;
+    }
+}
+
+if (!function_exists('update_option')) {
+    function update_option(string $option, $value)
+    {
+        global $mon_articles_test_options_store;
+
+        if (!is_array($mon_articles_test_options_store)) {
+            $mon_articles_test_options_store = array();
+        }
+
+        $mon_articles_test_options_store[$option] = $value;
+
+        return true;
     }
 }
 
@@ -387,6 +412,176 @@ if (!function_exists('esc_url')) {
     function esc_url($url)
     {
         return (string) $url;
+    }
+}
+
+if (!function_exists('esc_url_raw')) {
+    function esc_url_raw($url)
+    {
+        return (string) $url;
+    }
+}
+
+if (!function_exists('rest_url')) {
+    function rest_url($path = '', $scheme = 'rest')
+    {
+        $path = is_string($path) ? ltrim($path, '/') : '';
+
+        return 'http://example.com/wp-json/' . $path;
+    }
+}
+
+if (!function_exists('wp_create_nonce')) {
+    function wp_create_nonce($action)
+    {
+        return 'nonce-' . (string) $action;
+    }
+}
+
+if (!function_exists('wp_generate_password')) {
+    function wp_generate_password($length = 12)
+    {
+        $length = (int) $length;
+        if ($length <= 0) {
+            $length = 12;
+        }
+
+        return str_repeat('a', $length);
+    }
+}
+
+if (!function_exists('wp_json_encode')) {
+    function wp_json_encode($data, $options = 0, $depth = 512)
+    {
+        return json_encode($data, $options, $depth);
+    }
+}
+
+if (!function_exists('wp_cache_get')) {
+    function wp_cache_get($key, $group = '')
+    {
+        global $mon_articles_test_cache_store;
+
+        if (!is_array($mon_articles_test_cache_store)) {
+            $mon_articles_test_cache_store = array();
+        }
+
+        $group = (string) $group;
+        if (!isset($mon_articles_test_cache_store[$group])) {
+            return false;
+        }
+
+        return $mon_articles_test_cache_store[$group][$key] ?? false;
+    }
+}
+
+if (!function_exists('wp_cache_set')) {
+    function wp_cache_set($key, $value, $group = '', $expire = 0)
+    {
+        global $mon_articles_test_cache_store;
+
+        if (!is_array($mon_articles_test_cache_store)) {
+            $mon_articles_test_cache_store = array();
+        }
+
+        $group = (string) $group;
+        if (!isset($mon_articles_test_cache_store[$group])) {
+            $mon_articles_test_cache_store[$group] = array();
+        }
+
+        $mon_articles_test_cache_store[$group][$key] = $value;
+
+        return true;
+    }
+}
+
+if (!function_exists('wp_cache_delete')) {
+    function wp_cache_delete($key, $group = '')
+    {
+        global $mon_articles_test_cache_store;
+
+        if (!is_array($mon_articles_test_cache_store)) {
+            return false;
+        }
+
+        $group = (string) $group;
+        if (!isset($mon_articles_test_cache_store[$group])) {
+            return false;
+        }
+
+        if (!array_key_exists($key, $mon_articles_test_cache_store[$group])) {
+            return false;
+        }
+
+        unset($mon_articles_test_cache_store[$group][$key]);
+
+        return true;
+    }
+}
+
+if (!function_exists('get_transient')) {
+    function get_transient($transient)
+    {
+        global $mon_articles_test_transients_store;
+
+        if (!is_array($mon_articles_test_transients_store)) {
+            $mon_articles_test_transients_store = array();
+        }
+
+        $key = (string) $transient;
+
+        if (!isset($mon_articles_test_transients_store[$key])) {
+            return false;
+        }
+
+        $entry = $mon_articles_test_transients_store[$key];
+
+        if (isset($entry['expires']) && $entry['expires'] > 0 && $entry['expires'] < time()) {
+            unset($mon_articles_test_transients_store[$key]);
+
+            return false;
+        }
+
+        return $entry['value'];
+    }
+}
+
+if (!function_exists('set_transient')) {
+    function set_transient($transient, $value, $expiration = 0)
+    {
+        global $mon_articles_test_transients_store;
+
+        if (!is_array($mon_articles_test_transients_store)) {
+            $mon_articles_test_transients_store = array();
+        }
+
+        $mon_articles_test_transients_store[(string) $transient] = array(
+            'value'   => $value,
+            'expires' => $expiration > 0 ? time() + (int) $expiration : 0,
+        );
+
+        return true;
+    }
+}
+
+if (!function_exists('delete_transient')) {
+    function delete_transient($transient)
+    {
+        global $mon_articles_test_transients_store;
+
+        if (!is_array($mon_articles_test_transients_store)) {
+            return false;
+        }
+
+        $key = (string) $transient;
+
+        if (!isset($mon_articles_test_transients_store[$key])) {
+            return false;
+        }
+
+        unset($mon_articles_test_transients_store[$key]);
+
+        return true;
     }
 }
 

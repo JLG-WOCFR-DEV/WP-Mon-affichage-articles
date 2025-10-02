@@ -271,12 +271,19 @@
             return;
         }
 
+        var requestUrl = (loadMoreSettings && typeof loadMoreSettings.ajax_url === 'string') ? loadMoreSettings.ajax_url : '';
+
+        if (!requestUrl && loadMoreSettings && typeof loadMoreSettings.rest_root === 'string') {
+            requestUrl = loadMoreSettings.rest_root.replace(/\/+$/, '') + '/my-articles/v1/load-more';
+        }
+
         $.ajax({
-            url: loadMoreSettings.ajax_url,
+            url: requestUrl,
             type: 'POST',
+            headers: {
+                'X-WP-Nonce': loadMoreSettings && loadMoreSettings.nonce ? loadMoreSettings.nonce : ''
+            },
             data: {
-                action: 'load_more_articles',
-                security: loadMoreSettings.nonce || '',
                 instance_id: instanceId,
                 paged: paged,
                 pinned_ids: pinnedIds,
