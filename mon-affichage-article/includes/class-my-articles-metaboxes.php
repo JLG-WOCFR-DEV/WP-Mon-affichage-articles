@@ -302,6 +302,40 @@ class My_Articles_Metaboxes {
         );
 
         echo '<hr><h3>' . esc_html__('Apparence & Performances', 'mon-articles') . '</h3>';
+        $design_presets = My_Articles_Shortcode::get_design_presets();
+        $design_preset_options = array();
+
+        if ( is_array( $design_presets ) ) {
+            foreach ( $design_presets as $preset_id => $preset ) {
+                $label = $preset['label'] ?? $preset_id;
+
+                if ( is_array( $label ) ) {
+                    $label = $preset_id;
+                }
+
+                $design_preset_options[ $preset_id ] = (string) $label;
+            }
+        }
+
+        if ( empty( $design_preset_options ) || ! isset( $design_preset_options['custom'] ) ) {
+            $design_preset_options = array_merge(
+                array( 'custom' => __( 'Personnalisé', 'mon-articles' ) ),
+                $design_preset_options
+            );
+        }
+
+        $this->render_field(
+            'design_preset',
+            esc_html__( 'Modèle', 'mon-articles' ),
+            'select',
+            $opts,
+            [
+                'default'     => 'custom',
+                'options'     => $design_preset_options,
+                'description' => __( 'Applique un préréglage de couleurs, d’ombres et d’espacements.', 'mon-articles' ),
+            ]
+        );
+
         $this->render_field('module_padding_left', esc_html__('Marge intérieure gauche (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('module_padding_right', esc_html__('Marge intérieure droite (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('gap_size', esc_html__('Espacement des vignettes (Grille)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
@@ -522,6 +556,16 @@ class My_Articles_Metaboxes {
             $aria_label = trim( $aria_label );
         }
         $sanitized['aria_label'] = $aria_label;
+
+        $design_preset = 'custom';
+        if ( isset( $input['design_preset'] ) && is_string( $input['design_preset'] ) ) {
+            $candidate = sanitize_key( $input['design_preset'] );
+            $available_presets = My_Articles_Shortcode::get_design_presets();
+            if ( is_array( $available_presets ) && isset( $available_presets[ $candidate ] ) ) {
+                $design_preset = $candidate;
+            }
+        }
+        $sanitized['design_preset'] = $design_preset;
 
         $sanitized['display_mode'] = in_array($input['display_mode'] ?? 'grid', ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
         $sanitized['columns_mobile'] = isset( $input['columns_mobile'] ) ? max( 1, absint( $input['columns_mobile'] ) ) : 1;

@@ -26,6 +26,9 @@
     var useCallback = wp.element.useCallback;
     var ServerSideRender = wp.serverSideRender;
 
+    var designPresets = window.myArticlesDesignPresets || {};
+    var DESIGN_PRESET_FALLBACK = 'custom';
+
     var SSRContentWrapper = function (props) {
         var onChange = props.onChange;
         var children = props.children;
@@ -104,6 +107,8 @@
             var _useState5 = useState(0);
             var previewRenderCount = _useState5[0];
             var setPreviewRenderCount = _useState5[1];
+
+            var isDesignPresetLocked = false;
 
             var listData = useSelect(function (select) {
                 var core = select('core');
@@ -223,6 +228,85 @@
 
             var showLoadMoreButton = instances.length > 0 || (listData && listData.isResolving) || currentPage > 1;
 
+            var currentDesignPresetId = attributes.design_preset || DESIGN_PRESET_FALLBACK;
+            if (!designPresets[currentDesignPresetId]) {
+                currentDesignPresetId = DESIGN_PRESET_FALLBACK;
+            }
+            var selectedPreset = designPresets[currentDesignPresetId] || null;
+            var designPresetValues = selectedPreset && selectedPreset.values && typeof selectedPreset.values === 'object' ? selectedPreset.values : {};
+            var designPresetValuesString = JSON.stringify(designPresetValues);
+            isDesignPresetLocked = !!(selectedPreset && selectedPreset.locked);
+            var isAttributeLocked = function (key) {
+                if (!isDesignPresetLocked || !key) {
+                    return false;
+                }
+                return Object.prototype.hasOwnProperty.call(designPresetValues, key);
+            };
+            var withLockedGuard = function (key, callback) {
+                return function () {
+                    if (isAttributeLocked(key)) {
+                        return;
+                    }
+                    return callback.apply(null, arguments);
+                };
+            };
+
+            var designPresetOptions = Object.keys(designPresets).map(function (presetId) {
+                var preset = designPresets[presetId] || {};
+                return { label: preset.label || presetId, value: presetId };
+            });
+            if (designPresetOptions.length === 0) {
+                designPresetOptions = [{ label: __('Personnalisé', 'mon-articles'), value: DESIGN_PRESET_FALLBACK }];
+            } else {
+                designPresetOptions.sort(function (a, b) {
+                    if (a.value === DESIGN_PRESET_FALLBACK) {
+                        return -1;
+                    }
+                    if (b.value === DESIGN_PRESET_FALLBACK) {
+                        return 1;
+                    }
+                    if (typeof a.label === 'string' && typeof b.label === 'string') {
+                        return a.label.localeCompare(b.label);
+                    }
+                    return 0;
+                });
+            }
+
+            useEffect(
+                function () {
+                    if (!isDesignPresetLocked || !designPresetValues) {
+                        return;
+                    }
+                    var updates = {};
+                    var hasUpdates = false;
+                    Object.keys(designPresetValues).forEach(function (key) {
+                        if (attributes[key] !== designPresetValues[key]) {
+                            updates[key] = designPresetValues[key];
+                            hasUpdates = true;
+                        }
+                    });
+                    if (hasUpdates) {
+                        setAttributes(updates);
+                    }
+                },
+                [attributes.design_preset, designPresetValuesString]
+            );
+
+            var handleDesignPresetChange = useCallback(
+                function (nextPresetId) {
+                    var resolvedId = nextPresetId && designPresets[nextPresetId] ? nextPresetId : DESIGN_PRESET_FALLBACK;
+                    var preset = designPresets[resolvedId] || {};
+                    var updates = { design_preset: resolvedId };
+                    if (preset.values && typeof preset.values === 'object') {
+                        Object.keys(preset.values).forEach(function (key) {
+                            updates[key] = preset.values[key];
+                        });
+                    }
+                    setAttributes(updates);
+                },
+                [setAttributes]
+            );
+
             var displayMode = attributes.display_mode || 'grid';
 
             var ensureNumber = function (value, fallback) {
@@ -235,7 +319,7 @@
             };
 
             var handleColorChange = function (key) {
-                return function (value) {
+                return withLockedGuard(key, function (value) {
                     var colorValue = '';
 
                     if (typeof value === 'string') {
@@ -262,7 +346,7 @@
                             return result;
                         })()
                     );
-                };
+                });
             };
 
             var renderColorControl = function (label, key, options) {
@@ -270,7 +354,7 @@
 
                 return el(
                     BaseControl,
-                    { label: label, key: key, className: 'my-articles-color-control' },
+                    { label: label, key: key, className: 'my-articles-color-control' + (isAttributeLocked(key) ? ' is-locked' : '') },
                     el(ColorPicker, {
                         color: getAttributeValue(key, options.defaultValue || ''),
                         disableAlpha: options.disableAlpha || false,
@@ -325,6 +409,15 @@
                                       ? __('Charger plus de résultats', 'mon-articles')
                                       : __('Tous les contenus sont chargés', 'mon-articles')
                               )
+                            : null,
+                        el(SelectControl, {
+                            label: __('Modèle', 'mon-articles'),
+                            value: currentDesignPresetId,
+                            options: designPresetOptions,
+                            onChange: handleDesignPresetChange,
+                        }),
+                        isDesignPresetLocked
+                            ? el(Notice, { status: 'info', isDismissible: false }, __('Ce modèle verrouille certains réglages de design.', 'mon-articles'))
                             : null
                     )
                 ),
@@ -339,9 +432,10 @@
                             { label: __('Liste', 'mon-articles'), value: 'list' },
                             { label: __('Diaporama', 'mon-articles'), value: 'slideshow' },
                         ],
-                        onChange: function (value) {
+                        onChange: withLockedGuard('display_mode', function (value) {
                             setAttributes({ display_mode: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('display_mode'),
                     }),
                     el(RangeControl, {
                         label: __('Articles par page', 'mon-articles'),
@@ -349,13 +443,14 @@
                         min: 0,
                         max: 24,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('posts_per_page', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ posts_per_page: value });
-                        },
+                        }),
                         help: __('Définissez 0 pour désactiver la limite.', 'mon-articles'),
+                        disabled: isAttributeLocked('posts_per_page'),
                     }),
                     el(SelectControl, {
                         label: __('Pagination', 'mon-articles'),
@@ -365,9 +460,10 @@
                             { label: __('Bouton « Charger plus »', 'mon-articles'), value: 'load_more' },
                             { label: __('Pagination numérotée', 'mon-articles'), value: 'numbered' },
                         ],
-                        onChange: function (value) {
+                        onChange: withLockedGuard('pagination_mode', function (value) {
                             setAttributes({ pagination_mode: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('pagination_mode'),
                     })
                 ),
                 el(
@@ -379,13 +475,13 @@
                         min: 1,
                         max: 3,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('columns_mobile', function (value) {
                             if (typeof value !== 'number') {
                                 value = 1;
                             }
                             setAttributes({ columns_mobile: value });
-                        },
-                        disabled: 'list' === displayMode,
+                        }),
+                        disabled: 'list' === displayMode || isAttributeLocked('columns_mobile'),
                         help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
@@ -394,13 +490,13 @@
                         min: 1,
                         max: 4,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('columns_tablet', function (value) {
                             if (typeof value !== 'number') {
                                 value = 2;
                             }
                             setAttributes({ columns_tablet: value });
-                        },
-                        disabled: 'list' === displayMode,
+                        }),
+                        disabled: 'list' === displayMode || isAttributeLocked('columns_tablet'),
                         help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
@@ -409,13 +505,13 @@
                         min: 1,
                         max: 6,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('columns_desktop', function (value) {
                             if (typeof value !== 'number') {
                                 value = 3;
                             }
                             setAttributes({ columns_desktop: value });
-                        },
-                        disabled: 'list' === displayMode,
+                        }),
+                        disabled: 'list' === displayMode || isAttributeLocked('columns_desktop'),
                         help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
@@ -424,13 +520,13 @@
                         min: 1,
                         max: 8,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('columns_ultrawide', function (value) {
                             if (typeof value !== 'number') {
                                 value = 4;
                             }
                             setAttributes({ columns_ultrawide: value });
-                        },
-                        disabled: 'list' === displayMode,
+                        }),
+                        disabled: 'list' === displayMode || isAttributeLocked('columns_ultrawide'),
                         help: 'list' === displayMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
                     }),
                     el(RangeControl, {
@@ -439,13 +535,13 @@
                         min: 0,
                         max: 50,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('gap_size', function (value) {
                             if (typeof value !== 'number') {
                                 value = 25;
                             }
                             setAttributes({ gap_size: value });
-                        },
-                        disabled: 'list' === displayMode,
+                        }),
+                        disabled: 'list' === displayMode || isAttributeLocked('gap_size'),
                     }),
                     el(RangeControl, {
                         label: __('Espacement vertical (liste)', 'mon-articles'),
@@ -453,13 +549,13 @@
                         min: 0,
                         max: 50,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('list_item_gap', function (value) {
                             if (typeof value !== 'number') {
                                 value = 25;
                             }
                             setAttributes({ list_item_gap: value });
-                        },
-                        disabled: 'list' !== displayMode,
+                        }),
+                        disabled: 'list' !== displayMode || isAttributeLocked('list_item_gap'),
                     })
                 ),
                 el(
@@ -471,12 +567,13 @@
                         min: 0,
                         max: 200,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('module_padding_left', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ module_padding_left: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('module_padding_left'),
                     }),
                     el(RangeControl, {
                         label: __('Marge intérieure droite (px)', 'mon-articles'),
@@ -484,12 +581,13 @@
                         min: 0,
                         max: 200,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('module_padding_right', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ module_padding_right: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('module_padding_right'),
                     }),
                     el(RangeControl, {
                         label: __('Arrondi des bordures (px)', 'mon-articles'),
@@ -497,12 +595,13 @@
                         min: 0,
                         max: 50,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('border_radius', function (value) {
                             if (typeof value !== 'number') {
                                 value = 12;
                             }
                             setAttributes({ border_radius: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('border_radius'),
                     }),
                     el(RangeControl, {
                         label: __('Taille du titre (px)', 'mon-articles'),
@@ -510,12 +609,13 @@
                         min: 10,
                         max: 40,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('title_font_size', function (value) {
                             if (typeof value !== 'number') {
                                 value = 16;
                             }
                             setAttributes({ title_font_size: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('title_font_size'),
                     }),
                     el(RangeControl, {
                         label: __('Taille des métadonnées (px)', 'mon-articles'),
@@ -523,12 +623,13 @@
                         min: 8,
                         max: 24,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('meta_font_size', function (value) {
                             if (typeof value !== 'number') {
                                 value = 14;
                             }
                             setAttributes({ meta_font_size: value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('meta_font_size'),
                     }),
                     el(RangeControl, {
                         label: __('Taille de l’extrait (px)', 'mon-articles'),
@@ -536,13 +637,13 @@
                         min: 8,
                         max: 28,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('excerpt_font_size', function (value) {
                             if (typeof value !== 'number') {
                                 value = 14;
                             }
                             setAttributes({ excerpt_font_size: value });
-                        },
-                        disabled: !attributes.show_excerpt,
+                        }),
+                        disabled: !attributes.show_excerpt || isAttributeLocked('excerpt_font_size'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – haut (px)', 'mon-articles'),
@@ -550,13 +651,13 @@
                         min: 0,
                         max: 100,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('list_content_padding_top', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ list_content_padding_top: value });
-                        },
-                        disabled: 'list' !== displayMode,
+                        }),
+                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_top'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – droite (px)', 'mon-articles'),
@@ -564,13 +665,13 @@
                         min: 0,
                         max: 100,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('list_content_padding_right', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ list_content_padding_right: value });
-                        },
-                        disabled: 'list' !== displayMode,
+                        }),
+                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_right'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – bas (px)', 'mon-articles'),
@@ -578,13 +679,13 @@
                         min: 0,
                         max: 100,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('list_content_padding_bottom', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ list_content_padding_bottom: value });
-                        },
-                        disabled: 'list' !== displayMode,
+                        }),
+                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_bottom'),
                     }),
                     el(RangeControl, {
                         label: __('Padding contenu liste – gauche (px)', 'mon-articles'),
@@ -592,13 +693,13 @@
                         min: 0,
                         max: 100,
                         allowReset: true,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('list_content_padding_left', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ list_content_padding_left: value });
-                        },
-                        disabled: 'list' !== displayMode,
+                        }),
+                        disabled: 'list' !== displayMode || isAttributeLocked('list_content_padding_left'),
                     })
                 ),
                 el(
@@ -698,9 +799,10 @@
                     el(ToggleControl, {
                         label: __('Afficher le filtre de catégories', 'mon-articles'),
                         checked: !!attributes.show_category_filter,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('show_category_filter', function (value) {
                             setAttributes({ show_category_filter: !!value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('show_category_filter'),
                     }),
                     el(SelectControl, {
                         label: __('Alignement du filtre', 'mon-articles'),
@@ -710,51 +812,55 @@
                             { label: __('Centre', 'mon-articles'), value: 'center' },
                             { label: __('Droite', 'mon-articles'), value: 'right' },
                         ],
-                        onChange: function (value) {
+                        onChange: withLockedGuard('filter_alignment', function (value) {
                             setAttributes({ filter_alignment: value });
-                        },
-                        disabled: !attributes.show_category_filter,
+                        }),
+                        disabled: !attributes.show_category_filter || isAttributeLocked('filter_alignment'),
                     }),
                     el(ToggleControl, {
                         label: __('Afficher la catégorie', 'mon-articles'),
                         checked: !!attributes.show_category,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('show_category', function (value) {
                             setAttributes({ show_category: !!value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('show_category'),
                     }),
                     el(ToggleControl, {
                         label: __('Afficher l’auteur', 'mon-articles'),
                         checked: !!attributes.show_author,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('show_author', function (value) {
                             setAttributes({ show_author: !!value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('show_author'),
                     }),
                     el(ToggleControl, {
                         label: __('Afficher la date', 'mon-articles'),
                         checked: !!attributes.show_date,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('show_date', function (value) {
                             setAttributes({ show_date: !!value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('show_date'),
                     }),
                     el(ToggleControl, {
                         label: __('Afficher l’extrait', 'mon-articles'),
                         checked: !!attributes.show_excerpt,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('show_excerpt', function (value) {
                             setAttributes({ show_excerpt: !!value });
-                        },
+                        }),
+                        disabled: isAttributeLocked('show_excerpt'),
                     }),
                     el(RangeControl, {
                         label: __('Longueur de l’extrait', 'mon-articles'),
                         value: attributes.excerpt_length,
                         min: 0,
                         max: 100,
-                        onChange: function (value) {
+                        onChange: withLockedGuard('excerpt_length', function (value) {
                             if (typeof value !== 'number') {
                                 value = 0;
                             }
                             setAttributes({ excerpt_length: value });
-                        },
-                        disabled: !attributes.show_excerpt,
+                        }),
+                        disabled: !attributes.show_excerpt || isAttributeLocked('excerpt_length'),
                     })
                 )
             );

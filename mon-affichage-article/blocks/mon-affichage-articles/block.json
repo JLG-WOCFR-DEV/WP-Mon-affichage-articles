@@ -39,6 +39,10 @@
             "type": "string",
             "default": ""
         },
+        "design_preset": {
+            "type": "string",
+            "default": "custom"
+        },
         "show_category_filter": {
             "type": "boolean",
             "default": false
