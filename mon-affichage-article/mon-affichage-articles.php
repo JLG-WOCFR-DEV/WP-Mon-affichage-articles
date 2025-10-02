@@ -665,6 +665,70 @@ public function prepare_load_more_articles_response( array $args ) {
         wp_send_json_success( $response );
     }
 
+    public function prepare_search_posts_response( array $args ) {
+        $search_term = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+        $post_type   = isset( $args['post_type'] ) ? sanitize_key( $args['post_type'] ) : '';
+
+        if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
+            return new WP_Error(
+                'my_articles_invalid_post_type',
+                __( 'Type de contenu invalide.', 'mon-articles' ),
+                array( 'status' => 400 )
+            );
+        }
+
+        $post_type_object = get_post_type_object( $post_type );
+        $required_cap     = isset( $post_type_object->cap->edit_posts ) ? $post_type_object->cap->edit_posts : 'edit_posts';
+
+        if ( ! current_user_can( $required_cap ) ) {
+            return new WP_Error(
+                'my_articles_search_forbidden',
+                __( 'Unauthorized', 'mon-articles' ),
+                array( 'status' => 403 )
+            );
+        }
+
+        $results = array();
+
+        if ( '' !== $search_term ) {
+            $query_args = array(
+                's'                       => $search_term,
+                'post_type'               => $post_type,
+                'post_status'             => 'publish',
+                'posts_per_page'          => 20,
+                'no_found_rows'           => true,
+                'ignore_sticky_posts'     => true,
+                'suppress_filters'        => true,
+                'fields'                  => 'ids',
+                'orderby'                 => 'date',
+                'order'                   => 'DESC',
+                'update_post_meta_cache'  => false,
+                'update_post_term_cache'  => false,
+            );
+
+            $query = new WP_Query( $query_args );
+
+            if ( $query instanceof WP_Query && ! empty( $query->posts ) ) {
+                foreach ( $query->posts as $post_id ) {
+                    $post_id = absint( $post_id );
+
+                    if ( ! $post_id ) {
+                        continue;
+                    }
+
+                    $results[] = array(
+                        'id'   => $post_id,
+                        'text' => wp_strip_all_tags( get_the_title( $post_id ) ),
+                    );
+                }
+            }
+        }
+
+        return array(
+            'results' => $results,
+        );
+    }
+
     private function generate_response_cache_key( $instance_id, $category_slug, $paged, $display_mode, $extra = '' ) {
         $namespace = $this->get_cache_namespace();
 
@@ -986,62 +1050,24 @@ public function prepare_load_more_articles_response( array $args ) {
     public function search_posts_callback() {
         check_ajax_referer( 'my_articles_select2_nonce', 'security' );
 
-        $search_term = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
-        $raw_post_type = isset( $_GET['post_type'] ) ? wp_unslash( $_GET['post_type'] ) : '';
-        $post_type     = sanitize_key( $raw_post_type );
+        $response = $this->prepare_search_posts_response(
+            array(
+                'search'    => isset( $_GET['search'] ) ? wp_unslash( $_GET['search'] ) : '',
+                'post_type' => isset( $_GET['post_type'] ) ? wp_unslash( $_GET['post_type'] ) : '',
+            )
+        );
 
-        if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
+        if ( is_wp_error( $response ) ) {
+            $data   = $response->get_error_data();
+            $status = is_array( $data ) && isset( $data['status'] ) ? (int) $data['status'] : 400;
+
             wp_send_json_error(
-                array( 'message' => __( 'Type de contenu invalide.', 'mon-articles' ) ),
-                400
+                array( 'message' => $response->get_error_message() ),
+                $status
             );
         }
 
-        $post_type_object = get_post_type_object( $post_type );
-        $required_cap     = isset( $post_type_object->cap->edit_posts ) ? $post_type_object->cap->edit_posts : 'edit_posts';
-
-        if ( ! current_user_can( $required_cap ) ) {
-            wp_send_json_error(
-                array( 'message' => __( 'Unauthorized', 'mon-articles' ) ),
-                403
-            );
-        }
-        $results = array();
-
-        if ( '' !== $search_term ) {
-            $query_args = array(
-                's'                       => $search_term,
-                'post_type'               => $post_type,
-                'post_status'             => 'publish',
-                'posts_per_page'          => 20,
-                'no_found_rows'           => true,
-                'ignore_sticky_posts'     => true,
-                'suppress_filters'        => true,
-                'fields'                  => 'ids',
-                'orderby'                 => 'date',
-                'order'                   => 'DESC',
-                'update_post_meta_cache'  => false,
-                'update_post_term_cache'  => false,
-            );
-
-            $query = new WP_Query( $query_args );
-
-            if ( $query instanceof WP_Query && ! empty( $query->posts ) ) {
-                foreach ( $query->posts as $post_id ) {
-                    $post_id = absint( $post_id );
-                    if ( ! $post_id ) {
-                        continue;
-                    }
-
-                    $results[] = array(
-                        'id'   => $post_id,
-                        'text' => wp_strip_all_tags( get_the_title( $post_id ) ),
-                    );
-                }
-            }
-        }
-
-        wp_send_json_success( $results );
+        wp_send_json_success( $response['results'] );
     }
 
     public function register_post_type() {
