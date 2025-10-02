@@ -136,6 +136,20 @@ class My_Articles_Shortcode {
         return null;
     }
 
+    public static function get_design_preset_values( $preset_id ) {
+        $preset = self::get_design_preset( $preset_id );
+
+        if ( ! is_array( $preset ) ) {
+            return array();
+        }
+
+        if ( isset( $preset['values'] ) && is_array( $preset['values'] ) ) {
+            return $preset['values'];
+        }
+
+        return array();
+    }
+
     private static function build_normalized_options_cache_key( $raw_options, $context ) {
         return md5( maybe_serialize( array( 'options' => $raw_options, 'context' => $context ) ) );
     }
@@ -641,14 +655,10 @@ class My_Articles_Shortcode {
         $raw_options['design_preset'] = $requested_design_preset;
 
         $preset_definition = self::get_design_preset( $requested_design_preset );
-        $preset_values     = array();
+        $preset_values     = self::get_design_preset_values( $requested_design_preset );
         $is_preset_locked  = false;
 
         if ( is_array( $preset_definition ) ) {
-            if ( isset( $preset_definition['values'] ) && is_array( $preset_definition['values'] ) ) {
-                $preset_values = $preset_definition['values'];
-            }
-
             $is_preset_locked = ! empty( $preset_definition['locked'] );
         }
 
