@@ -229,28 +229,97 @@
             requestUrl = filterSettings.rest_root.replace(/\/+$/, '') + '/my-articles/v1/filter';
         }
 
-        $.ajax({
-            url: requestUrl,
-            type: 'POST',
-            headers: {
-                'X-WP-Nonce': filterSettings && filterSettings.nonce ? filterSettings.nonce : ''
-            },
-            data: {
-                instance_id: instanceId,
-                category: categorySlug,
-                current_url: window.location && window.location.href ? window.location.href : ''
-            },
-            beforeSend: function () {
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'true');
-                    wrapper.addClass('is-loading');
+        var restPath = '/my-articles/v1/filter';
+        var nonce = filterSettings && filterSettings.nonce ? filterSettings.nonce : '';
+        var requestPayload = {
+            instance_id: instanceId,
+            category: categorySlug,
+            current_url: window.location && window.location.href ? window.location.href : ''
+        };
+
+        var revertToPreviousState = function () {
+            filterItem.removeClass('active');
+            filterLink.attr('aria-pressed', 'false');
+            if (previousActiveItem && previousActiveItem.length) {
+                previousActiveItem.addClass('active');
+                previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
+            }
+        };
+
+        var requestPromise = null;
+
+        if (typeof wp !== 'undefined' && wp.apiFetch) {
+            var apiFetchOptions = {
+                path: restPath,
+                method: 'POST',
+                data: requestPayload
+            };
+
+            if (nonce) {
+                apiFetchOptions.headers = {
+                    'X-WP-Nonce': nonce
+                };
+            }
+
+            requestPromise = wp.apiFetch(apiFetchOptions);
+        } else if (requestUrl && typeof window !== 'undefined' && typeof window.fetch === 'function') {
+            var fetchHeaders = {
+                'Content-Type': 'application/json'
+            };
+
+            if (nonce) {
+                fetchHeaders['X-WP-Nonce'] = nonce;
+            }
+
+            requestPromise = window.fetch(requestUrl, {
+                method: 'POST',
+                headers: fetchHeaders,
+                body: JSON.stringify(requestPayload),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                if (!response.ok) {
+                    return response.json().catch(function () {
+                        return {};
+                    }).then(function (errorBody) {
+                        var error = new Error((errorBody && errorBody.message) ? errorBody.message : 'Request failed');
+                        if (errorBody) {
+                            error.data = errorBody;
+                        }
+                        error.status = response.status;
+                        throw error;
+                    });
                 }
-                clearFeedback(wrapper);
-            },
-            success: function (response) {
-                if (response.success) {
-                    var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
-                    contentArea.html(response.data.html);
+
+                return response.json().catch(function () {
+                    return {};
+                });
+            });
+        }
+
+        if (!requestPromise) {
+            revertToPreviousState();
+            var missingRouteMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+            showError(wrapper, missingRouteMessage);
+            return;
+        }
+
+        if (wrapper && wrapper.length) {
+            wrapper.attr('aria-busy', 'true');
+            wrapper.addClass('is-loading');
+        }
+        clearFeedback(wrapper);
+
+        var finalizeRequest = function () {
+            if (wrapper && wrapper.length) {
+                wrapper.attr('aria-busy', 'false');
+                wrapper.removeClass('is-loading');
+            }
+        };
+
+        var chainedPromise = requestPromise.then(function (response) {
+            if (response && response.success) {
+                var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
+                contentArea.html(response.data.html);
 
                     var totalPages = (response.data && typeof response.data.total_pages !== 'undefined') ? parseInt(response.data.total_pages, 10) : 0;
                     totalPages = isNaN(totalPages) ? 0 : totalPages;
@@ -361,49 +430,40 @@
                         .show();
 
                     var firstArticle = contentArea.find('.my-article-item').first();
-                    focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
-                } else {
-                    filterItem.removeClass('active');
-                    filterLink.attr('aria-pressed', 'false');
-                    if (previousActiveItem && previousActiveItem.length) {
-                        previousActiveItem.addClass('active');
-                        previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
-                    }
+                focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
+            } else {
+                revertToPreviousState();
 
+                var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+                var responseMessage = (response && response.data && response.data.message) ? response.data.message : '';
+                var message = responseMessage || fallbackMessage;
+                showError(wrapper, message);
+            }
+        }).catch(function (error) {
+            revertToPreviousState();
 
-                    var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                    var responseMessage = (response.data && response.data.message) ? response.data.message : '';
-                    var message = responseMessage || fallbackMessage;
-                    showError(wrapper, message);
-                }
-            },
-            error: function (jqXHR) {
-                filterItem.removeClass('active');
-                filterLink.attr('aria-pressed', 'false');
-                if (previousActiveItem && previousActiveItem.length) {
-                    previousActiveItem.addClass('active');
-                    previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
-                }
+            var errorMessage = '';
 
-                var errorMessage = '';
-
-                if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
-
-                if (!errorMessage) {
-                    errorMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                }
-
-                showError(wrapper, errorMessage);
-            },
-            complete: function () {
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'false');
-                    wrapper.removeClass('is-loading');
+            if (error) {
+                if (error.data && typeof error.data.message === 'string' && error.data.message) {
+                    errorMessage = error.data.message;
+                } else if (typeof error.message === 'string' && error.message) {
+                    errorMessage = error.message;
                 }
             }
+
+            if (!errorMessage) {
+                errorMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+            }
+
+            showError(wrapper, errorMessage);
         });
+
+        if (chainedPromise && typeof chainedPromise.finally === 'function') {
+            chainedPromise.finally(finalizeRequest);
+        } else {
+            chainedPromise.then(finalizeRequest, finalizeRequest);
+        }
     });
 
 })(jQuery);
