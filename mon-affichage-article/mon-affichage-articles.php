@@ -10,8 +10,20 @@
  * Domain Path:       /languages
  */
 
+use LCV\MonAffichage\My_Articles_Block;
+use LCV\MonAffichage\My_Articles_Enqueue;
+use LCV\MonAffichage\My_Articles_Metaboxes;
+use LCV\MonAffichage\My_Articles_Settings;
+use LCV\MonAffichage\My_Articles_Shortcode;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
+}
+
+$autoload_path = dirname( __DIR__ ) . '/vendor/autoload.php';
+
+if ( is_readable( $autoload_path ) ) {
+    require_once $autoload_path;
 }
 
 define( 'MY_ARTICLES_VERSION', '2.4.0' );
@@ -25,19 +37,9 @@ final class Mon_Affichage_Articles {
     public static function get_instance() {
         if ( ! isset( self::$instance ) ) {
             self::$instance = new Mon_Affichage_Articles();
-            self::$instance->includes();
             self::$instance->add_hooks();
         }
         return self::$instance;
-    }
-
-    private function includes() {
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/helpers.php';
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-settings.php';
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
-        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
     }
 
     private function add_hooks() {

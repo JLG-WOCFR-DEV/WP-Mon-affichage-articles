@@ -125,7 +125,7 @@ if (!function_exists('is_object_in_taxonomy')) {
 
 namespace MonAffichageArticles\Tests {
 
-use My_Articles_Shortcode;
+use LCV\MonAffichage\My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 
 final class ShortcodeLocalizationTest extends TestCase

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace MonAffichageArticles\Tests;
 
-use My_Articles_Shortcode;
+use LCV\MonAffichage\My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 
 final class RenderArticleItemTest extends TestCase

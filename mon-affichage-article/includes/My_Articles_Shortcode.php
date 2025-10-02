@@ -1,6 +1,10 @@
 <?php
 // Fichier: includes/class-my-articles-shortcode.php
 
+namespace LCV\MonAffichage;
+
+use WP_Query;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
 }

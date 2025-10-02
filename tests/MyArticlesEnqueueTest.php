@@ -60,7 +60,7 @@ if (!function_exists('wp_enqueue_script')) {
 
 namespace MonAffichageArticles\Tests {
 
-use My_Articles_Enqueue;
+use LCV\MonAffichage\My_Articles_Enqueue;
 use PHPUnit\Framework\TestCase;
 
 final class MyArticlesEnqueueTest extends TestCase
@@ -76,8 +76,6 @@ final class MyArticlesEnqueueTest extends TestCase
         if (!defined('MY_ARTICLES_PLUGIN_URL')) {
             define('MY_ARTICLES_PLUGIN_URL', 'http://example.com/wp-content/plugins/mon-affichage-articles/');
         }
-
-        require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-enqueue.php';
 
         global $mon_articles_test_registered_styles,
             $mon_articles_test_registered_scripts,

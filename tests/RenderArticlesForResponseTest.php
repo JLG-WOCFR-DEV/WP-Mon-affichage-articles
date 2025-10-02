@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace MonAffichageArticles\Tests;
 
+use LCV\MonAffichage\My_Articles_Shortcode;
 use Mon_Affichage_Articles;
-use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use WP_Query;
@@ -33,6 +33,11 @@ class RenderArticlesForResponseTest extends TestCase
             public function get_empty_state_slide_html(): string
             {
                 return '<div class="empty-slide">Aucun article</div>';
+            }
+
+            public function get_skeleton_placeholder_markup(string $containerClass, array $options, int $renderLimit): string
+            {
+                return '<div class="skeleton">Placeholder</div>';
             }
         };
 

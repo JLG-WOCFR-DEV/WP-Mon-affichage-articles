@@ -100,7 +100,7 @@ if (!function_exists('get_current_screen')) {
 
 namespace MonAffichageArticles\Tests {
 
-use My_Articles_Metaboxes;
+use LCV\MonAffichage\My_Articles_Metaboxes;
 use PHPUnit\Framework\TestCase;
 
 final class MyArticlesMetaboxesTest extends TestCase
@@ -121,10 +121,6 @@ final class MyArticlesMetaboxesTest extends TestCase
 
         if (!defined('MY_ARTICLES_PLUGIN_URL')) {
             define('MY_ARTICLES_PLUGIN_URL', 'http://example.com/wp-content/plugins/mon-affichage-articles/');
-        }
-
-        if (!class_exists(My_Articles_Metaboxes::class)) {
-            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-metaboxes.php';
         }
 
         $mon_articles_test_enqueued_styles    = array();

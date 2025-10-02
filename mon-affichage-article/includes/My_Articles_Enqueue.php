@@ -1,6 +1,8 @@
 <?php
 // Fichier: includes/class-my-articles-enqueue.php
 
+namespace LCV\MonAffichage;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
 }

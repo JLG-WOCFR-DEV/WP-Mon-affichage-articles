@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace MonAffichageArticles\Tests;
 
-use My_Articles_Settings;
-use My_Articles_Shortcode;
+use LCV\MonAffichage\My_Articles_Settings;
+use LCV\MonAffichage\My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
@@ -24,9 +24,6 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
             define('MY_ARTICLES_PLUGIN_URL', 'http://example.com/wp-content/plugins/mon-affichage-articles/');
         }
 
-        if (!class_exists(My_Articles_Settings::class)) {
-            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-settings.php';
-        }
     }
 
     protected function setUp(): void

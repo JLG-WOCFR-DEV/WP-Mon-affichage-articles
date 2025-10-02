@@ -1,6 +1,8 @@
 <?php
 // Fichier: includes/class-my-articles-settings.php
 
+namespace LCV\MonAffichage;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
 }

@@ -1,6 +1,8 @@
 <?php
 // Fichier: includes/class-my-articles-block.php
 
+namespace LCV\MonAffichage;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
 }
@@ -35,7 +37,7 @@ class My_Articles_Block {
     }
 
     public function render_block( $attributes = array(), $content = '' ) {
-        if ( ! class_exists( 'My_Articles_Shortcode' ) ) {
+        if ( ! class_exists( My_Articles_Shortcode::class ) ) {
             return '';
         }
 

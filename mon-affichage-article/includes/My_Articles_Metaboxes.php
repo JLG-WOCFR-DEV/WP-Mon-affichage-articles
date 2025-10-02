@@ -1,6 +1,8 @@
 <?php
 // Fichier: includes/class-my-articles-metaboxes.php
 
+namespace LCV\MonAffichage;
+
 if ( ! defined( 'WPINC' ) ) {
     die;
 }

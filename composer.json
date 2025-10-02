@@ -7,8 +7,12 @@
     },
     "autoload": {
         "psr-4": {
+            "LCV\\MonAffichage\\": "mon-affichage-article/includes/",
             "MonAffichageArticles\\Tests\\": "tests/"
-        }
+        },
+        "files": [
+            "mon-affichage-article/includes/helpers.php"
+        ]
     },
     "scripts": {
         "test": "vendor/bin/phpunit"
