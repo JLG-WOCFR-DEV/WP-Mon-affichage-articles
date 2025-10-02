@@ -57,139 +57,173 @@
         },
         "module_padding_left": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne gauche du module (px)."
         },
         "module_padding_right": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne droite du module (px)."
         },
         "list_content_padding_top": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne supérieure des éléments en mode liste (px)."
         },
         "list_content_padding_right": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne droite des éléments en mode liste (px)."
         },
         "list_content_padding_bottom": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne inférieure des éléments en mode liste (px)."
         },
         "list_content_padding_left": {
             "type": "integer",
-            "default": 0
+            "default": 0,
+            "description": "Marge interne gauche des éléments en mode liste (px)."
         },
         "columns_mobile": {
             "type": "integer",
-            "default": 1
+            "default": 1,
+            "description": "Nombre de colonnes en affichage grille/diaporama sur mobile (<= 767px)."
         },
         "columns_tablet": {
             "type": "integer",
-            "default": 2
+            "default": 2,
+            "description": "Nombre de colonnes en affichage grille/diaporama sur tablette (768-1023px)."
         },
         "columns_desktop": {
             "type": "integer",
-            "default": 3
+            "default": 3,
+            "description": "Nombre de colonnes en affichage grille/diaporama sur desktop (>= 1024px)."
         },
         "columns_ultrawide": {
             "type": "integer",
-            "default": 4
+            "default": 4,
+            "description": "Nombre de colonnes en affichage grille/diaporama sur écran très large (>= 1536px)."
         },
         "gap_size": {
             "type": "integer",
-            "default": 25
+            "default": 25,
+            "description": "Espacement horizontal entre les cartes en mode grille/diaporama (px)."
         },
         "list_item_gap": {
             "type": "integer",
-            "default": 25
+            "default": 25,
+            "description": "Espacement vertical entre les éléments en mode liste (px)."
         },
         "border_radius": {
             "type": "integer",
-            "default": 12
+            "default": 12,
+            "description": "Rayon d'arrondi appliqué aux cartes (px)."
         },
         "title_font_size": {
             "type": "integer",
-            "default": 16
+            "default": 16,
+            "description": "Taille de police du titre (px)."
         },
         "meta_font_size": {
             "type": "integer",
-            "default": 14
+            "default": 14,
+            "description": "Taille de police des métadonnées (px)."
         },
         "excerpt_font_size": {
             "type": "integer",
-            "default": 14
+            "default": 14,
+            "description": "Taille de police de l'extrait (px)."
         },
         "module_bg_color": {
             "type": "string",
-            "default": "rgba(255,255,255,0)"
+            "default": "rgba(255,255,255,0)",
+            "description": "Couleur de fond principale du module."
         },
         "vignette_bg_color": {
             "type": "string",
-            "default": "#ffffff"
+            "default": "#ffffff",
+            "description": "Couleur de fond derrière l'image ou la vignette."
         },
         "title_wrapper_bg_color": {
             "type": "string",
-            "default": "#ffffff"
+            "default": "#ffffff",
+            "description": "Couleur de fond du bloc contenant le titre."
         },
         "title_color": {
             "type": "string",
-            "default": "#333333"
+            "default": "#333333",
+            "description": "Couleur du titre."
         },
         "meta_color": {
             "type": "string",
-            "default": "#6b7280"
+            "default": "#6b7280",
+            "description": "Couleur du texte des métadonnées."
         },
         "meta_color_hover": {
             "type": "string",
-            "default": "#000000"
+            "default": "#000000",
+            "description": "Couleur des métadonnées au survol."
         },
         "pagination_color": {
             "type": "string",
-            "default": "#333333"
+            "default": "#333333",
+            "description": "Couleur utilisée pour les liens de pagination."
         },
         "excerpt_color": {
             "type": "string",
-            "default": "#4b5563"
+            "default": "#4b5563",
+            "description": "Couleur du texte de l'extrait."
         },
         "shadow_color": {
             "type": "string",
-            "default": "rgba(0,0,0,0.07)"
+            "default": "rgba(0,0,0,0.07)",
+            "description": "Couleur de l'ombre principale."
         },
         "shadow_color_hover": {
             "type": "string",
-            "default": "rgba(0,0,0,0.12)"
+            "default": "rgba(0,0,0,0.12)",
+            "description": "Couleur de l'ombre au survol."
         },
         "pinned_border_color": {
             "type": "string",
-            "default": "#eab308"
+            "default": "#eab308",
+            "description": "Couleur de la bordure pour les articles épinglés."
         },
         "pinned_badge_bg_color": {
             "type": "string",
-            "default": "#eab308"
+            "default": "#eab308",
+            "description": "Couleur de fond du badge d'article épinglé."
         },
         "pinned_badge_text_color": {
             "type": "string",
-            "default": "#ffffff"
+            "default": "#ffffff",
+            "description": "Couleur du texte du badge d'article épinglé."
         },
         "show_excerpt": {
             "type": "boolean",
-            "default": false
+            "default": false,
+            "description": "Affiche ou masque l'extrait dans la liste des articles."
         },
         "excerpt_length": {
             "type": "integer",
-            "default": 25
+            "default": 25,
+            "description": "Longueur de l'extrait lorsqu'il est affiché (nombre de mots)."
         },
         "show_author": {
             "type": "boolean",
-            "default": true
+            "default": true,
+            "description": "Affiche ou masque l'auteur de l'article."
         },
         "show_date": {
             "type": "boolean",
-            "default": true
+            "default": true,
+            "description": "Affiche ou masque la date de publication."
         },
         "show_category": {
             "type": "boolean",
-            "default": true
+            "default": true,
+            "description": "Affiche ou masque la catégorie associée."
         }
     },
     "editorScript": "file:./edit.js",

@@ -66,6 +66,10 @@ class My_Articles_Block {
         foreach ( $filtered as $key => $raw_value ) {
             $default_value = $defaults[ $key ];
 
+            if ( null === $raw_value ) {
+                continue;
+            }
+
             if ( is_array( $default_value ) ) {
                 if ( is_array( $raw_value ) ) {
                     $overrides[ $key ] = $raw_value;

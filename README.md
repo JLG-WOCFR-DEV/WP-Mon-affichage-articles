@@ -39,6 +39,8 @@ Utiliser le shortcode :
 - **border_radius** (arrondi des cartes), **title_font_size**, **meta_font_size**, **excerpt_font_size** (typographie)
 - Couleurs principales : **module_bg_color**, **vignette_bg_color**, **title_wrapper_bg_color**, **title_color**, **meta_color**, **meta_color_hover**, **excerpt_color**, **pagination_color**, **shadow_color**, **shadow_color_hover**, **pinned_border_color**, **pinned_badge_bg_color**, **pinned_badge_text_color**
 
+Les panneaux **Disposition**, **Espacements & typographie** et **Couleurs** regroupent l'ensemble de ces curseurs (RangeControl) et sélecteurs de couleurs. Chaque ajustement met immédiatement à jour l'aperçu (rendu serveur) du bloc pour faciliter la mise au point.
+
 ### Préréglages de design
 
 Les modèles intégrés permettent de démarrer rapidement avec des combinaisons cohérentes :
