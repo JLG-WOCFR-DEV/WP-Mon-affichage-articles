@@ -841,14 +841,18 @@ class My_Articles_Shortcode {
         $resolved_taxonomy = $options['resolved_taxonomy'];
         $available_categories = $options['available_categories'];
 
+        $rest_nonce = wp_create_nonce( 'wp_rest' );
+        $rest_root  = esc_url_raw( rest_url() );
+
         if ( !empty($options['show_category_filter']) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
                 'my-articles-filter',
                 'myArticlesFilter',
                 [
-                    'ajax_url'  => admin_url('admin-ajax.php'),
-                    'nonce'     => wp_create_nonce('my_articles_filter_nonce'),
+                    'ajax_url'  => esc_url_raw( rest_url( 'my-articles/v1/filter' ) ),
+                    'rest_root' => $rest_root,
+                    'nonce'     => $rest_nonce,
                     'errorText' => __( 'Erreur AJAX.', 'mon-articles' ),
                     'countSingle' => __( '%s article affiché.', 'mon-articles' ),
                     'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
@@ -863,8 +867,9 @@ class My_Articles_Shortcode {
                 'my-articles-load-more',
                 'myArticlesLoadMore',
                 [
-                    'ajax_url'     => admin_url('admin-ajax.php'),
-                    'nonce'        => wp_create_nonce('my_articles_load_more_nonce'),
+                    'ajax_url'     => esc_url_raw( rest_url( 'my-articles/v1/load-more' ) ),
+                    'rest_root'    => $rest_root,
+                    'nonce'        => $rest_nonce,
                     'loadingText'  => __( 'Chargement...', 'mon-articles' ),
                     'loadMoreText' => esc_html__( 'Charger plus', 'mon-articles' ),
                     'errorText'    => __( 'Erreur AJAX.', 'mon-articles' ),
