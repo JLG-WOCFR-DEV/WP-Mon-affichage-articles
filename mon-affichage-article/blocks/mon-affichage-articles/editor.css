@@ -12,3 +12,13 @@
 .wp-block-mon-affichage-articles .my-articles-block-placeholder {
     color: #4b5563;
 }
+
+.wp-block-mon-affichage-articles .my-articles-block-placeholder__actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.wp-block-mon-affichage-articles .my-articles-block-placeholder__actions .components-button {
+    text-decoration: none;
+}

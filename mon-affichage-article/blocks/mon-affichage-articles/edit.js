@@ -140,6 +140,26 @@
                 };
             }, [attributes.instanceId]);
 
+            var canEditPosts = useSelect(function (select) {
+                var core = select('core');
+
+                if (!core || typeof core.canUser !== 'function') {
+                    return false;
+                }
+
+                var capabilityResult = core.canUser('edit', 'posts');
+
+                if (typeof capabilityResult === 'boolean') {
+                    return capabilityResult;
+                }
+
+                if (capabilityResult && typeof capabilityResult === 'object' && Object.prototype.hasOwnProperty.call(capabilityResult, 'resolved')) {
+                    return !!capabilityResult.resolved;
+                }
+
+                return !!capabilityResult;
+            }, []);
+
             useEffect(
                 function () {
                     if (!listData) {
@@ -879,6 +899,25 @@
                 } else {
                     placeholderChildren.push(
                         el('p', { key: 'instructions' }, __('Sélectionnez un module dans la barre latérale.', 'mon-articles'))
+                    );
+                }
+
+                if (canEditPosts) {
+                    placeholderChildren.push(
+                        el(
+                            'div',
+                            { key: 'create-action', className: 'my-articles-block-placeholder__actions' },
+                            el(
+                                Button,
+                                {
+                                    variant: 'primary',
+                                    href: 'post-new.php?post_type=mon_affichage',
+                                    target: '_blank',
+                                    rel: 'noreferrer',
+                                },
+                                __('Créer un nouveau module', 'mon-articles')
+                            )
+                        )
                     );
                 }
 
