@@ -223,12 +223,19 @@
         filterItem.addClass('active');
         filterLink.attr('aria-pressed', 'true');
 
+        var requestUrl = (filterSettings && typeof filterSettings.ajax_url === 'string') ? filterSettings.ajax_url : '';
+
+        if (!requestUrl && filterSettings && typeof filterSettings.rest_root === 'string') {
+            requestUrl = filterSettings.rest_root.replace(/\/+$/, '') + '/my-articles/v1/filter';
+        }
+
         $.ajax({
-            url: filterSettings.ajax_url,
+            url: requestUrl,
             type: 'POST',
+            headers: {
+                'X-WP-Nonce': filterSettings && filterSettings.nonce ? filterSettings.nonce : ''
+            },
             data: {
-                action: 'filter_articles',
-                security: filterSettings.nonce || '',
                 instance_id: instanceId,
                 category: categorySlug,
                 current_url: window.location && window.location.href ? window.location.href : ''

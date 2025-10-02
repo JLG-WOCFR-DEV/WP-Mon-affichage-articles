@@ -144,7 +144,9 @@ final class Mon_Affichage_Articles {
 
             if ( in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
                 $container_class = ( 'list' === $display_mode ) ? 'my-articles-list-content' : 'my-articles-grid-content';
-                echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+                if ( method_exists( $shortcode_instance, 'get_skeleton_placeholder_markup' ) ) {
+                    echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
+                }
             }
         }
 
@@ -233,7 +235,7 @@ final class Mon_Affichage_Articles {
         );
     }
 
-    public function prepare_filter_articles_response( array $args ) {
+public function prepare_filter_articles_response( array $args ) {
         $instance_id   = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $category_slug = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
@@ -484,7 +486,7 @@ final class Mon_Affichage_Articles {
         wp_send_json_success( $response );
     }
 
-    public function prepare_load_more_articles_response( array $args ) {
+public function prepare_load_more_articles_response( array $args ) {
         $instance_id = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
@@ -493,7 +495,6 @@ final class Mon_Affichage_Articles {
         if ( is_array( $pinned_ids_param ) ) {
             $pinned_ids_param = implode( ',', array_map( 'strval', $pinned_ids_param ) );
         }
-
         $pinned_ids_str = is_string( $pinned_ids_param ) ? $pinned_ids_param : '';
 
         if ( ! $instance_id ) {
