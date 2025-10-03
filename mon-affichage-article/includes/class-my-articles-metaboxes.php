@@ -624,6 +624,9 @@ class My_Articles_Metaboxes {
         if ( $delay > 0 && $delay < 1000 ) {
             $delay = 1000;
         }
+        if ( $delay > 20000 ) {
+            $delay = 20000;
+        }
         if ( 0 === $delay ) {
             $delay = 5000;
         }

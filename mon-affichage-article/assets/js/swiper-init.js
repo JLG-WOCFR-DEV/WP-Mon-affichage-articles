@@ -157,11 +157,35 @@
             wrapper.classList.add('swiper-is-loading');
         }
 
-        const autoplayConfig = settings.autoplay
+        var autoplaySettings = settings.autoplay;
+
+        if (!autoplaySettings || typeof autoplaySettings !== 'object' || Array.isArray(autoplaySettings)) {
+            var fallbackEnabled = !!settings.autoplay;
+            autoplaySettings = {
+                enabled: fallbackEnabled,
+                delay: typeof settings.autoplay_delay === 'number' ? settings.autoplay_delay : 5000,
+                pause_on_interaction:
+                    settings.pause_on_interaction === undefined
+                        ? true
+                        : !!settings.pause_on_interaction,
+                pause_on_mouse_enter:
+                    settings.pause_on_mouse_enter === undefined
+                        ? true
+                        : !!settings.pause_on_mouse_enter,
+            };
+        }
+
+        const autoplayConfig = autoplaySettings.enabled
             ? {
-                  delay: typeof settings.autoplay_delay === 'number' ? settings.autoplay_delay : 5000,
-                  disableOnInteraction: !!settings.pause_on_interaction,
-                  pauseOnMouseEnter: !!settings.pause_on_mouse_enter,
+                  delay: typeof autoplaySettings.delay === 'number' ? autoplaySettings.delay : 5000,
+                  disableOnInteraction:
+                      autoplaySettings.pause_on_interaction === undefined
+                          ? true
+                          : !!autoplaySettings.pause_on_interaction,
+                  pauseOnMouseEnter:
+                      autoplaySettings.pause_on_mouse_enter === undefined
+                          ? true
+                          : !!autoplaySettings.pause_on_mouse_enter,
               }
             : false;
 

@@ -63,10 +63,47 @@ class My_Articles_Block {
         $overrides = array();
         $filtered  = array_intersect_key( $attributes, $defaults );
 
+        $boolean_override_keys = array(
+            'slideshow_loop',
+            'slideshow_autoplay',
+            'slideshow_pause_on_interaction',
+            'slideshow_pause_on_mouse_enter',
+            'slideshow_show_navigation',
+            'slideshow_show_pagination',
+        );
+
         foreach ( $filtered as $key => $raw_value ) {
             $default_value = $defaults[ $key ];
 
             if ( null === $raw_value ) {
+                continue;
+            }
+
+            if ( in_array( $key, $boolean_override_keys, true ) ) {
+                $overrides[ $key ] = ! empty( $raw_value ) ? 1 : 0;
+                continue;
+            }
+
+            if ( 'slideshow_delay' === $key ) {
+                $value = (int) $raw_value;
+
+                if ( $value < 0 ) {
+                    $value = 0;
+                }
+
+                if ( $value > 0 && $value < 1000 ) {
+                    $value = 1000;
+                }
+
+                if ( $value > 20000 ) {
+                    $value = 20000;
+                }
+
+                if ( 0 === $value ) {
+                    $value = (int) $default_value;
+                }
+
+                $overrides[ $key ] = $value;
                 continue;
             }
 
