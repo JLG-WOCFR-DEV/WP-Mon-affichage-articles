@@ -317,6 +317,10 @@
                         window.myArticlesInitSwipers(wrapperElement);
                     }
 
+                    if (typeof window.myArticlesInitFilters === 'function') {
+                        window.myArticlesInitFilters(wrapperElement);
+                    }
+
                     var totalArticles = contentArea.find('.my-article-item').length;
                     var addedCount = totalArticles - previousArticleCount;
                     if (addedCount < 0) {

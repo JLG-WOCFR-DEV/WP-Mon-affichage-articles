@@ -51,6 +51,10 @@
             "type": "string",
             "default": "right"
         },
+        "mobile_filter_behavior": {
+            "type": "string",
+            "default": "list"
+        },
         "pagination_mode": {
             "type": "string",
             "default": "none"

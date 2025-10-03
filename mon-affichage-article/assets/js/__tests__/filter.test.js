@@ -5,10 +5,21 @@ describe('filter endpoint interactions', () => {
     const setupDom = () => {
         document.body.innerHTML = `
             <div class="my-articles-wrapper" data-instance-id="42">
-                <ul class="my-articles-filter-nav">
-                    <li class="active"><button data-category="all" aria-pressed="true">Tous</button></li>
-                    <li><button data-category="news">Actualités</button></li>
-                </ul>
+                <nav class="my-articles-filter-nav filter-align-right" data-mobile-behavior="list" data-filter-count="2">
+                    <div class="my-articles-filter-nav__scroller" role="group" aria-label="Filtrer par catégorie">
+                        <ul>
+                            <li class="active"><button data-category="all" aria-pressed="true">Tout</button></li>
+                            <li><button data-category="news">Actualités</button></li>
+                        </ul>
+                    </div>
+                    <div class="my-articles-filter-nav__mobile" hidden data-behavior="select">
+                        <label class="my-articles-screen-reader-text" for="my-articles-filter-select-42">Filtrer par catégorie</label>
+                        <select id="my-articles-filter-select-42" class="my-articles-filter-nav__select" data-instance-id="42">
+                            <option value="all" selected>Tout</option>
+                            <option value="news">Actualités</option>
+                        </select>
+                    </div>
+                </nav>
                 <div class="my-articles-grid-content">
                     <article class="my-article-item">Initial</article>
                 </div>
@@ -21,10 +32,25 @@ describe('filter endpoint interactions', () => {
             restRoot: 'http://example.com/wp-json',
             restNonce: 'nonce-123',
             errorText: 'Une erreur est survenue.',
+            countSingle: '%s article affiché.',
+            countPlural: '%s articles affichés.',
+            countNone: 'Aucun article à afficher.',
+            activeFilter: 'Filtre actif : %s.',
         };
         window.myArticlesLoadMore = { loadMoreText: 'Charger plus' };
         window.myArticlesInitWrappers = jest.fn();
         window.myArticlesInitSwipers = jest.fn();
+        window.matchMedia = jest.fn().mockReturnValue({
+            matches: false,
+            addListener: jest.fn(),
+            addEventListener: jest.fn(),
+            removeListener: jest.fn(),
+            removeEventListener: jest.fn(),
+        });
+        window.requestAnimationFrame = function (callback) {
+            callback();
+            return 0;
+        };
     };
 
     beforeEach(() => {
@@ -46,6 +72,9 @@ describe('filter endpoint interactions', () => {
         delete window.myArticlesLoadMore;
         delete window.myArticlesInitWrappers;
         delete window.myArticlesInitSwipers;
+        delete window.myArticlesInitFilters;
+        delete window.matchMedia;
+        delete window.requestAnimationFrame;
         delete window.fetch;
         jest.resetModules();
     });

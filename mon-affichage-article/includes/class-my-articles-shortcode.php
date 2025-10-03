@@ -546,6 +546,7 @@ class My_Articles_Shortcode {
             'design_preset_locked' => 0,
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
+            'mobile_filter_behavior' => 'list',
             'filter_categories' => array(),
             'aria_label' => '',
             'pinned_posts' => array(),
@@ -700,6 +701,14 @@ class My_Articles_Shortcode {
             $display_mode = $defaults['display_mode'];
         }
         $options['display_mode'] = $display_mode;
+
+        $allowed_mobile_behaviors = array( 'list', 'select', 'scroll' );
+        $mobile_behavior          = $options['mobile_filter_behavior'] ?? $defaults['mobile_filter_behavior'];
+        $mobile_behavior          = is_string( $mobile_behavior ) ? sanitize_key( $mobile_behavior ) : $defaults['mobile_filter_behavior'];
+        if ( ! in_array( $mobile_behavior, $allowed_mobile_behaviors, true ) ) {
+            $mobile_behavior = $defaults['mobile_filter_behavior'];
+        }
+        $options['mobile_filter_behavior'] = $mobile_behavior;
 
         $options['post_type'] = my_articles_normalize_post_type( $options['post_type'] ?? '' );
 
@@ -1067,6 +1076,7 @@ class My_Articles_Shortcode {
                     'countSingle' => __( '%s article affiché.', 'mon-articles' ),
                     'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
                     'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
+                    'activeFilter' => __( 'Filtre actif : %s.', 'mon-articles' ),
                 ]
             );
         }
@@ -1175,18 +1185,96 @@ class My_Articles_Shortcode {
         echo '<div ' . implode( ' ', $wrapper_attribute_strings ) . '>';
 
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
-            $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
-            echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
+            $alignment_value = is_string( $options['filter_alignment'] ) ? $options['filter_alignment'] : 'right';
+            $alignment_class = 'filter-align-' . sanitize_html_class( $alignment_value );
+
             $default_cat   = $options['term'] ?? '';
             $is_all_active = '' === $default_cat || 'all' === $default_cat;
-            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button type="button" data-category="all" aria-pressed="' . ( $is_all_active ? 'true' : 'false' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
 
-            foreach ( $available_categories as $category ) {
-                $is_active = ( $default_cat === $category->slug );
-                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><button type="button" data-category="' . esc_attr( $category->slug ) . '" aria-pressed="' . ( $is_active ? 'true' : 'false' ) . '">' . esc_html( $category->name ) . '</button></li>';
+            $filter_entries = array();
+            $filter_entries[] = array(
+                'slug'   => 'all',
+                'label'  => esc_html__( 'Tout', 'mon-articles' ),
+                'active' => $is_all_active,
+            );
+
+            if ( is_array( $available_categories ) ) {
+                foreach ( $available_categories as $category ) {
+                    if ( ! is_object( $category ) ) {
+                        continue;
+                    }
+
+                    $category_slug = '';
+                    if ( isset( $category->slug ) && is_scalar( $category->slug ) ) {
+                        $category_slug = sanitize_title( (string) $category->slug );
+                    }
+
+                    if ( '' === $category_slug ) {
+                        continue;
+                    }
+
+                    $category_name = '';
+                    if ( isset( $category->name ) && is_scalar( $category->name ) ) {
+                        $category_name = wp_strip_all_tags( (string) $category->name );
+                    }
+
+                    if ( '' === $category_name ) {
+                        $category_name = $category_slug;
+                    }
+
+                    $filter_entries[] = array(
+                        'slug'   => $category_slug,
+                        'label'  => $category_name,
+                        'active' => ( $default_cat === $category_slug ),
+                    );
+                }
             }
 
-            echo '</ul></nav>';
+            $mobile_behavior        = $options['mobile_filter_behavior'] ?? 'list';
+            $allowed_mobile_options = array( 'list', 'select', 'scroll' );
+            if ( ! in_array( $mobile_behavior, $allowed_mobile_options, true ) ) {
+                $mobile_behavior = 'list';
+            }
+
+            $filter_count = count( $filter_entries );
+            $nav_attributes = array(
+                'class'                => 'my-articles-filter-nav ' . $alignment_class,
+                'data-mobile-behavior' => $mobile_behavior,
+                'data-filter-count'    => (string) $filter_count,
+            );
+
+            $nav_attribute_strings = array();
+            foreach ( $nav_attributes as $attribute => $value ) {
+                $nav_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+            }
+
+            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '>';
+            echo '<div class="my-articles-filter-nav__scroller" role="group" aria-label="' . esc_attr__( 'Filtrer par catégorie', 'mon-articles' ) . '"><ul>';
+
+            foreach ( $filter_entries as $entry ) {
+                $is_active = ! empty( $entry['active'] );
+                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><button type="button" data-category="' . esc_attr( $entry['slug'] ) . '" aria-pressed="' . ( $is_active ? 'true' : 'false' ) . '">' . esc_html( $entry['label'] ) . '</button></li>';
+            }
+
+            echo '</ul></div>';
+
+            $select_id = function_exists( 'wp_unique_id' )
+                ? wp_unique_id( 'my-articles-filter-select-' )
+                : 'my-articles-filter-select-' . $id;
+            echo '<div class="my-articles-filter-nav__mobile" data-behavior="select" hidden>';
+            echo '<label class="my-articles-screen-reader-text" for="' . esc_attr( $select_id ) . '">' . esc_html__( 'Filtrer par catégorie', 'mon-articles' ) . '</label>';
+            echo '<select id="' . esc_attr( $select_id ) . '" class="my-articles-filter-nav__select" data-instance-id="' . esc_attr( $id ) . '">';
+            foreach ( $filter_entries as $entry ) {
+                printf(
+                    '<option value="%s" %s>%s</option>',
+                    esc_attr( $entry['slug'] ),
+                    selected( ! empty( $entry['active'] ), true, false ),
+                    esc_html( $entry['label'] )
+                );
+            }
+            echo '</select>';
+            echo '</div>';
+            echo '</nav>';
         }
         $displayed_pinned_ids = array();
 
@@ -1887,6 +1975,7 @@ class My_Articles_Shortcode {
             --my-articles-pinned-border-color: {$pinned_border_color};
             --my-articles-badge-bg-color: {$pinned_badge_bg};
             --my-articles-badge-text-color: {$pinned_badge_text};
+            --my-articles-filter-mask-color: {$module_bg_color};
             background-color: {$module_bg_color};
             padding-left: {$module_padding_left}px;
             padding-right: {$module_padding_right}px;

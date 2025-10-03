@@ -201,6 +201,15 @@ class My_Articles_Metaboxes {
                 'right'  => __('Droite', 'mon-articles'),
             ],
         ]);
+        $this->render_field('mobile_filter_behavior', esc_html__('Comportement mobile du filtre', 'mon-articles'), 'select', $opts, [
+            'default'     => 'list',
+            'options'     => [
+                'list'   => esc_html__('Liste empilée (par défaut)', 'mon-articles'),
+                'select' => esc_html__('Sélecteur déroulant', 'mon-articles'),
+                'scroll' => esc_html__('Défilement horizontal', 'mon-articles'),
+            ],
+            'description' => esc_html__('Définit l’apparence du filtre sur les petits écrans.', 'mon-articles'),
+        ]);
         $this->render_field(
             'filter_categories',
             esc_html__('Catégories à inclure dans le filtre', 'mon-articles'),
@@ -553,7 +562,12 @@ class My_Articles_Metaboxes {
         $sanitized['meta_key'] = $meta_key;
         $sanitized['show_category_filter'] = isset( $input['show_category_filter'] ) ? 1 : 0;
         $sanitized['filter_alignment'] = isset($input['filter_alignment']) && in_array($input['filter_alignment'], ['left', 'center', 'right']) ? $input['filter_alignment'] : 'right';
-        
+        $mobile_behavior = isset( $input['mobile_filter_behavior'] ) ? sanitize_key( $input['mobile_filter_behavior'] ) : 'list';
+        if ( ! in_array( $mobile_behavior, array( 'list', 'select', 'scroll' ), true ) ) {
+            $mobile_behavior = 'list';
+        }
+        $sanitized['mobile_filter_behavior'] = $mobile_behavior;
+
         $sanitized['filter_categories'] = array();
         if ( isset($input['filter_categories']) && is_array($input['filter_categories']) ) {
             $sanitized['filter_categories'] = array_map('absint', $input['filter_categories']);
