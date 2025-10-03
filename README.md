@@ -29,6 +29,7 @@ Utiliser le shortcode :
 - **display_mode** (`grid`, `list`, `slideshow`)
 - **posts_per_page** (nombre d'articles, `0` pour illimité)
 - **pagination_mode** (`none`, `load_more`, `numbered`)
+- **aria_label** (libellé ARIA du module, basé par défaut sur le titre de l’instance sélectionnée)
 - **show_category_filter** (activation du filtre par taxonomie et alignement associé)
 - **show_category**, **show_author**, **show_date** (affichage des métadonnées)
 - **show_excerpt** et **excerpt_length** (affichage et longueur de l'extrait)
@@ -58,7 +59,7 @@ Options principales :
 - **Pagination** : modes `load_more` (bouton « Charger plus ») ou `numbered` (pagination classique).
 - **Articles épinglés** : possibilité d'épingler certains articles, avec option d'ignorer les filtres.
 - **Lazy load** : chargement différé des images pour optimiser les performances.
-- **Étiquette ARIA** : personnalisez le libellé utilisé par les lecteurs d'écran (par défaut, le titre du module est utilisé).
+- **Étiquette ARIA** : personnalisez le libellé utilisé par les lecteurs d'écran depuis le panneau **Accessibilité** (par défaut, le titre du module sélectionné est proposé en suggestion).
 - **Étiquette ARIA du filtre** : définissez un texte explicite pour la navigation des catégories ou laissez le module générer automatiquement un intitulé (« Filtre des catégories pour … »).
 
 > ℹ️ **Diaporama et mode illimité** : lorsque `display_mode` vaut `slideshow`, la récupération des contenus respecte toujours le plafond défini par l'option `unlimited_query_cap` (50 par défaut via le filtre `my_articles_unlimited_batch_size`). Cela évite de charger un nombre excessif d'articles d'un coup tout en conservant un mode quasi illimité.
