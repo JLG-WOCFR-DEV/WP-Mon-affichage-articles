@@ -192,6 +192,40 @@
     margin-bottom: 20px;
 }
 
+.my-articles-filter-select {
+    display: none;
+    margin-bottom: 20px;
+}
+
+.my-articles-filter-select__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.my-articles-filter-select__control {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    font-size: 15px;
+    line-height: 1.4;
+    background: #ffffff;
+    color: #1f2933;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+}
+
+.my-articles-filter-select__control:focus {
+    outline: 2px solid #1f2933;
+    outline-offset: 2px;
+}
+
 .my-articles-feedback {
     margin: 16px 0;
     padding: 14px 18px;
@@ -232,6 +266,10 @@
     padding: 0;
     display: flex;
     flex-wrap: wrap;
+}
+
+.my-articles-filter-nav--carousel ul {
+    gap: 8px;
 }
 
 .my-articles-filter-nav.filter-align-left ul { justify-content: flex-start; }
@@ -275,6 +313,36 @@
         padding: 10px 18px;
         font-size: 15px;
         margin: 5px 5px 0 0;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="select"] .my-articles-filter-nav {
+        display: none;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="select"] .my-articles-filter-select {
+        display: block;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="carousel"] .my-articles-filter-nav ul {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        gap: 12px;
+        padding-bottom: 6px;
+        margin: 0 -6px;
+        padding-left: 6px;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="carousel"] .my-articles-filter-nav ul::-webkit-scrollbar {
+        display: none;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="carousel"] .my-articles-filter-nav ul {
+        scrollbar-width: none;
+    }
+
+    .my-articles-wrapper[data-filter-mobile="carousel"] .my-articles-filter-nav li {
+        flex: 0 0 auto;
     }
 
     .my-articles-load-more-btn {

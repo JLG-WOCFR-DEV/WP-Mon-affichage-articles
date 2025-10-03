@@ -926,6 +926,20 @@
                         }),
                         disabled: !attributes.show_category_filter || isAttributeLocked('filter_alignment'),
                     }),
+                    el(SelectControl, {
+                        label: __('Comportement mobile du filtre', 'mon-articles'),
+                        value: attributes.filter_mobile_behavior || 'buttons',
+                        options: [
+                            { label: __('Boutons (par défaut)', 'mon-articles'), value: 'buttons' },
+                            { label: __('Liste déroulante', 'mon-articles'), value: 'select' },
+                            { label: __('Carrousel horizontal', 'mon-articles'), value: 'carousel' },
+                        ],
+                        onChange: withLockedGuard('filter_mobile_behavior', function (value) {
+                            setAttributes({ filter_mobile_behavior: value });
+                        }),
+                        help: __('Contrôle affiché sous 768px.', 'mon-articles'),
+                        disabled: !attributes.show_category_filter || isAttributeLocked('filter_mobile_behavior'),
+                    }),
                     el(ToggleControl, {
                         label: __('Afficher la catégorie', 'mon-articles'),
                         checked: !!attributes.show_category,

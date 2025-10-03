@@ -135,6 +135,89 @@
         return noneLabel || fallbackNone;
     }
 
+    function normalizeCategorySlug(categorySlug) {
+        if (categorySlug === null || typeof categorySlug === 'undefined') {
+            return 'all';
+        }
+
+        var slug = String(categorySlug).trim();
+
+        if (!slug) {
+            return 'all';
+        }
+
+        return slug;
+    }
+
+    function getNavList(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        return wrapper.find('.my-articles-filter-nav ul').first();
+    }
+
+    function getActiveCategorySlug(navList) {
+        if (!navList || !navList.length) {
+            return '';
+        }
+
+        var activeButton = navList.find('li.active [data-category]').first();
+        if (!activeButton.length) {
+            return '';
+        }
+
+        var slug = activeButton.data('category');
+        if (typeof slug === 'undefined') {
+            return '';
+        }
+
+        return String(slug);
+    }
+
+    function updateNavActiveState(navList, categorySlug) {
+        if (!navList || !navList.length) {
+            return;
+        }
+
+        var normalizedSlug = normalizeCategorySlug(categorySlug);
+        var buttons = navList.find('button[data-category], a[data-category]');
+
+        navList.find('li').removeClass('active');
+        buttons.attr('aria-pressed', 'false');
+
+        var matchingButton = buttons.filter(function () {
+            var value = $(this).data('category');
+            return String(value) === normalizedSlug;
+        }).first();
+
+        if (!matchingButton.length) {
+            matchingButton = buttons.filter(function () {
+                var value = $(this).data('category');
+                return String(value) === 'all';
+            }).first();
+        }
+
+        if (matchingButton.length) {
+            matchingButton.attr('aria-pressed', 'true');
+            matchingButton.closest('li').addClass('active');
+        }
+    }
+
+    function updateFilterSelectValue(wrapper, categorySlug) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var select = wrapper.find('.my-articles-filter-select select');
+        if (!select.length) {
+            return;
+        }
+
+        var normalizedSlug = normalizeCategorySlug(categorySlug);
+        select.val(normalizedSlug);
+    }
+
     function focusElement($element) {
         if (!$element || !$element.length) {
             return false;
@@ -202,26 +285,24 @@
         focusElement(wrapper);
     }
 
-    $(document).on('click', '.my-articles-filter-nav button, .my-articles-filter-nav a', function (e) {
-        e.preventDefault();
+    function requestFilterChange(wrapper, requestedSlug) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
 
-        var filterLink = $(this);
-        var filterItem = filterLink.closest('li');
-        var navList = filterItem.closest('ul');
-        var previousActiveItem = navList.find('li.active').first();
-        var categorySlug = filterLink.data('category');
-        var wrapper = filterLink.closest('.my-articles-wrapper');
+        var navList = getNavList(wrapper);
+        var previousSlug = normalizeCategorySlug(getActiveCategorySlug(navList));
+        var categorySlug = normalizeCategorySlug(requestedSlug);
         var instanceId = wrapper.data('instance-id');
         var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
 
-        if (filterItem.hasClass('active')) {
-            return; // Ne rien faire si on clique sur le filtre déjà actif
+        if (categorySlug === previousSlug) {
+            updateFilterSelectValue(wrapper, categorySlug);
+            return;
         }
 
-        navList.find('li').removeClass('active');
-        navList.find('button, a').attr('aria-pressed', 'false');
-        filterItem.addClass('active');
-        filterLink.attr('aria-pressed', 'true');
+        updateNavActiveState(navList, categorySlug);
+        updateFilterSelectValue(wrapper, categorySlug);
 
         var requestUrl = (filterSettings && typeof filterSettings.endpoint === 'string') ? filterSettings.endpoint : '';
 
@@ -360,16 +441,13 @@
                         .text(feedbackMessage)
                         .show();
 
+                    updateFilterSelectValue(wrapper, categorySlug);
+
                     var firstArticle = contentArea.find('.my-article-item').first();
                     focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
                 } else {
-                    filterItem.removeClass('active');
-                    filterLink.attr('aria-pressed', 'false');
-                    if (previousActiveItem && previousActiveItem.length) {
-                        previousActiveItem.addClass('active');
-                        previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
-                    }
-
+                    updateNavActiveState(navList, previousSlug);
+                    updateFilterSelectValue(wrapper, previousSlug);
 
                     var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
                     var responseMessage = (response.data && response.data.message) ? response.data.message : '';
@@ -378,12 +456,8 @@
                 }
             },
             error: function (jqXHR) {
-                filterItem.removeClass('active');
-                filterLink.attr('aria-pressed', 'false');
-                if (previousActiveItem && previousActiveItem.length) {
-                    previousActiveItem.addClass('active');
-                    previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
-                }
+                updateNavActiveState(navList, previousSlug);
+                updateFilterSelectValue(wrapper, previousSlug);
 
                 var errorMessage = '';
 
@@ -404,6 +478,24 @@
                 }
             }
         });
+    }
+
+    $(document).on('click', '.my-articles-filter-nav button, .my-articles-filter-nav a', function (e) {
+        e.preventDefault();
+
+        var trigger = $(this);
+        var wrapper = trigger.closest('.my-articles-wrapper');
+        var categorySlug = trigger.data('category');
+
+        requestFilterChange(wrapper, categorySlug);
+    });
+
+    $(document).on('change', '.my-articles-filter-select select', function () {
+        var trigger = $(this);
+        var wrapper = trigger.closest('.my-articles-wrapper');
+        var categorySlug = trigger.val();
+
+        requestFilterChange(wrapper, categorySlug);
     });
 
 })(jQuery);

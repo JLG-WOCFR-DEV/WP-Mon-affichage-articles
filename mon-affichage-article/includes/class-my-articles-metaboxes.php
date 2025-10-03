@@ -201,6 +201,15 @@ class My_Articles_Metaboxes {
                 'right'  => __('Droite', 'mon-articles'),
             ],
         ]);
+        $this->render_field('filter_mobile_behavior', esc_html__('Comportement mobile du filtre', 'mon-articles'), 'select', $opts, [
+            'default'     => 'buttons',
+            'options'     => [
+                'buttons'  => __('Boutons (par défaut)', 'mon-articles'),
+                'select'   => __('Liste déroulante', 'mon-articles'),
+                'carousel' => __('Carrousel horizontal', 'mon-articles'),
+            ],
+            'description' => __('Choisissez la présentation appliquée sous 768px.', 'mon-articles'),
+        ]);
         $this->render_field(
             'filter_categories',
             esc_html__('Catégories à inclure dans le filtre', 'mon-articles'),
@@ -553,6 +562,9 @@ class My_Articles_Metaboxes {
         $sanitized['meta_key'] = $meta_key;
         $sanitized['show_category_filter'] = isset( $input['show_category_filter'] ) ? 1 : 0;
         $sanitized['filter_alignment'] = isset($input['filter_alignment']) && in_array($input['filter_alignment'], ['left', 'center', 'right']) ? $input['filter_alignment'] : 'right';
+        $allowed_mobile_behaviors = array( 'buttons', 'select', 'carousel' );
+        $mobile_behavior_input = isset( $input['filter_mobile_behavior'] ) ? (string) $input['filter_mobile_behavior'] : 'buttons';
+        $sanitized['filter_mobile_behavior'] = in_array( $mobile_behavior_input, $allowed_mobile_behaviors, true ) ? $mobile_behavior_input : 'buttons';
         
         $sanitized['filter_categories'] = array();
         if ( isset($input['filter_categories']) && is_array($input['filter_categories']) ) {

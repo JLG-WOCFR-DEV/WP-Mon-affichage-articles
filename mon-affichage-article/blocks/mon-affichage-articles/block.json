@@ -51,6 +51,10 @@
             "type": "string",
             "default": "right"
         },
+        "filter_mobile_behavior": {
+            "type": "string",
+            "default": "buttons"
+        },
         "pagination_mode": {
             "type": "string",
             "default": "none"

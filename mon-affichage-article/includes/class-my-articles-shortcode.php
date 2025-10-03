@@ -546,6 +546,7 @@ class My_Articles_Shortcode {
             'design_preset_locked' => 0,
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
+            'filter_mobile_behavior' => 'buttons',
             'filter_categories' => array(),
             'aria_label' => '',
             'pinned_posts' => array(),
@@ -771,6 +772,13 @@ class My_Articles_Shortcode {
         $options['ignore_native_sticky'] = $ignore_native_sticky;
 
         $options['pinned_posts_ignore_filter'] = ! empty( $options['pinned_posts_ignore_filter'] ) ? 1 : 0;
+
+        $allowed_mobile_behaviors = array( 'buttons', 'select', 'carousel' );
+        $mobile_behavior          = isset( $options['filter_mobile_behavior'] ) ? (string) $options['filter_mobile_behavior'] : $defaults['filter_mobile_behavior'];
+        if ( ! in_array( $mobile_behavior, $allowed_mobile_behaviors, true ) ) {
+            $mobile_behavior = $defaults['filter_mobile_behavior'];
+        }
+        $options['filter_mobile_behavior'] = $mobile_behavior;
 
         $filter_categories = array();
         if ( ! empty( $options['filter_categories'] ) ) {
@@ -1161,6 +1169,7 @@ class My_Articles_Shortcode {
             'data-cols-desktop'    => $columns_desktop,
             'data-cols-ultrawide'  => $columns_ultrawide,
             'data-min-card-width'  => $min_card_width,
+            'data-filter-mobile'   => $options['filter_mobile_behavior'],
             'role'                 => 'region',
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
@@ -1175,18 +1184,82 @@ class My_Articles_Shortcode {
         echo '<div ' . implode( ' ', $wrapper_attribute_strings ) . '>';
 
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
-            $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
-            echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
-            $default_cat   = $options['term'] ?? '';
-            $is_all_active = '' === $default_cat || 'all' === $default_cat;
-            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button type="button" data-category="all" aria-pressed="' . ( $is_all_active ? 'true' : 'false' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
+            $default_cat             = $options['term'] ?? '';
+            $is_all_active           = '' === $default_cat || 'all' === $default_cat;
+            $active_category_slug    = $is_all_active ? 'all' : $default_cat;
+            $alignment_value         = isset( $options['filter_alignment'] ) ? (string) $options['filter_alignment'] : 'right';
+            $alignment_class         = 'filter-align-' . sanitize_html_class( $alignment_value );
+            $filter_mobile_behavior  = $options['filter_mobile_behavior'];
+            $nav_classes             = array( 'my-articles-filter-nav', $alignment_class );
+
+            if ( 'carousel' === $filter_mobile_behavior ) {
+                $nav_classes[] = 'my-articles-filter-nav--carousel';
+            }
+
+            $nav_class_tokens = array();
+            foreach ( array_filter( $nav_classes ) as $token ) {
+                $nav_class_tokens[] = sanitize_html_class( $token );
+            }
+
+            $nav_class_attr = trim( implode( ' ', array_unique( $nav_class_tokens ) ) );
+            if ( '' === $nav_class_attr ) {
+                $nav_class_attr = 'my-articles-filter-nav';
+            }
+
+            $nav_attributes = array(
+                'class'                => $nav_class_attr,
+                'data-mobile-behavior' => $filter_mobile_behavior,
+                'aria-label'           => esc_attr__( 'Filtrer les articles par catégorie', 'mon-articles' ),
+            );
+
+            $nav_attribute_strings = array();
+            foreach ( $nav_attributes as $attribute => $value ) {
+                $nav_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+            }
+
+            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '><ul>';
+
+            $all_button_attributes = array(
+                'type'         => 'button',
+                'data-category'=> 'all',
+                'aria-pressed' => $is_all_active ? 'true' : 'false',
+            );
+
+            $all_attribute_strings = array();
+            foreach ( $all_button_attributes as $attribute => $value ) {
+                $all_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+            }
+
+            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button ' . implode( ' ', $all_attribute_strings ) . '>' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
 
             foreach ( $available_categories as $category ) {
-                $is_active = ( $default_cat === $category->slug );
-                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><button type="button" data-category="' . esc_attr( $category->slug ) . '" aria-pressed="' . ( $is_active ? 'true' : 'false' ) . '">' . esc_html( $category->name ) . '</button></li>';
+                $category_slug  = isset( $category->slug ) ? (string) $category->slug : '';
+                $category_name  = isset( $category->name ) ? $category->name : $category_slug;
+                $is_active      = ( $active_category_slug === $category_slug );
+                $button_classes = $is_active ? ' class="active"' : '';
+                $aria_pressed   = $is_active ? 'true' : 'false';
+
+                echo '<li' . $button_classes . '><button type="button" data-category="' . esc_attr( $category_slug ) . '" aria-pressed="' . esc_attr( $aria_pressed ) . '">' . esc_html( $category_name ) . '</button></li>';
             }
 
             echo '</ul></nav>';
+
+            if ( 'select' === $filter_mobile_behavior ) {
+                $filter_select_id = 'my-articles-filter-' . $id . '-select';
+                echo '<div class="my-articles-filter-select">';
+                echo '<label class="my-articles-filter-select__label" for="' . esc_attr( $filter_select_id ) . '">' . esc_html__( 'Filtrer les articles', 'mon-articles' ) . '</label>';
+                echo '<select id="' . esc_attr( $filter_select_id ) . '" class="my-articles-filter-select__control">';
+                echo '<option value="all"' . selected( $active_category_slug, 'all', false ) . '>' . esc_html__( 'Toutes les catégories', 'mon-articles' ) . '</option>';
+
+                foreach ( $available_categories as $category ) {
+                    $category_slug = isset( $category->slug ) ? (string) $category->slug : '';
+                    $category_name = isset( $category->name ) ? $category->name : $category_slug;
+                    echo '<option value="' . esc_attr( $category_slug ) . '"' . selected( $active_category_slug, $category_slug, false ) . '>' . esc_html( $category_name ) . '</option>';
+                }
+
+                echo '</select>';
+                echo '</div>';
+            }
         }
         $displayed_pinned_ids = array();
 
