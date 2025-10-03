@@ -445,6 +445,13 @@
                 var key = control.key;
                 var value = getAttributeValue(key, control.defaultValue || '');
                 var isLocked = isAttributeLocked(key);
+                var changeHandler = withLockedGuard(key, function (nextValue) {
+                    var colorValue = typeof nextValue === 'string' ? nextValue : '';
+
+                    var update = {};
+                    update[key] = colorValue;
+                    setAttributes(update);
+                });
 
                 if (isLocked) {
                     lockedColorNotices.push(
@@ -472,35 +479,36 @@
                             )
                         )
                     );
-                    return;
                 }
-
-                var changeHandler = withLockedGuard(key, function (nextValue) {
-                    var colorValue = typeof nextValue === 'string' ? nextValue : '';
-
-                    var update = {};
-                    update[key] = colorValue;
-                    setAttributes(update);
-                });
 
                 colorPanelSettings.push({
                     label: control.label,
                     value: value,
-                    onChange: changeHandler,
-                    className: 'my-articles-color-control',
-                    clearable: true,
+                    onChange: isLocked
+                        ? function () {}
+                        : changeHandler,
+                    className: isLocked
+                        ? 'my-articles-color-control is-locked'
+                        : 'my-articles-color-control',
+                    clearable: !isLocked,
                     enableAlpha: !(control.disableAlpha || false),
                     key: key,
+                    help: isLocked ? __('Réglage verrouillé par le modèle.', 'mon-articles') : undefined,
                 });
 
                 gradientPanelSettings.push({
                     label: control.label,
                     colorValue: value,
-                    onColorChange: changeHandler,
-                    className: 'my-articles-color-control',
-                    clearable: true,
+                    onColorChange: isLocked
+                        ? function () {}
+                        : changeHandler,
+                    className: isLocked
+                        ? 'my-articles-color-control is-locked'
+                        : 'my-articles-color-control',
+                    clearable: !isLocked,
                     enableAlpha: !(control.disableAlpha || false),
                     key: key,
+                    help: isLocked ? __('Réglage verrouillé par le modèle.', 'mon-articles') : undefined,
                 });
             });
 
@@ -517,8 +525,7 @@
                         disableCustomColors: false,
                         disableCustomGradients: true,
                         __experimentalIsRenderedInSidebar: true,
-                    },
-                    lockedColorNotices.length > 0 ? el(Fragment, {}, lockedColorNotices) : null
+                    }
                 );
             } else if (colorSettingsComponent === __experimentalColorGradientSettings && __experimentalColorGradientSettings) {
                 colorSettingsPanel = el(
@@ -532,8 +539,7 @@
                         disableCustomColors: false,
                         disableCustomGradients: true,
                         __experimentalIsRenderedInSidebar: true,
-                    },
-                    lockedColorNotices.length > 0 ? el(Fragment, {}, lockedColorNotices) : null
+                    }
                 );
             } else {
                 colorSettingsPanel = el(
