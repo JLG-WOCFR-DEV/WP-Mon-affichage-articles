@@ -1,5 +1,6 @@
 (function (wp) {
     var __ = wp.i18n.__;
+    var sprintf = wp.i18n.sprintf;
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor ? wp.blockEditor.InspectorControls : wp.editor.InspectorControls;
     var useBlockProps = wp.blockEditor ? wp.blockEditor.useBlockProps : function () {
@@ -33,6 +34,12 @@
     var useEffect = wp.element.useEffect;
     var useRef = wp.element.useRef;
     var useCallback = wp.element.useCallback;
+    var decodeEntities =
+        wp.htmlEntities && typeof wp.htmlEntities.decodeEntities === 'function'
+            ? wp.htmlEntities.decodeEntities
+            : function (value) {
+                  return value;
+              };
     var ServerSideRender = wp.serverSideRender;
 
     var designPresets = window.myArticlesDesignPresets || {};
@@ -549,6 +556,26 @@
                 );
             }
 
+            var selectedInstanceTitle = '';
+            if (selectedData && selectedData.selectedInstance) {
+                var rawSelectedTitle =
+                    selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
+                        ? selectedData.selectedInstance.title.rendered
+                        : '';
+                if (rawSelectedTitle) {
+                    rawSelectedTitle = decodeEntities(rawSelectedTitle);
+                    rawSelectedTitle = rawSelectedTitle.replace(/<[^>]*>/g, '');
+                    selectedInstanceTitle = rawSelectedTitle.trim();
+                }
+            }
+            if (!selectedInstanceTitle && attributes.instanceId) {
+                selectedInstanceTitle = sprintf(__('Module d’articles %d', 'mon-articles'), attributes.instanceId);
+            }
+            if (!selectedInstanceTitle) {
+                selectedInstanceTitle = __('Module d’articles', 'mon-articles');
+            }
+            var ariaLabelPlaceholder = selectedInstanceTitle;
+
             var inspectorControls = el(
                 InspectorControls,
                 {},
@@ -605,6 +632,19 @@
                             ? el(Notice, { status: 'info', isDismissible: false }, __('Ce modèle verrouille certains réglages de design.', 'mon-articles'))
                             : null
                     )
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Accessibilité', 'mon-articles'), initialOpen: false },
+                    el(TextControl, {
+                        label: __('Libellé ARIA du module', 'mon-articles'),
+                        value: attributes.aria_label || '',
+                        onChange: function (value) {
+                            setAttributes({ aria_label: value || '' });
+                        },
+                        placeholder: ariaLabelPlaceholder,
+                        help: __('Laissez vide pour utiliser automatiquement le titre du module.', 'mon-articles'),
+                    })
                 ),
                 el(
                     PanelBody,

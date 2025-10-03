@@ -39,6 +39,11 @@
             "type": "string",
             "default": ""
         },
+        "aria_label": {
+            "type": "string",
+            "default": "",
+            "description": "Libellé ARIA appliqué au module."
+        },
         "design_preset": {
             "type": "string",
             "default": "custom"
