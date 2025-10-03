@@ -332,6 +332,20 @@ class My_Articles_Metaboxes {
             ]
         );
 
+        /* translators: %s: module accessible label. */
+        $default_filter_aria_label = sprintf( __( 'Filtre des catégories pour %s', 'mon-articles' ), $default_aria_label );
+
+        $this->render_field(
+            'category_filter_aria_label',
+            esc_html__( 'Étiquette du filtre de catégories (ARIA)', 'mon-articles' ),
+            'text',
+            $opts,
+            [
+                'placeholder' => $default_filter_aria_label,
+                'description' => esc_html__( 'Texte lu par les lecteurs d’écran pour annoncer la navigation du filtre. Laissez vide pour utiliser l’étiquette générée automatiquement.', 'mon-articles' ),
+            ]
+        );
+
         echo '<hr><h3>' . esc_html__('Apparence & Performances', 'mon-articles') . '</h3>';
         $design_presets = My_Articles_Shortcode::get_design_presets();
         $design_preset_options = array();
@@ -587,6 +601,13 @@ class My_Articles_Metaboxes {
             $aria_label = trim( $aria_label );
         }
         $sanitized['aria_label'] = $aria_label;
+
+        $category_filter_aria_label = '';
+        if ( isset( $input['category_filter_aria_label'] ) && is_string( $input['category_filter_aria_label'] ) ) {
+            $category_filter_aria_label = sanitize_text_field( $input['category_filter_aria_label'] );
+            $category_filter_aria_label = trim( $category_filter_aria_label );
+        }
+        $sanitized['category_filter_aria_label'] = $category_filter_aria_label;
 
         $design_preset = 'custom';
         if ( isset( $input['design_preset'] ) && is_string( $input['design_preset'] ) ) {

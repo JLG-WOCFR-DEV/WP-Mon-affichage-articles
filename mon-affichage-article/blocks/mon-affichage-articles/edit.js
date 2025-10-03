@@ -926,6 +926,15 @@
                         }),
                         disabled: !attributes.show_category_filter || isAttributeLocked('filter_alignment'),
                     }),
+                    el(TextControl, {
+                        label: __('Libellé ARIA du filtre de catégories', 'mon-articles'),
+                        value: attributes.category_filter_aria_label || '',
+                        onChange: function (value) {
+                            setAttributes({ category_filter_aria_label: value || '' });
+                        },
+                        help: __('Laissez vide pour générer automatiquement une étiquette basée sur le titre du module.', 'mon-articles'),
+                        disabled: !attributes.show_category_filter,
+                    }),
                     el(ToggleControl, {
                         label: __('Afficher la catégorie', 'mon-articles'),
                         checked: !!attributes.show_category,

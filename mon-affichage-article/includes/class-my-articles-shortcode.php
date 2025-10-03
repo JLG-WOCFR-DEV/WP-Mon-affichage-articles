@@ -548,6 +548,7 @@ class My_Articles_Shortcode {
             'filter_alignment' => 'right',
             'filter_categories' => array(),
             'aria_label' => '',
+            'category_filter_aria_label' => '',
             'pinned_posts' => array(),
             'pinned_border_color' => '#eab308',
             'pinned_posts_ignore_filter' => 0,
@@ -693,6 +694,16 @@ class My_Articles_Shortcode {
             $aria_label = trim( sanitize_text_field( $options['aria_label'] ) );
         }
         $options['aria_label'] = $aria_label;
+
+        $category_filter_aria_label = '';
+        if ( isset( $options['category_filter_aria_label'] ) && is_string( $options['category_filter_aria_label'] ) ) {
+            $category_filter_aria_label = trim( sanitize_text_field( $options['category_filter_aria_label'] ) );
+        }
+        if ( '' === $category_filter_aria_label && '' !== $aria_label ) {
+            /* translators: %s: module accessible label. */
+            $category_filter_aria_label = sprintf( __( 'Filtre des catégories pour %s', 'mon-articles' ), $aria_label );
+        }
+        $options['category_filter_aria_label'] = $category_filter_aria_label;
 
         $allowed_display_modes = array( 'grid', 'list', 'slideshow' );
         $display_mode          = $options['display_mode'] ?? $defaults['display_mode'];
@@ -999,6 +1010,20 @@ class My_Articles_Shortcode {
 
         $options_meta['aria_label'] = $resolved_aria_label;
 
+        /* translators: %s: module accessible label. */
+        $default_filter_aria_label = sprintf( __( 'Filtre des catégories pour %s', 'mon-articles' ), $resolved_aria_label );
+
+        $resolved_filter_aria_label = '';
+        if ( isset( $options_meta['category_filter_aria_label'] ) && is_string( $options_meta['category_filter_aria_label'] ) ) {
+            $resolved_filter_aria_label = trim( sanitize_text_field( $options_meta['category_filter_aria_label'] ) );
+        }
+
+        if ( '' === $resolved_filter_aria_label ) {
+            $resolved_filter_aria_label = $default_filter_aria_label;
+        }
+
+        $options_meta['category_filter_aria_label'] = $resolved_filter_aria_label;
+
         $has_filter_categories = false;
         if ( isset( $options_meta['filter_categories'] ) ) {
             $raw_filter_categories = $options_meta['filter_categories'];
@@ -1176,7 +1201,21 @@ class My_Articles_Shortcode {
 
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
             $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
-            echo '<nav class="my-articles-filter-nav ' . $alignment_class . '"><ul>';
+            $nav_attributes = array(
+                'class'      => 'my-articles-filter-nav ' . $alignment_class,
+                'aria-label' => $options['category_filter_aria_label'],
+            );
+
+            $nav_attribute_strings = array();
+            foreach ( $nav_attributes as $attribute => $value ) {
+                if ( '' === $value ) {
+                    continue;
+                }
+
+                $nav_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+            }
+
+            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '><ul>';
             $default_cat   = $options['term'] ?? '';
             $is_all_active = '' === $default_cat || 'all' === $default_cat;
             echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button type="button" data-category="all" aria-pressed="' . ( $is_all_active ? 'true' : 'false' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
