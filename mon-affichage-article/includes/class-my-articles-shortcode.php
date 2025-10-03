@@ -576,6 +576,13 @@ class My_Articles_Shortcode {
             'title_wrapper_bg_color' => '#ffffff', 'title_color' => '#333333',
             'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
             'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
+            'slideshow_loop' => 1,
+            'slideshow_autoplay' => 0,
+            'slideshow_delay' => 5000,
+            'slideshow_pause_on_interaction' => 1,
+            'slideshow_pause_on_mouse_enter' => 1,
+            'slideshow_show_navigation' => 1,
+            'slideshow_show_pagination' => 1,
         ];
 
         $saved_options = get_option( 'my_articles_options', array() );
@@ -798,6 +805,25 @@ class My_Articles_Shortcode {
         $options['exclude_post_ids'] = $exclude_post_ids;
 
         $options['all_excluded_ids'] = array_values( array_unique( array_merge( $pinned_ids, $exclude_post_ids ) ) );
+
+        $options['slideshow_loop'] = ! empty( $options['slideshow_loop'] ) ? 1 : 0;
+        $options['slideshow_autoplay'] = ! empty( $options['slideshow_autoplay'] ) ? 1 : 0;
+        $options['slideshow_pause_on_interaction'] = ! empty( $options['slideshow_pause_on_interaction'] ) ? 1 : 0;
+        $options['slideshow_pause_on_mouse_enter'] = ! empty( $options['slideshow_pause_on_mouse_enter'] ) ? 1 : 0;
+        $options['slideshow_show_navigation'] = ! empty( $options['slideshow_show_navigation'] ) ? 1 : 0;
+        $options['slideshow_show_pagination'] = ! empty( $options['slideshow_show_pagination'] ) ? 1 : 0;
+
+        $slideshow_delay = isset( $options['slideshow_delay'] ) ? (int) $options['slideshow_delay'] : (int) $defaults['slideshow_delay'];
+        if ( $slideshow_delay < 0 ) {
+            $slideshow_delay = 0;
+        }
+        if ( $slideshow_delay > 0 && $slideshow_delay < 1000 ) {
+            $slideshow_delay = 1000;
+        }
+        if ( 0 === $slideshow_delay ) {
+            $slideshow_delay = (int) $defaults['slideshow_delay'];
+        }
+        $options['slideshow_delay'] = $slideshow_delay;
 
         $default_term = $options['term'];
         $requested_category = '';
@@ -1370,6 +1396,9 @@ class My_Articles_Shortcode {
         $previous_slide_label  = esc_attr( __( 'Revenir à la diapositive précédente', 'mon-articles' ) );
 
         echo '<div class="swiper-accessibility-wrapper" role="region" aria-roledescription="carousel" aria-label="' . $carousel_label . '">';
+        $show_navigation  = ! empty( $options['slideshow_show_navigation'] );
+        $show_pagination  = ! empty( $options['slideshow_show_pagination'] );
+
         echo '<div class="swiper-container"><div class="swiper-wrapper">';
         $post_count = 0;
 
@@ -1398,9 +1427,15 @@ class My_Articles_Shortcode {
         }
 
         echo '</div>';
-        echo '<div class="swiper-pagination" aria-label="' . $pagination_label . '"></div>';
-        echo '<div class="swiper-button-next" aria-label="' . $next_slide_label . '"></div>';
-        echo '<div class="swiper-button-prev" aria-label="' . $previous_slide_label . '"></div>';
+
+        if ( $show_pagination ) {
+            echo '<div class="swiper-pagination" aria-label="' . $pagination_label . '"></div>';
+        }
+
+        if ( $show_navigation ) {
+            echo '<div class="swiper-button-next" aria-label="' . $next_slide_label . '"></div>';
+            echo '<div class="swiper-button-prev" aria-label="' . $previous_slide_label . '"></div>';
+        }
         echo '</div>';
         echo '</div>';
 
@@ -1639,6 +1674,13 @@ class My_Articles_Shortcode {
             'columns_desktop'                   => $options['columns_desktop'],
             'columns_ultrawide'                 => $options['columns_ultrawide'],
             'gap_size'                          => $options['gap_size'],
+            'loop'                              => ! empty( $options['slideshow_loop'] ),
+            'autoplay'                          => ! empty( $options['slideshow_autoplay'] ),
+            'autoplay_delay'                    => (int) $options['slideshow_delay'],
+            'pause_on_interaction'              => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter'              => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'show_navigation'                   => ! empty( $options['slideshow_show_navigation'] ),
+            'show_pagination'                   => ! empty( $options['slideshow_show_pagination'] ),
             'container_selector'                => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
             'a11y_prev_slide_message'           => __( 'Diapositive précédente', 'mon-articles' ),
             'a11y_next_slide_message'           => __( 'Diapositive suivante', 'mon-articles' ),
