@@ -5,6 +5,15 @@
     var useBlockProps = wp.blockEditor ? wp.blockEditor.useBlockProps : function () {
         return {};
     };
+    var PanelColorSettings = wp.blockEditor
+        ? wp.blockEditor.PanelColorSettings
+        : wp.editor && wp.editor.PanelColorSettings;
+    var __experimentalColorGradientSettings = wp.blockEditor
+        ? wp.blockEditor.__experimentalColorGradientSettings
+        : wp.editor && wp.editor.__experimentalColorGradientSettings;
+    var useSetting = wp.blockEditor
+        ? wp.blockEditor.useSetting || wp.blockEditor.__experimentalUseSetting
+        : wp.editor && (wp.editor.useSetting || wp.editor.__experimentalUseSetting);
     var PanelBody = wp.components.PanelBody;
     var ComboboxControl = wp.components.ComboboxControl;
     var Button = wp.components.Button;
@@ -13,7 +22,7 @@
     var RangeControl = wp.components.RangeControl;
     var TextControl = wp.components.TextControl;
     var BaseControl = wp.components.BaseControl;
-    var ColorPicker = wp.components.ColorPicker;
+    var ColorIndicator = wp.components.ColorIndicator;
     var Placeholder = wp.components.Placeholder;
     var Spinner = wp.components.Spinner;
     var Notice = wp.components.Notice;
@@ -359,51 +368,186 @@
                 return value === undefined || value === null ? fallback : value;
             };
 
-            var handleColorChange = function (key) {
-                return withLockedGuard(key, function (value) {
-                    var colorValue = '';
+            var resolvePaletteSetting = function (setting) {
+                if (!setting) {
+                    return [];
+                }
 
-                    if (typeof value === 'string') {
-                        colorValue = value;
-                    } else if (value && value.rgb) {
-                        var rgb = value.rgb;
-                        if (typeof rgb.a === 'number' && rgb.a < 1) {
-                            colorValue = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + rgb.a.toFixed(2) + ')';
-                        } else if (value.hex) {
-                            colorValue = value.hex;
-                        } else {
-                            colorValue = 'rgb(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ')';
+                if (Array.isArray(setting)) {
+                    return setting;
+                }
+
+                var resolved = [];
+                if (typeof setting === 'object') {
+                    Object.keys(setting).forEach(function (key) {
+                        var value = setting[key];
+                        if (Array.isArray(value)) {
+                            resolved = resolved.concat(value);
                         }
-                    } else if (value && value.hex) {
-                        colorValue = value.hex;
-                    } else {
+                    });
+                }
+
+                return resolved;
+            };
+
+            var flattenPalette = function (palette) {
+                if (!Array.isArray(palette)) {
+                    return [];
+                }
+
+                var deduped = [];
+                var seen = {};
+
+                palette.forEach(function (item) {
+                    if (!item || typeof item !== 'object') {
                         return;
                     }
 
-                    setAttributes(
-                        (function () {
-                            var result = {};
-                            result[key] = colorValue;
-                            return result;
-                        })()
-                    );
+                    var identifier = item.slug || item.name || item.color;
+                    if (!identifier) {
+                        return;
+                    }
+
+                    if (!seen[identifier]) {
+                        seen[identifier] = true;
+                        deduped.push(item);
+                    }
                 });
+
+                return deduped;
             };
 
-            var renderColorControl = function (label, key, options) {
-                options = options || {};
+            var paletteSetting = typeof useSetting === 'function' ? useSetting('color.palette') : [];
+            var availableColors = flattenPalette(resolvePaletteSetting(paletteSetting));
 
-                return el(
-                    BaseControl,
-                    { label: label, key: key, className: 'my-articles-color-control' + (isAttributeLocked(key) ? ' is-locked' : '') },
-                    el(ColorPicker, {
-                        color: getAttributeValue(key, options.defaultValue || ''),
-                        disableAlpha: options.disableAlpha || false,
-                        onChange: handleColorChange(key),
-                        onChangeComplete: handleColorChange(key),
-                    })
+            var colorControlsConfig = [
+                { label: __('Fond du module', 'mon-articles'), key: 'module_bg_color', defaultValue: 'rgba(255,255,255,0)' },
+                { label: __('Fond de la vignette', 'mon-articles'), key: 'vignette_bg_color', defaultValue: '#ffffff', disableAlpha: true },
+                { label: __('Fond du bloc titre', 'mon-articles'), key: 'title_wrapper_bg_color', defaultValue: '#ffffff', disableAlpha: true },
+                { label: __('Couleur du titre', 'mon-articles'), key: 'title_color', defaultValue: '#333333', disableAlpha: true },
+                { label: __('Couleur du texte (méta)', 'mon-articles'), key: 'meta_color', defaultValue: '#6b7280', disableAlpha: true },
+                { label: __('Couleur (méta, survol)', 'mon-articles'), key: 'meta_color_hover', defaultValue: '#000000', disableAlpha: true },
+                { label: __('Couleur de pagination', 'mon-articles'), key: 'pagination_color', defaultValue: '#333333', disableAlpha: true },
+                { label: __('Couleur de l’extrait', 'mon-articles'), key: 'excerpt_color', defaultValue: '#4b5563', disableAlpha: true },
+                { label: __('Ombre', 'mon-articles'), key: 'shadow_color', defaultValue: 'rgba(0,0,0,0.07)' },
+                { label: __('Ombre (survol)', 'mon-articles'), key: 'shadow_color_hover', defaultValue: 'rgba(0,0,0,0.12)' },
+                { label: __('Bordure (épinglés)', 'mon-articles'), key: 'pinned_border_color', defaultValue: '#eab308', disableAlpha: true },
+                { label: __('Fond du badge épinglé', 'mon-articles'), key: 'pinned_badge_bg_color', defaultValue: '#eab308', disableAlpha: true },
+                { label: __('Texte du badge épinglé', 'mon-articles'), key: 'pinned_badge_text_color', defaultValue: '#ffffff', disableAlpha: true },
+            ];
+
+            var colorSettingsComponent = PanelColorSettings || __experimentalColorGradientSettings || null;
+            var colorPanelSettings = [];
+            var gradientPanelSettings = [];
+            var lockedColorNotices = [];
+
+            colorControlsConfig.forEach(function (control) {
+                var key = control.key;
+                var value = getAttributeValue(key, control.defaultValue || '');
+                var isLocked = isAttributeLocked(key);
+
+                if (isLocked) {
+                    lockedColorNotices.push(
+                        el(
+                            BaseControl,
+                            {
+                                key: 'locked-' + key,
+                                label: control.label,
+                                className: 'my-articles-color-control is-locked',
+                            },
+                            el(
+                                'div',
+                                { className: 'my-articles-color-control__locked' },
+                                value
+                                    ? el(ColorIndicator, {
+                                          key: 'indicator-' + key,
+                                          colorValue: value,
+                                      })
+                                    : null,
+                                el(
+                                    'p',
+                                    { className: 'components-base-control__help' },
+                                    __('Réglage verrouillé par le modèle.', 'mon-articles')
+                                )
+                            )
+                        )
+                    );
+                    return;
+                }
+
+                var changeHandler = withLockedGuard(key, function (nextValue) {
+                    var colorValue = typeof nextValue === 'string' ? nextValue : '';
+
+                    var update = {};
+                    update[key] = colorValue;
+                    setAttributes(update);
+                });
+
+                colorPanelSettings.push({
+                    label: control.label,
+                    value: value,
+                    onChange: changeHandler,
+                    className: 'my-articles-color-control',
+                    clearable: true,
+                    enableAlpha: !(control.disableAlpha || false),
+                    key: key,
+                });
+
+                gradientPanelSettings.push({
+                    label: control.label,
+                    colorValue: value,
+                    onColorChange: changeHandler,
+                    className: 'my-articles-color-control',
+                    clearable: true,
+                    enableAlpha: !(control.disableAlpha || false),
+                    key: key,
+                });
+            });
+
+            var colorSettingsPanel = null;
+
+            if (colorSettingsComponent === PanelColorSettings && PanelColorSettings) {
+                colorSettingsPanel = el(
+                    PanelColorSettings,
+                    {
+                        title: __('Couleurs', 'mon-articles'),
+                        initialOpen: false,
+                        colorSettings: colorPanelSettings,
+                        colors: availableColors,
+                        disableCustomColors: false,
+                        disableCustomGradients: true,
+                        __experimentalIsRenderedInSidebar: true,
+                    },
+                    lockedColorNotices.length > 0 ? el(Fragment, {}, lockedColorNotices) : null
                 );
-            };
+            } else if (colorSettingsComponent === __experimentalColorGradientSettings && __experimentalColorGradientSettings) {
+                colorSettingsPanel = el(
+                    __experimentalColorGradientSettings,
+                    {
+                        title: __('Couleurs', 'mon-articles'),
+                        initialOpen: false,
+                        settings: gradientPanelSettings,
+                        colors: availableColors,
+                        gradients: [],
+                        disableCustomColors: false,
+                        disableCustomGradients: true,
+                        __experimentalIsRenderedInSidebar: true,
+                    },
+                    lockedColorNotices.length > 0 ? el(Fragment, {}, lockedColorNotices) : null
+                );
+            } else {
+                colorSettingsPanel = el(
+                    PanelBody,
+                    { title: __('Couleurs', 'mon-articles'), initialOpen: false },
+                    lockedColorNotices.length > 0
+                        ? el(Fragment, {}, lockedColorNotices)
+                        : el(
+                              Notice,
+                              { status: 'warning', isDismissible: false },
+                              __('La sélection de couleur n’est pas disponible dans cet environnement.', 'mon-articles')
+                          )
+                );
+            }
 
             var inspectorControls = el(
                 InspectorControls,
@@ -811,59 +955,7 @@
                         disabled: !isListMode || isAttributeLocked('list_content_padding_left'),
                     })
                 ),
-                el(
-                    PanelBody,
-                    { title: __('Couleurs', 'mon-articles'), initialOpen: false },
-                    renderColorControl(__('Fond du module', 'mon-articles'), 'module_bg_color', {
-                        defaultValue: 'rgba(255,255,255,0)',
-                    }),
-                    renderColorControl(__('Fond de la vignette', 'mon-articles'), 'vignette_bg_color', {
-                        defaultValue: '#ffffff',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Fond du bloc titre', 'mon-articles'), 'title_wrapper_bg_color', {
-                        defaultValue: '#ffffff',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Couleur du titre', 'mon-articles'), 'title_color', {
-                        defaultValue: '#333333',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Couleur du texte (méta)', 'mon-articles'), 'meta_color', {
-                        defaultValue: '#6b7280',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Couleur (méta, survol)', 'mon-articles'), 'meta_color_hover', {
-                        defaultValue: '#000000',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Couleur de pagination', 'mon-articles'), 'pagination_color', {
-                        defaultValue: '#333333',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Couleur de l’extrait', 'mon-articles'), 'excerpt_color', {
-                        defaultValue: '#4b5563',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Ombre', 'mon-articles'), 'shadow_color', {
-                        defaultValue: 'rgba(0,0,0,0.07)',
-                    }),
-                    renderColorControl(__('Ombre (survol)', 'mon-articles'), 'shadow_color_hover', {
-                        defaultValue: 'rgba(0,0,0,0.12)',
-                    }),
-                    renderColorControl(__('Bordure (épinglés)', 'mon-articles'), 'pinned_border_color', {
-                        defaultValue: '#eab308',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Fond du badge épinglé', 'mon-articles'), 'pinned_badge_bg_color', {
-                        defaultValue: '#eab308',
-                        disableAlpha: true,
-                    }),
-                    renderColorControl(__('Texte du badge épinglé', 'mon-articles'), 'pinned_badge_text_color', {
-                        defaultValue: '#ffffff',
-                        disableAlpha: true,
-                    })
-                ),
+                colorSettingsPanel,
                 el(
                     PanelBody,
                     { title: __('Tri & ordre', 'mon-articles'), initialOpen: false },
