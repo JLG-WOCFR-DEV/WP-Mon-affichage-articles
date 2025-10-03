@@ -233,6 +233,37 @@ class My_Articles_Metaboxes {
         echo '<hr><h3>' . esc_html__('Mise en Page', 'mon-articles') . '</h3>';
         $this->render_field('display_mode', esc_html__('Mode d\'affichage', 'mon-articles'), 'select', $opts, [ 'default' => 'grid', 'options' => [ 'grid' => 'Grille', 'slideshow' => 'Diaporama', 'list' => 'Liste' ] ]);
 
+        echo '<div class="my-articles-slideshow-settings" data-field="slideshow" style="display:none;">';
+        $this->render_field('slideshow_loop', esc_html__('Boucle infinie', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 1,
+            'description' => __('Autorise le carrousel à revenir automatiquement au début.', 'mon-articles'),
+        ]);
+        $this->render_field('slideshow_autoplay', esc_html__('Lecture automatique', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 0,
+            'description' => __('Fait défiler les diapositives sans interaction de l’utilisateur.', 'mon-articles'),
+        ]);
+        $this->render_field('slideshow_delay', esc_html__('Délai entre les diapositives (ms)', 'mon-articles'), 'number', $opts, [
+            'default'     => 5000,
+            'min'         => 1000,
+            'max'         => 20000,
+            'description' => __('Utilisé lorsque la lecture automatique est activée.', 'mon-articles'),
+        ]);
+        $this->render_field('slideshow_pause_on_interaction', esc_html__('Mettre en pause lors des interactions', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 1,
+            'description' => __('Suspend l’autoplay lorsqu’un lien ou un contrôle du carrousel est utilisé.', 'mon-articles'),
+        ]);
+        $this->render_field('slideshow_pause_on_mouse_enter', esc_html__('Mettre en pause au survol', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 1,
+            'description' => __('Gèle le carrousel quand la souris survole la zone.', 'mon-articles'),
+        ]);
+        $this->render_field('slideshow_show_navigation', esc_html__('Afficher les flèches de navigation', 'mon-articles'), 'checkbox', $opts, [
+            'default' => 1,
+        ]);
+        $this->render_field('slideshow_show_pagination', esc_html__('Afficher la pagination', 'mon-articles'), 'checkbox', $opts, [
+            'default' => 1,
+        ]);
+        echo '</div>';
+
         echo '<div class="my-articles-columns-warning" data-field="columns_mobile">';
         $this->render_field('columns_mobile', esc_html__('Colonnes (Mobile < 768px)', 'mon-articles'), 'number', $opts, [
             'default'     => 1,
@@ -586,6 +617,21 @@ class My_Articles_Metaboxes {
         $sanitized['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
         $sanitized['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
         $sanitized['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
+
+        $sanitized['slideshow_loop'] = isset( $input['slideshow_loop'] ) ? 1 : 0;
+        $sanitized['slideshow_autoplay'] = isset( $input['slideshow_autoplay'] ) ? 1 : 0;
+        $delay = isset( $input['slideshow_delay'] ) ? absint( $input['slideshow_delay'] ) : 5000;
+        if ( $delay > 0 && $delay < 1000 ) {
+            $delay = 1000;
+        }
+        if ( 0 === $delay ) {
+            $delay = 5000;
+        }
+        $sanitized['slideshow_delay'] = $delay;
+        $sanitized['slideshow_pause_on_interaction'] = isset( $input['slideshow_pause_on_interaction'] ) ? 1 : 0;
+        $sanitized['slideshow_pause_on_mouse_enter'] = isset( $input['slideshow_pause_on_mouse_enter'] ) ? 1 : 0;
+        $sanitized['slideshow_show_navigation'] = isset( $input['slideshow_show_navigation'] ) ? 1 : 0;
+        $sanitized['slideshow_show_pagination'] = isset( $input['slideshow_show_pagination'] ) ? 1 : 0;
 
         $sanitized['show_excerpt'] = isset( $input['show_excerpt'] ) ? 1 : 0;
         $sanitized['excerpt_length'] = isset( $input['excerpt_length'] ) ? absint($input['excerpt_length']) : 25;

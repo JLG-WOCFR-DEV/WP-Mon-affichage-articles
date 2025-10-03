@@ -55,6 +55,41 @@
             "type": "string",
             "default": "none"
         },
+        "slideshow_loop": {
+            "type": "boolean",
+            "default": true,
+            "description": "Active la boucle infinie du diaporama."
+        },
+        "slideshow_autoplay": {
+            "type": "boolean",
+            "default": false,
+            "description": "Active la lecture automatique du diaporama."
+        },
+        "slideshow_delay": {
+            "type": "integer",
+            "default": 5000,
+            "description": "Délai entre les diapositives en millisecondes lorsque l'autoplay est actif."
+        },
+        "slideshow_pause_on_interaction": {
+            "type": "boolean",
+            "default": true,
+            "description": "Met l'autoplay en pause lors d'une interaction utilisateur."
+        },
+        "slideshow_pause_on_mouse_enter": {
+            "type": "boolean",
+            "default": true,
+            "description": "Met l'autoplay en pause quand la souris survole le module."
+        },
+        "slideshow_show_navigation": {
+            "type": "boolean",
+            "default": true,
+            "description": "Affiche les flèches de navigation du diaporama."
+        },
+        "slideshow_show_pagination": {
+            "type": "boolean",
+            "default": true,
+            "description": "Affiche la pagination (puces) du diaporama."
+        },
         "module_padding_left": {
             "type": "integer",
             "default": 0,

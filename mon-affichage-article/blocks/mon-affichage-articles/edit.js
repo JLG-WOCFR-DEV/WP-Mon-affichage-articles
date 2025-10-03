@@ -348,6 +348,7 @@
 
             var displayMode = attributes.display_mode || 'grid';
             var isListMode = displayMode === 'list';
+            var isSlideshowMode = displayMode === 'slideshow';
 
             var ensureNumber = function (value, fallback) {
                 return typeof value === 'number' ? value : fallback;
@@ -504,7 +505,75 @@
                             setAttributes({ pagination_mode: value });
                         }),
                         disabled: isAttributeLocked('pagination_mode'),
-                    })
+                    }),
+                    isSlideshowMode
+                        ? el(Fragment, {},
+                              el(ToggleControl, {
+                                  label: __('Boucle infinie', 'mon-articles'),
+                                  checked: !!attributes.slideshow_loop,
+                                  onChange: withLockedGuard('slideshow_loop', function (value) {
+                                      setAttributes({ slideshow_loop: !!value });
+                                  }),
+                                  disabled: isAttributeLocked('slideshow_loop'),
+                              }),
+                              el(ToggleControl, {
+                                  label: __('Lecture automatique', 'mon-articles'),
+                                  checked: !!attributes.slideshow_autoplay,
+                                  onChange: withLockedGuard('slideshow_autoplay', function (value) {
+                                      setAttributes({ slideshow_autoplay: !!value });
+                                  }),
+                                  disabled: isAttributeLocked('slideshow_autoplay'),
+                              }),
+                              el(RangeControl, {
+                                  label: __('Délai entre les diapositives (ms)', 'mon-articles'),
+                                  value: ensureNumber(attributes.slideshow_delay, 5000),
+                                  min: 1000,
+                                  max: 20000,
+                                  step: 100,
+                                  allowReset: true,
+                                  onChange: withLockedGuard('slideshow_delay', function (value) {
+                                      if (typeof value !== 'number') {
+                                          value = 5000;
+                                      }
+                                      setAttributes({ slideshow_delay: value });
+                                  }),
+                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_delay'),
+                                  help: __('Actif uniquement si la lecture automatique est activée.', 'mon-articles'),
+                              }),
+                              el(ToggleControl, {
+                                  label: __('Mettre en pause lors des interactions', 'mon-articles'),
+                                  checked: !!attributes.slideshow_pause_on_interaction,
+                                  onChange: withLockedGuard('slideshow_pause_on_interaction', function (value) {
+                                      setAttributes({ slideshow_pause_on_interaction: !!value });
+                                  }),
+                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_interaction'),
+                              }),
+                              el(ToggleControl, {
+                                  label: __('Mettre en pause au survol', 'mon-articles'),
+                                  checked: !!attributes.slideshow_pause_on_mouse_enter,
+                                  onChange: withLockedGuard('slideshow_pause_on_mouse_enter', function (value) {
+                                      setAttributes({ slideshow_pause_on_mouse_enter: !!value });
+                                  }),
+                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_mouse_enter'),
+                              }),
+                              el(ToggleControl, {
+                                  label: __('Afficher les flèches de navigation', 'mon-articles'),
+                                  checked: !!attributes.slideshow_show_navigation,
+                                  onChange: withLockedGuard('slideshow_show_navigation', function (value) {
+                                      setAttributes({ slideshow_show_navigation: !!value });
+                                  }),
+                                  disabled: isAttributeLocked('slideshow_show_navigation'),
+                              }),
+                              el(ToggleControl, {
+                                  label: __('Afficher la pagination', 'mon-articles'),
+                                  checked: !!attributes.slideshow_show_pagination,
+                                  onChange: withLockedGuard('slideshow_show_pagination', function (value) {
+                                      setAttributes({ slideshow_show_pagination: !!value });
+                                  }),
+                                  disabled: isAttributeLocked('slideshow_show_pagination'),
+                              })
+                          )
+                        : null
                 ),
                 el(
                     PanelBody,

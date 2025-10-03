@@ -157,23 +157,40 @@
             wrapper.classList.add('swiper-is-loading');
         }
 
+        const autoplayConfig = settings.autoplay
+            ? {
+                  delay: typeof settings.autoplay_delay === 'number' ? settings.autoplay_delay : 5000,
+                  disableOnInteraction: !!settings.pause_on_interaction,
+                  pauseOnMouseEnter: !!settings.pause_on_mouse_enter,
+              }
+            : false;
+
+        const paginationConfig = settings.show_pagination
+            ? {
+                  el: settings.container_selector + ' .swiper-pagination',
+                  clickable: true,
+              }
+            : false;
+
+        const navigationConfig = settings.show_navigation
+            ? {
+                  nextEl: settings.container_selector + ' .swiper-button-next',
+                  prevEl: settings.container_selector + ' .swiper-button-prev',
+              }
+            : false;
+
         const instance = new Swiper(settings.container_selector, {
             slidesPerView: settings.columns_mobile,
             spaceBetween: settings.gap_size,
-            loop: true,
+            loop: !!settings.loop,
             watchOverflow: true,
             keyboard: {
                 enabled: true,
                 onlyInViewport: true,
             },
-            pagination: {
-                el: settings.container_selector + ' .swiper-pagination',
-                clickable: true,
-            },
-            navigation: {
-                nextEl: settings.container_selector + ' .swiper-button-next',
-                prevEl: settings.container_selector + ' .swiper-button-prev',
-            },
+            pagination: paginationConfig,
+            navigation: navigationConfig,
+            autoplay: autoplayConfig,
             a11y: {
                 enabled: true,
                 prevSlideMessage: settings.a11y_prev_slide_message,

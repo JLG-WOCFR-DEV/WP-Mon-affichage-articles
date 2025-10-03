@@ -41,6 +41,21 @@
         }
     }
 
+    function toggleSlideshowOptions() {
+        var $displayMode = $('#display_mode');
+        var $slideshowOptions = $('.my-articles-slideshow-settings');
+
+        if (!$slideshowOptions.length) {
+            return;
+        }
+
+        if ($displayMode.length && $displayMode.val() === 'slideshow') {
+            $slideshowOptions.show();
+        } else {
+            $slideshowOptions.hide();
+        }
+    }
+
     var columnSelectors = '#columns_mobile, #columns_tablet, #columns_desktop, #columns_ultrawide';
     var columnsConfigDefaults = {
         minColumnWidth: 240,
@@ -136,12 +151,14 @@
     $(document).on('change', '#pinned_show_badge', toggleBadgeOptions);
     $(document).on('change', '#show_excerpt', toggleExcerptOptions);
     $(document).on('change', '#orderby', toggleMetaKeyOption);
+    $(document).on('change', '#display_mode', toggleSlideshowOptions);
 
     // Exécution au chargement de la page pour définir l'état initial
     $(document).ready(function() {
         toggleBadgeOptions();
         toggleExcerptOptions();
         toggleMetaKeyOption();
+        toggleSlideshowOptions();
         initColumnsWarnings();
     });
 
