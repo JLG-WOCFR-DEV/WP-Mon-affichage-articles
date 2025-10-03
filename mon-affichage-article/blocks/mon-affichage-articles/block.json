@@ -47,6 +47,11 @@
             "type": "boolean",
             "default": false
         },
+        "aria_label": {
+            "type": "string",
+            "default": "",
+            "description": "Libellé ARIA appliqué au conteneur principal du module."
+        },
         "category_filter_aria_label": {
             "type": "string",
             "default": "",

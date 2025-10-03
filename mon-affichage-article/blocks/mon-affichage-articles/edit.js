@@ -1,5 +1,12 @@
 (function (wp) {
     var __ = wp.i18n.__;
+    var sprintf = wp.i18n.sprintf;
+    var decodeEntities =
+        wp.htmlEntities && typeof wp.htmlEntities.decodeEntities === 'function'
+            ? wp.htmlEntities.decodeEntities
+            : function (value) {
+                  return value;
+              };
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor ? wp.blockEditor.InspectorControls : wp.editor.InspectorControls;
     var useBlockProps = wp.blockEditor ? wp.blockEditor.useBlockProps : function () {
@@ -154,6 +161,30 @@
                         : false,
                 };
             }, [attributes.instanceId]);
+
+            var rawInstanceTitle = '';
+
+            if (selectedData && selectedData.selectedInstance && selectedData.selectedInstance.title) {
+                if (typeof selectedData.selectedInstance.title.rendered === 'string' && selectedData.selectedInstance.title.rendered.length > 0) {
+                    rawInstanceTitle = selectedData.selectedInstance.title.rendered;
+                } else if (typeof selectedData.selectedInstance.title.raw === 'string' && selectedData.selectedInstance.title.raw.length > 0) {
+                    rawInstanceTitle = selectedData.selectedInstance.title.raw;
+                }
+            }
+
+            var normalizedInstanceTitle = '';
+
+            if (rawInstanceTitle) {
+                var decodedTitle = decodeEntities(rawInstanceTitle);
+
+                if (typeof decodedTitle === 'string') {
+                    normalizedInstanceTitle = decodedTitle.replace(/<[^>]+>/g, '').trim();
+                }
+            }
+
+            var ariaLabelPlaceholder = normalizedInstanceTitle
+                ? sprintf(__('Module « %s »', 'mon-articles'), normalizedInstanceTitle)
+                : __('Titre du module', 'mon-articles');
 
             var canEditPosts = useSelect(function (select) {
                 var core = select('core');
@@ -901,6 +932,19 @@
                               help: __('Renseignez la clé utilisée pour le tri par méta.', 'mon-articles'),
                           })
                         : null
+                ),
+                el(
+                    PanelBody,
+                    { title: __('Accessibilité', 'mon-articles'), initialOpen: false },
+                    el(TextControl, {
+                        label: __('Libellé ARIA du module', 'mon-articles'),
+                        value: attributes.aria_label || '',
+                        onChange: function (value) {
+                            setAttributes({ aria_label: value || '' });
+                        },
+                        placeholder: ariaLabelPlaceholder,
+                        help: __('Laissez vide pour utiliser automatiquement le titre du module sélectionné.', 'mon-articles'),
+                    })
                 ),
                 el(
                     PanelBody,
