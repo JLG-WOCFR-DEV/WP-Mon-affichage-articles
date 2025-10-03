@@ -47,6 +47,11 @@
             "type": "boolean",
             "default": false
         },
+        "category_filter_aria_label": {
+            "type": "string",
+            "default": "",
+            "description": "Libellé ARIA appliqué à la navigation du filtre de catégories."
+        },
         "filter_alignment": {
             "type": "string",
             "default": "right"
