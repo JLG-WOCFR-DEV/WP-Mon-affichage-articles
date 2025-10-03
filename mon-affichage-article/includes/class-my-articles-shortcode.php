@@ -831,6 +831,9 @@ class My_Articles_Shortcode {
         if ( $slideshow_delay > 0 && $slideshow_delay < 1000 ) {
             $slideshow_delay = 1000;
         }
+        if ( $slideshow_delay > 20000 ) {
+            $slideshow_delay = 20000;
+        }
         if ( 0 === $slideshow_delay ) {
             $slideshow_delay = (int) $defaults['slideshow_delay'];
         }
@@ -1707,6 +1710,13 @@ class My_Articles_Shortcode {
         wp_enqueue_style('swiper-css');
         wp_enqueue_script('swiper-js');
         wp_enqueue_script('my-articles-swiper-init', MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js', ['swiper-js', 'my-articles-responsive-layout'], MY_ARTICLES_VERSION, true);
+        $autoplay_settings = array(
+            'enabled'              => ! empty( $options['slideshow_autoplay'] ),
+            'delay'                => (int) $options['slideshow_delay'],
+            'pause_on_interaction' => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter' => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+        );
+
         $localized_settings = array(
             'columns_mobile'                    => $options['columns_mobile'],
             'columns_tablet'                    => $options['columns_tablet'],
@@ -1714,10 +1724,7 @@ class My_Articles_Shortcode {
             'columns_ultrawide'                 => $options['columns_ultrawide'],
             'gap_size'                          => $options['gap_size'],
             'loop'                              => ! empty( $options['slideshow_loop'] ),
-            'autoplay'                          => ! empty( $options['slideshow_autoplay'] ),
-            'autoplay_delay'                    => (int) $options['slideshow_delay'],
-            'pause_on_interaction'              => ! empty( $options['slideshow_pause_on_interaction'] ),
-            'pause_on_mouse_enter'              => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'autoplay'                          => $autoplay_settings,
             'show_navigation'                   => ! empty( $options['slideshow_show_navigation'] ),
             'show_pagination'                   => ! empty( $options['slideshow_show_pagination'] ),
             'container_selector'                => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
