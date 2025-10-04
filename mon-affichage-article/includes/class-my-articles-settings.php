@@ -94,29 +94,29 @@ class My_Articles_Settings {
         $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
         $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
         $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] )
-            ? min( 50, max( 0, absint( $input['posts_per_page'] ) ) )
+            ? min( 50, max( 0, intval( $input['posts_per_page'] ) ) )
             : 10;
         $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] )
-            ? min( 6, max( 1, absint( $input['desktop_columns'] ) ) )
+            ? min( 6, max( 1, intval( $input['desktop_columns'] ) ) )
             : 3;
         $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] )
-            ? min( 3, max( 1, absint( $input['mobile_columns'] ) ) )
+            ? min( 3, max( 1, intval( $input['mobile_columns'] ) ) )
             : 1;
         $sanitized_input['gap_size'] = isset( $input['gap_size'] )
-            ? min( 50, max( 0, absint( $input['gap_size'] ) ) )
+            ? min( 50, max( 0, intval( $input['gap_size'] ) ) )
             : 25;
         $sanitized_input['border_radius'] = isset( $input['border_radius'] )
-            ? min( 50, max( 0, absint( $input['border_radius'] ) ) )
+            ? min( 50, max( 0, intval( $input['border_radius'] ) ) )
             : 12;
         $sanitized_input['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
         $sanitized_input['title_font_size'] = isset( $input['title_font_size'] )
-            ? min( 40, max( 10, absint( $input['title_font_size'] ) ) )
+            ? min( 40, max( 10, intval( $input['title_font_size'] ) ) )
             : 16;
         $sanitized_input['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
         $sanitized_input['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
         $sanitized_input['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
         $sanitized_input['meta_font_size'] = isset( $input['meta_font_size'] )
-            ? min( 20, max( 8, absint( $input['meta_font_size'] ) ) )
+            ? min( 20, max( 8, intval( $input['meta_font_size'] ) ) )
             : 12;
         $sanitized_input['meta_color'] = my_articles_sanitize_color($input['meta_color'] ?? '', '#6b7280');
         $sanitized_input['meta_color_hover'] = my_articles_sanitize_color($input['meta_color_hover'] ?? '', '#000000');
@@ -124,10 +124,10 @@ class My_Articles_Settings {
         $sanitized_input['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
         $sanitized_input['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
         $sanitized_input['module_margin_left'] = isset( $input['module_margin_left'] )
-            ? min( 200, max( 0, absint( $input['module_margin_left'] ) ) )
+            ? min( 200, max( 0, intval( $input['module_margin_left'] ) ) )
             : 0;
         $sanitized_input['module_margin_right'] = isset( $input['module_margin_right'] )
-            ? min( 200, max( 0, absint( $input['module_margin_right'] ) ) )
+            ? min( 200, max( 0, intval( $input['module_margin_right'] ) ) )
             : 0;
         $sanitized_input['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
 
