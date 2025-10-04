@@ -33,6 +33,28 @@
         return '';
     }
 
+    function applyRefreshedNonce(settings, nonce) {
+        if (!nonce) {
+            return;
+        }
+
+        if (settings && typeof settings === 'object') {
+            settings.restNonce = nonce;
+        }
+
+        if (typeof window !== 'undefined') {
+            var loadMoreSettingsGlobal = window.myArticlesLoadMore;
+            if (loadMoreSettingsGlobal && typeof loadMoreSettingsGlobal === 'object') {
+                loadMoreSettingsGlobal.restNonce = nonce;
+            }
+
+            var filterSettingsGlobal = window.myArticlesFilter;
+            if (filterSettingsGlobal && typeof filterSettingsGlobal === 'object') {
+                filterSettingsGlobal.restNonce = nonce;
+            }
+        }
+    }
+
     function refreshRestNonce(settings) {
         if (pendingNonceDeferred) {
             return pendingNonceDeferred.promise();
@@ -57,10 +79,7 @@
                 var nonce = extractNonceFromResponse(response);
 
                 if (nonce) {
-                    if (settings) {
-                        settings.restNonce = nonce;
-                    }
-
+                    applyRefreshedNonce(settings, nonce);
                     deferred.resolve(nonce);
 
                     return;

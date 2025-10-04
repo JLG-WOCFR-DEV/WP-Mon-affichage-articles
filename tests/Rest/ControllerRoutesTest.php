@@ -292,6 +292,25 @@ final class ControllerRoutesTest extends TestCase
         $this->assertSame('nonce-wp_rest', $payload['data']['nonce']);
     }
 
+    public function test_nonce_route_accepts_internal_referer_when_origin_missing(): void
+    {
+        $controller = $this->createControllerWithHandlers(array());
+
+        $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('referer', '/subdir/page?foo=bar');
+
+        $response = $controller->get_rest_nonce($request);
+
+        $this->assertInstanceOf(WP_REST_Response::class, $response);
+
+        $payload = $response->get_data();
+        $this->assertIsArray($payload);
+        $this->assertArrayHasKey('success', $payload);
+        $this->assertTrue($payload['success']);
+        $this->assertArrayHasKey('data', $payload);
+        $this->assertSame('nonce-wp_rest', $payload['data']['nonce']);
+    }
+
     public function test_nonce_route_rejects_external_origin(): void
     {
         $controller = $this->createControllerWithHandlers(array());

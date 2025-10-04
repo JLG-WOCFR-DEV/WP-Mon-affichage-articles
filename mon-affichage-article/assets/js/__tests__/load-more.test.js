@@ -213,6 +213,7 @@ describe('load-more endpoint interactions', () => {
         expect(postCallCount).toBe(2);
         expect(nonceCallCount).toBe(1);
         expect(window.myArticlesLoadMore.restNonce).toBe('nonce-updated');
+        expect(window.myArticlesFilter.restNonce).toBe('nonce-updated');
 
         expect(postCalls[0].headers['X-WP-Nonce']).toBe('nonce-456');
         expect(postCalls[1].headers['X-WP-Nonce']).toBe('nonce-updated');
