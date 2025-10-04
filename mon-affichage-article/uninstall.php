@@ -6,9 +6,12 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 delete_option( 'my_articles_options' );
 delete_option( 'my_articles_cache_namespace' );
 
-if ( function_exists( 'wp_cache_delete' ) ) {
-    my_articles_uninstall_purge_response_cache_group();
+if ( function_exists( 'delete_site_option' ) ) {
+    delete_site_option( 'my_articles_options' );
+    delete_site_option( 'my_articles_cache_namespace' );
 }
+
+my_articles_uninstall_purge_response_cache_group();
 
 my_articles_uninstall_delete_response_transients();
 
@@ -50,6 +53,10 @@ function my_articles_uninstall_purge_response_cache_group() {
     if ( is_object( $cache_object ) && method_exists( $cache_object, 'delete_group' ) ) {
         $cache_object->delete_group( 'my_articles_response' );
 
+        return;
+    }
+
+    if ( ! function_exists( 'wp_cache_delete' ) ) {
         return;
     }
 
