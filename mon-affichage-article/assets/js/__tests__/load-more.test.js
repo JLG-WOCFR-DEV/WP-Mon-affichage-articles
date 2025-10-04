@@ -26,6 +26,7 @@ describe('load-more endpoint interactions', () => {
         window.myArticlesLoadMore = {
             restRoot: 'http://example.com/wp-json',
             restNonce: 'nonce-456',
+            nonceEndpoint: 'http://example.com/wp-json/my-articles/v1/nonce',
             loadMoreText: 'Charger plus',
             loadingText: 'Chargement…',
             errorText: 'Impossible de charger plus.',
@@ -144,5 +145,84 @@ describe('load-more endpoint interactions', () => {
         expect(feedback).not.toBeNull();
         expect(feedback.classList.contains('is-error')).toBe(true);
         expect(feedback.textContent).toBe('Erreur serveur');
+    });
+
+    it('refreshes the nonce and retries once before succeeding', () => {
+        let postCallCount = 0;
+        let nonceCallCount = 0;
+        const postCalls = [];
+
+        $.ajax = jest.fn((options) => {
+            if (options.type === 'GET' && options.url.indexOf('/nonce') !== -1) {
+                nonceCallCount += 1;
+
+                if (options.success) {
+                    options.success({ success: true, data: { nonce: 'nonce-updated' } });
+                }
+
+                if (options.complete) {
+                    options.complete();
+                }
+
+                return;
+            }
+
+            if (options.type === 'POST') {
+                postCallCount += 1;
+                postCalls.push(options);
+
+                if (options.beforeSend) {
+                    options.beforeSend();
+                }
+
+                if (postCallCount === 1) {
+                    if (options.error) {
+                        options.error({
+                            status: 403,
+                            responseJSON: {
+                                code: 'my_articles_invalid_nonce',
+                                data: { status: 403 },
+                            },
+                        });
+                    }
+                } else {
+                    if (options.success) {
+                        options.success({
+                            success: true,
+                            data: {
+                                html: '<article class="my-article-item">Recharge</article>',
+                                total_pages: 4,
+                                next_page: 3,
+                                pinned_ids: '21,22',
+                            },
+                        });
+                    }
+                }
+
+                if (options.complete) {
+                    options.complete();
+                }
+            }
+        });
+
+        require('../load-more');
+
+        const button = $('.my-articles-load-more-btn');
+        button.trigger('click');
+
+        expect(postCallCount).toBe(2);
+        expect(nonceCallCount).toBe(1);
+        expect(window.myArticlesLoadMore.restNonce).toBe('nonce-updated');
+
+        expect(postCalls[0].headers['X-WP-Nonce']).toBe('nonce-456');
+        expect(postCalls[1].headers['X-WP-Nonce']).toBe('nonce-updated');
+
+        const articles = document.querySelectorAll('.my-articles-grid-content .my-article-item');
+        expect(articles).toHaveLength(2);
+        expect(articles[1].textContent).toBe('Recharge');
+
+        const feedback = document.querySelector('.my-articles-feedback');
+        expect(feedback).not.toBeNull();
+        expect(feedback.classList.contains('is-error')).toBe(false);
     });
 });

@@ -1079,8 +1079,9 @@ class My_Articles_Shortcode {
 
         $rest_nonce          = wp_create_nonce( 'wp_rest' );
         $rest_root           = esc_url_raw( rest_url() );
-        $filter_rest_endpoint    = esc_url_raw( rest_url( 'my-articles/v1/filter' ) );
-        $load_more_rest_endpoint = esc_url_raw( rest_url( 'my-articles/v1/load-more' ) );
+        $filter_rest_endpoint      = esc_url_raw( rest_url( 'my-articles/v1/filter' ) );
+        $load_more_rest_endpoint   = esc_url_raw( rest_url( 'my-articles/v1/load-more' ) );
+        $nonce_refresh_endpoint    = esc_url_raw( rest_url( 'my-articles/v1/nonce' ) );
 
         if ( !empty($options['show_category_filter']) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
@@ -1088,10 +1089,11 @@ class My_Articles_Shortcode {
                 'my-articles-filter',
                 'myArticlesFilter',
                 [
-                    'endpoint'  => $filter_rest_endpoint,
-                    'restRoot'  => $rest_root,
-                    'restNonce' => $rest_nonce,
-                    'errorText' => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'endpoint'      => $filter_rest_endpoint,
+                    'restRoot'      => $rest_root,
+                    'restNonce'     => $rest_nonce,
+                    'nonceEndpoint' => $nonce_refresh_endpoint,
+                    'errorText'     => __( 'Erreur AJAX.', 'mon-articles' ),
                     'countSingle' => __( '%s article affiché.', 'mon-articles' ),
                     'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
                     'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
@@ -1105,9 +1107,10 @@ class My_Articles_Shortcode {
                 'my-articles-load-more',
                 'myArticlesLoadMore',
                 [
-                    'endpoint'     => $load_more_rest_endpoint,
-                    'restRoot'     => $rest_root,
-                    'restNonce'    => $rest_nonce,
+                    'endpoint'       => $load_more_rest_endpoint,
+                    'restRoot'       => $rest_root,
+                    'restNonce'      => $rest_nonce,
+                    'nonceEndpoint'  => $nonce_refresh_endpoint,
                     'loadingText'  => __( 'Chargement...', 'mon-articles' ),
                     'loadMoreText' => esc_html__( 'Charger plus', 'mon-articles' ),
                     'errorText'    => __( 'Erreur AJAX.', 'mon-articles' ),

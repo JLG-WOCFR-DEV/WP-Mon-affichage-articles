@@ -273,6 +273,40 @@ final class ControllerRoutesTest extends TestCase
         $this->assertSame(400, $response->get_error_data()['status']);
     }
 
+    public function test_nonce_route_returns_refreshed_nonce(): void
+    {
+        $controller = $this->createControllerWithHandlers(array());
+
+        $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('origin', 'http://example.com/page');
+
+        $response = $controller->get_rest_nonce($request);
+
+        $this->assertInstanceOf(WP_REST_Response::class, $response);
+
+        $payload = $response->get_data();
+        $this->assertIsArray($payload);
+        $this->assertArrayHasKey('success', $payload);
+        $this->assertTrue($payload['success']);
+        $this->assertArrayHasKey('data', $payload);
+        $this->assertSame('nonce-wp_rest', $payload['data']['nonce']);
+    }
+
+    public function test_nonce_route_rejects_external_origin(): void
+    {
+        $controller = $this->createControllerWithHandlers(array());
+
+        $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('origin', 'https://malicious.example');
+        $request->set_header('referer', 'https://malicious.example/page');
+
+        $response = $controller->get_rest_nonce($request);
+
+        $this->assertInstanceOf(WP_Error::class, $response);
+        $this->assertSame('my_articles_invalid_request_origin', $response->get_error_code());
+        $this->assertSame(403, $response->get_error_data()['status']);
+    }
+
     /**
      * @param array<string, callable> $handlers
      */
