@@ -34,6 +34,16 @@
     var useEffect = wp.element.useEffect;
     var useRef = wp.element.useRef;
     var useCallback = wp.element.useCallback;
+    var useAsyncDebounce =
+        wp.compose && (wp.compose.useAsyncDebounce || wp.compose.useDebounce)
+            ? wp.compose.useAsyncDebounce || wp.compose.useDebounce
+            : function (callback) {
+                  var passthrough = function () {
+                      return callback.apply(null, arguments);
+                  };
+                  passthrough.cancel = function () {};
+                  return passthrough;
+              };
     var decodeEntities =
         wp.htmlEntities && typeof wp.htmlEntities.decodeEntities === 'function'
             ? wp.htmlEntities.decodeEntities
@@ -259,6 +269,30 @@
                     });
                 },
                 [setPreviewRenderCount]
+            );
+
+            var filterValueChangeHandler = useCallback(
+                function (value) {
+                    var nextValue = value || '';
+                    setSearchValue(nextValue);
+                    setCurrentPage(1);
+                    setFetchedInstances([]);
+                    setHasMoreResults(true);
+                },
+                [setSearchValue, setCurrentPage, setFetchedInstances, setHasMoreResults]
+            );
+
+            var debouncedFilterUpdate = useAsyncDebounce(filterValueChangeHandler, 250);
+
+            useEffect(
+                function () {
+                    return function () {
+                        if (debouncedFilterUpdate && typeof debouncedFilterUpdate.cancel === 'function') {
+                            debouncedFilterUpdate.cancel();
+                        }
+                    };
+                },
+                [debouncedFilterUpdate]
             );
 
             var instances = Array.isArray(fetchedInstances) ? fetchedInstances : [];
@@ -600,10 +634,7 @@
                                 setAttributes({ instanceId: parsed > 0 ? parsed : 0 });
                             },
                             onFilterValueChange: function (value) {
-                                setSearchValue(value || '');
-                                setCurrentPage(1);
-                                setFetchedInstances([]);
-                                setHasMoreResults(true);
+                                debouncedFilterUpdate(value);
                             },
                             help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
                         }),
