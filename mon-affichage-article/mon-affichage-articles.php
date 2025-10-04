@@ -240,6 +240,19 @@ public function prepare_filter_articles_response( array $args ) {
         $category_slug = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
         $raw_http_referer = isset( $args['http_referer'] ) ? (string) $args['http_referer'] : '';
+        $search_term = '';
+
+        if ( isset( $args['search'] ) ) {
+            $raw_search = $args['search'];
+
+            if ( is_array( $raw_search ) ) {
+                $raw_search = reset( $raw_search );
+            }
+
+            if ( is_scalar( $raw_search ) ) {
+                $search_term = sanitize_text_field( (string) $raw_search );
+            }
+        }
 
         $home_url    = home_url();
         $referer_url = my_articles_normalize_internal_url( $raw_current_url, $home_url );
@@ -293,6 +306,10 @@ public function prepare_filter_articles_response( array $args ) {
             $normalize_context['allow_external_requested_category'] = true;
         }
 
+        if ( '' !== $search_term ) {
+            $normalize_context['requested_search'] = $search_term;
+        }
+
         $options = My_Articles_Shortcode::normalize_instance_options(
             $options_meta,
             $normalize_context
@@ -327,7 +344,8 @@ public function prepare_filter_articles_response( array $args ) {
             $instance_id,
             $active_category,
             1,
-            $display_mode
+            $display_mode,
+            $options['search_query'] ?? ''
         );
 
         $cached_response = $this->get_cached_response( $cache_key );
@@ -362,6 +380,10 @@ public function prepare_filter_articles_response( array $args ) {
                 'ignore_sticky_posts' => (int) ( $options['ignore_native_sticky'] ?? 0 ),
                 'fields'              => 'ids',
             );
+
+            if ( ! empty( $options['search_query'] ) ) {
+                $count_query_args['s'] = $options['search_query'];
+            }
 
             if ( '' !== $resolved_taxonomy && '' !== $active_category && 'all' !== $active_category ) {
                 $count_query_args['tax_query'] = array(
@@ -423,6 +445,10 @@ public function prepare_filter_articles_response( array $args ) {
                 $pagination_query_args[ $category_query_var ] = $current_filter_slug;
             }
 
+            if ( ! empty( $options['search_query'] ) ) {
+                $pagination_query_args[ 'my_articles_search_' . $instance_id ] = $options['search_query'];
+            }
+
             $pagination_html = $shortcode_instance->get_numbered_pagination_html(
                 $total_pages,
                 1,
@@ -438,6 +464,7 @@ public function prepare_filter_articles_response( array $args ) {
             'next_page'       => $next_page,
             'pinned_ids'      => $pinned_ids_string,
             'pagination_html' => $pagination_html,
+            'search_query'    => $options['search_query'],
         );
 
         $this->set_cached_response(
@@ -461,6 +488,7 @@ public function prepare_filter_articles_response( array $args ) {
         $instance_id   = isset( $_POST['instance_id'] ) ? absint( wp_unslash( $_POST['instance_id'] ) ) : 0;
         $category_slug = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
         $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
+        $search_term    = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
 
         $response = $this->prepare_filter_articles_response(
             array(
@@ -468,6 +496,7 @@ public function prepare_filter_articles_response( array $args ) {
                 'category'     => $category_slug,
                 'current_url'  => $raw_current_url,
                 'http_referer' => wp_get_referer(),
+                'search'       => $search_term,
             )
         );
 
@@ -488,6 +517,19 @@ public function prepare_load_more_articles_response( array $args ) {
         $instance_id = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
+        $search_term = '';
+
+        if ( isset( $args['search'] ) ) {
+            $raw_search = $args['search'];
+
+            if ( is_array( $raw_search ) ) {
+                $raw_search = reset( $raw_search );
+            }
+
+            if ( is_scalar( $raw_search ) ) {
+                $search_term = sanitize_text_field( (string) $raw_search );
+            }
+        }
 
         $pinned_ids_param = $args['pinned_ids'] ?? '';
         if ( is_array( $pinned_ids_param ) ) {
@@ -510,12 +552,18 @@ public function prepare_load_more_articles_response( array $args ) {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $options            = My_Articles_Shortcode::normalize_instance_options(
+        $normalize_context  = array(
+            'requested_category'  => $category,
+            'force_collect_terms' => true,
+        );
+
+        if ( '' !== $search_term ) {
+            $normalize_context['requested_search'] = $search_term;
+        }
+
+        $options = My_Articles_Shortcode::normalize_instance_options(
             $options_meta,
-            array(
-                'requested_category'  => $category,
-                'force_collect_terms' => true,
-            )
+            $normalize_context
         );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
@@ -554,12 +602,24 @@ public function prepare_load_more_articles_response( array $args ) {
 
         $active_category = isset( $options['term'] ) ? $options['term'] : '';
 
+        $cache_extra_parts = array();
+
+        if ( ! empty( $options['search_query'] ) ) {
+            $cache_extra_parts[] = $options['search_query'];
+        }
+
+        if ( ! empty( $seen_pinned_ids ) ) {
+            $cache_extra_parts[] = implode( ',', array_map( 'absint', $seen_pinned_ids ) );
+        }
+
+        $cache_extra = implode( '|', $cache_extra_parts );
+
         $cache_key = $this->generate_response_cache_key(
             $instance_id,
             $active_category,
             $paged,
             $display_mode,
-            ! empty( $seen_pinned_ids ) ? implode( ',', array_map( 'absint', $seen_pinned_ids ) ) : ''
+            $cache_extra
         );
 
         $cached_response = $this->get_cached_response( $cache_key );
@@ -614,10 +674,11 @@ public function prepare_load_more_articles_response( array $args ) {
         }
 
         $response = array(
-            'html'        => $html,
-            'pinned_ids'  => $pinned_ids_string,
-            'total_pages' => $total_pages,
-            'next_page'   => $next_page,
+            'html'         => $html,
+            'pinned_ids'   => $pinned_ids_string,
+            'total_pages'  => $total_pages,
+            'next_page'    => $next_page,
+            'search_query' => $options['search_query'],
         );
 
         $this->set_cached_response(
@@ -642,6 +703,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $paged       = isset( $_POST['paged'] ) ? absint( wp_unslash( $_POST['paged'] ) ) : 1;
         $pinned_ids  = isset( $_POST['pinned_ids'] ) ? wp_unslash( $_POST['pinned_ids'] ) : '';
         $category    = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
+        $search_term = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
 
         $response = $this->prepare_load_more_articles_response(
             array(
@@ -649,6 +711,7 @@ public function prepare_load_more_articles_response( array $args ) {
                 'paged'       => $paged,
                 'pinned_ids'  => $pinned_ids,
                 'category'    => $category,
+                'search'      => $search_term,
             )
         );
 

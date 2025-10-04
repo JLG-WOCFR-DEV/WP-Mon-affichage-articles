@@ -162,6 +162,7 @@ class My_Articles_Shortcode {
             'resolved_taxonomy'         => $options['resolved_taxonomy'] ?? '',
             'term'                      => $options['term'] ?? '',
             'exclude_post_ids'          => $options['exclude_post_ids'] ?? array(),
+            'search_query'              => $options['search_query'] ?? '',
         );
 
         return md5( maybe_serialize( $relevant ) );
@@ -209,6 +210,10 @@ class My_Articles_Shortcode {
             $query_args['order'] = $options['order'];
         }
 
+        if ( ! isset( $query_args['s'] ) && ! empty( $options['search_query'] ) ) {
+            $query_args['s'] = $options['search_query'];
+        }
+
         if (
             ! isset( $query_args['meta_key'] )
             && isset( $query_args['orderby'] )
@@ -252,6 +257,10 @@ class My_Articles_Shortcode {
             'update_post_term_cache' => false,
             'post__not_in'           => isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
         );
+
+        if ( ! empty( $options['search_query'] ) ) {
+            $query_args['s'] = $options['search_query'];
+        }
 
         if ( empty( $options['pinned_posts_ignore_filter'] ) ) {
             $query_args = self::append_active_tax_query(
@@ -544,11 +553,13 @@ class My_Articles_Shortcode {
             'pagination_mode' => 'none',
             'design_preset' => 'custom',
             'design_preset_locked' => 0,
+            'enable_keyword_search' => 0,
             'show_category_filter' => 0,
             'filter_alignment' => 'right',
             'filter_categories' => array(),
             'aria_label' => '',
             'category_filter_aria_label' => '',
+            'search_query' => '',
             'pinned_posts' => array(),
             'pinned_border_color' => '#eab308',
             'pinned_posts_ignore_filter' => 0,
@@ -671,6 +682,47 @@ class My_Articles_Shortcode {
         }
 
         $options = wp_parse_args( $raw_options, $defaults );
+
+        $options['enable_keyword_search'] = ! empty( $options['enable_keyword_search'] ) ? 1 : 0;
+
+        $search_query = '';
+
+        if ( $options['enable_keyword_search'] ) {
+            $requested_search = null;
+
+            if ( array_key_exists( 'requested_search', $context ) ) {
+                $requested_search = $context['requested_search'];
+            } elseif ( isset( $options['search_query'] ) ) {
+                $requested_search = $options['search_query'];
+            }
+
+            if ( is_scalar( $requested_search ) ) {
+                $raw_search = (string) $requested_search;
+
+                if ( function_exists( 'wp_unslash' ) ) {
+                    $raw_search = wp_unslash( $raw_search );
+                }
+
+                $raw_search = sanitize_text_field( $raw_search );
+                $raw_search = trim( $raw_search );
+
+                if ( '' !== $raw_search ) {
+                    $max_length = (int) apply_filters( 'my_articles_search_query_length', 160, $options, $context );
+
+                    if ( $max_length <= 0 ) {
+                        $max_length = 160;
+                    }
+
+                    if ( function_exists( 'mb_substr' ) ) {
+                        $search_query = mb_substr( $raw_search, 0, $max_length );
+                    } else {
+                        $search_query = substr( $raw_search, 0, $max_length );
+                    }
+                }
+            }
+        }
+
+        $options['search_query'] = $search_query;
 
         if ( ! empty( $preset_values ) ) {
             if ( $is_preset_locked ) {
@@ -1044,7 +1096,9 @@ class My_Articles_Shortcode {
         $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
 
         $category_query_var   = 'my_articles_cat_' . $id;
+        $search_query_var     = 'my_articles_search_' . $id;
         $requested_category   = '';
+        $requested_search     = '';
 
         if ( $allows_requested_category && isset( $_GET[ $category_query_var ] ) ) {
             $raw_requested_category = wp_unslash( $_GET[ $category_query_var ] );
@@ -1061,12 +1115,31 @@ class My_Articles_Shortcode {
             }
         }
 
+        if ( isset( $_GET[ $search_query_var ] ) ) {
+            $raw_requested_search = wp_unslash( $_GET[ $search_query_var ] );
+
+            if ( is_scalar( $raw_requested_search ) ) {
+                $requested_search = sanitize_text_field( (string) $raw_requested_search );
+            } elseif ( is_array( $raw_requested_search ) ) {
+                foreach ( $raw_requested_search as $raw_requested_search_value ) {
+                    if ( is_scalar( $raw_requested_search_value ) ) {
+                        $requested_search = sanitize_text_field( (string) $raw_requested_search_value );
+                        break;
+                    }
+                }
+            }
+        }
+
         $normalize_context = array(
             'allow_external_requested_category' => $allows_requested_category,
         );
 
         if ( '' !== $requested_category ) {
             $normalize_context['requested_category'] = $requested_category;
+        }
+
+        if ( '' !== $requested_search ) {
+            $normalize_context['requested_search'] = $requested_search;
         }
 
         $options = self::normalize_instance_options(
@@ -1083,7 +1156,7 @@ class My_Articles_Shortcode {
         $load_more_rest_endpoint   = esc_url_raw( rest_url( 'my-articles/v1/load-more' ) );
         $nonce_refresh_endpoint    = esc_url_raw( rest_url( 'my-articles/v1/nonce' ) );
 
-        if ( !empty($options['show_category_filter']) ) {
+        if ( ! empty( $options['show_category_filter'] ) || ! empty( $options['enable_keyword_search'] ) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
                 'my-articles-filter',
@@ -1192,6 +1265,9 @@ class My_Articles_Shortcode {
             'data-cols-desktop'    => $columns_desktop,
             'data-cols-ultrawide'  => $columns_ultrawide,
             'data-min-card-width'  => $min_card_width,
+            'data-search-enabled'  => ! empty( $options['enable_keyword_search'] ) ? 'true' : 'false',
+            'data-search-query'    => $options['search_query'],
+            'data-search-param'    => $search_query_var,
             'role'                 => 'region',
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
@@ -1204,6 +1280,29 @@ class My_Articles_Shortcode {
         }
 
         echo '<div ' . implode( ' ', $wrapper_attribute_strings ) . '>';
+
+        if ( ! empty( $options['enable_keyword_search'] ) ) {
+            $search_form_classes = 'my-articles-search-form';
+
+            if ( '' !== $options['search_query'] ) {
+                $search_form_classes .= ' has-value';
+            }
+
+            $search_label        = __( 'Rechercher des articles', 'mon-articles' );
+            $search_placeholder  = __( 'Rechercher par mots-clés…', 'mon-articles' );
+            $search_submit_text  = __( 'Rechercher', 'mon-articles' );
+            $search_clear_label  = __( 'Effacer la recherche', 'mon-articles' );
+            $search_input_id     = 'my-articles-search-input-' . $id;
+
+            echo '<form class="' . esc_attr( $search_form_classes ) . '" role="search" aria-label="' . esc_attr( $search_label ) . '" data-instance-id="' . esc_attr( $id ) . '" data-search-param="' . esc_attr( $search_query_var ) . '" data-current-search="' . esc_attr( $options['search_query'] ) . '">';
+            echo '<label class="my-articles-search-label screen-reader-text" for="' . esc_attr( $search_input_id ) . '">' . esc_html( $search_label ) . '</label>';
+            echo '<div class="my-articles-search-controls">';
+            echo '<input type="search" id="' . esc_attr( $search_input_id ) . '" class="my-articles-search-input" name="my-articles-search" value="' . esc_attr( $options['search_query'] ) . '" placeholder="' . esc_attr( $search_placeholder ) . '" autocomplete="off" />';
+            echo '<button type="submit" class="my-articles-search-submit">' . esc_html( $search_submit_text ) . '</button>';
+            echo '<button type="button" class="my-articles-search-clear" aria-label="' . esc_attr( $search_clear_label ) . '"><span aria-hidden="true">&times;</span><span class="screen-reader-text">' . esc_html( $search_clear_label ) . '</span></button>';
+            echo '</div>';
+            echo '</form>';
+        }
 
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
             $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
@@ -1280,6 +1379,10 @@ class My_Articles_Shortcode {
                     'fields' => 'ids',
                 ];
 
+                if ( '' !== $options['search_query'] ) {
+                    $count_query_args['s'] = $options['search_query'];
+                }
+
                 if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {
                     $count_query_args['tax_query'] = [[
                         'taxonomy' => $resolved_taxonomy,
@@ -1303,7 +1406,7 @@ class My_Articles_Shortcode {
                 if ( $total_pages > 1 && $paged < $total_pages) {
                     $next_page = min( $paged + 1, $total_pages );
                     $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $pagination_query_args = array();

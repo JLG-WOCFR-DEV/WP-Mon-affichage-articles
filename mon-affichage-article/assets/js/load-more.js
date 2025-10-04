@@ -165,6 +165,28 @@
             .show();
     }
 
+    function normalizeSearchValue(value) {
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (value === null || typeof value === 'undefined') {
+            return '';
+        }
+
+        return String(value);
+    }
+
+    function sanitizeSearchValue(value) {
+        var normalized = normalizeSearchValue(value);
+
+        if (normalized.length === 0) {
+            return '';
+        }
+
+        return normalized.replace(/\s+/g, ' ').trim();
+    }
+
     function updateInstanceQueryParams(instanceId, params) {
         if (typeof window === 'undefined' || !window.history) {
             return;
@@ -387,6 +409,7 @@
         var totalPages = parseInt(button.data('total-pages'), 10) || 0;
         var pinnedIds = button.data('pinned-ids');
         var category = button.data('category');
+        var searchValue = sanitizeSearchValue(button.data('search'));
         var requestedPage = paged;
 
         if (!totalPages || (paged && paged > totalPages)) {
@@ -477,6 +500,12 @@
                 button.attr('data-pinned-ids', updatedPinnedIds);
             }
 
+            if (typeof responseData.search_query !== 'undefined') {
+                var updatedSearchValue = sanitizeSearchValue(responseData.search_query);
+                button.data('search', updatedSearchValue);
+                button.attr('data-search', updatedSearchValue);
+            }
+
             if (typeof responseData.total_pages !== 'undefined') {
                 var serverTotalPages = parseInt(responseData.total_pages, 10);
                 if (!isNaN(serverTotalPages)) {
@@ -542,7 +571,8 @@
                     instance_id: instanceId,
                     paged: paged,
                     pinned_ids: pinnedIds,
-                    category: category
+                    category: category,
+                    search: searchValue
                 },
                 beforeSend: function () {
                     var loadingText = loadMoreSettings.loadingText || originalButtonText;

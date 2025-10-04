@@ -1044,6 +1044,14 @@
                     PanelBody,
                     { title: __('Méta-données', 'mon-articles'), initialOpen: false },
                     el(ToggleControl, {
+                        label: __('Activer la recherche par mots-clés', 'mon-articles'),
+                        checked: !!attributes.enable_keyword_search,
+                        onChange: withLockedGuard('enable_keyword_search', function (value) {
+                            setAttributes({ enable_keyword_search: !!value });
+                        }),
+                        disabled: isAttributeLocked('enable_keyword_search'),
+                    }),
+                    el(ToggleControl, {
                         label: __('Afficher le filtre de catégories', 'mon-articles'),
                         checked: !!attributes.show_category_filter,
                         onChange: withLockedGuard('show_category_filter', function (value) {
