@@ -23,6 +23,10 @@
             "type": "string",
             "default": "grid"
         },
+        "thumbnail_aspect_ratio": {
+            "type": "string",
+            "default": "16/9"
+        },
         "posts_per_page": {
             "type": "integer",
             "default": 10

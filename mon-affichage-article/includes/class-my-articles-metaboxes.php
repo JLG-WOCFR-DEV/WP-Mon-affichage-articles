@@ -386,6 +386,17 @@ class My_Articles_Metaboxes {
         $this->render_field('gap_size', esc_html__('Espacement des vignettes (Grille)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
         $this->render_field('list_item_gap', esc_html__('Espacement vertical (Liste)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
         $this->render_field('border_radius', esc_html__('Arrondi des bordures (px)', 'mon-articles'), 'number', $opts, ['default' => 12, 'min' => 0, 'max' => 50]);
+        $this->render_field(
+            'thumbnail_aspect_ratio',
+            esc_html__( 'Ratio des vignettes', 'mon-articles' ),
+            'select',
+            $opts,
+            [
+                'default'     => My_Articles_Shortcode::get_default_thumbnail_aspect_ratio(),
+                'options'     => My_Articles_Shortcode::get_thumbnail_aspect_ratio_choices(),
+                'description' => esc_html__( 'Les ratios autorisés sont 1, 4/3, 3/2 et 16/9.', 'mon-articles' ),
+            ]
+        );
         $this->render_field('enable_lazy_load', esc_html__('Activer le chargement paresseux des images (Lazy Load)', 'mon-articles'), 'checkbox', $opts, [
             'default'     => 1,
             'description' => __('Améliore considérablement la vitesse de chargement de la page.', 'mon-articles'),
@@ -620,6 +631,15 @@ class My_Articles_Metaboxes {
         $sanitized['design_preset'] = $design_preset;
 
         $sanitized['display_mode'] = in_array($input['display_mode'] ?? 'grid', ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
+        $allowed_thumbnail_ratios   = My_Articles_Shortcode::get_allowed_thumbnail_aspect_ratios();
+        $default_thumbnail_ratio    = My_Articles_Shortcode::get_default_thumbnail_aspect_ratio();
+        $requested_thumbnail_ratio  = isset( $input['thumbnail_aspect_ratio'] ) ? (string) $input['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+
+        if ( ! in_array( $requested_thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
+            $requested_thumbnail_ratio = $default_thumbnail_ratio;
+        }
+
+        $sanitized['thumbnail_aspect_ratio'] = $requested_thumbnail_ratio;
         $sanitized['columns_mobile'] = isset( $input['columns_mobile'] )
             ? min( 3, max( 1, absint( $input['columns_mobile'] ) ) )
             : 1;

@@ -6,6 +6,7 @@
     --my-articles-skeleton-base: rgba(31, 41, 51, 0.08);
     --my-articles-skeleton-highlight: rgba(31, 41, 51, 0.16);
     --my-articles-skeleton-radius: var(--my-articles-border-radius, 12px);
+    --my-articles-thumbnail-aspect-ratio: 16/9;
 }
 
 .my-articles-wrapper--loading,
@@ -104,7 +105,7 @@
 }
 
 .my-articles-skeleton__thumbnail {
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--my-articles-thumbnail-aspect-ratio, 16/9);
     width: 100%;
 }
 
@@ -467,7 +468,7 @@
     width: 100%;
     height: auto;
     display: block;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: var(--my-articles-thumbnail-aspect-ratio, 16/9);
     object-fit: cover;
 }
 

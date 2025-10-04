@@ -12,6 +12,28 @@ class My_Articles_Shortcode {
     private static $normalized_options_cache = array();
     private static $matching_pinned_ids_cache = array();
     private static $design_presets = null;
+    private static $thumbnail_aspect_ratio_choices = null;
+
+    public static function get_thumbnail_aspect_ratio_choices() {
+        if ( null === self::$thumbnail_aspect_ratio_choices ) {
+            self::$thumbnail_aspect_ratio_choices = array(
+                '1'    => __( 'Carré (1 :1)', 'mon-articles' ),
+                '4/3'  => __( 'Classique (4 :3)', 'mon-articles' ),
+                '3/2'  => __( 'Photo (3 :2)', 'mon-articles' ),
+                '16/9' => __( 'Panoramique (16 :9)', 'mon-articles' ),
+            );
+        }
+
+        return self::$thumbnail_aspect_ratio_choices;
+    }
+
+    public static function get_allowed_thumbnail_aspect_ratios() {
+        return array_keys( self::get_thumbnail_aspect_ratio_choices() );
+    }
+
+    public static function get_default_thumbnail_aspect_ratio() {
+        return '16/9';
+    }
 
     public static function get_design_presets() {
         if ( null !== self::$design_presets ) {
@@ -561,6 +583,7 @@ class My_Articles_Shortcode {
             'enable_lazy_load' => 1,
             'enable_debug_mode' => 0,
             'display_mode' => 'grid',
+            'thumbnail_aspect_ratio' => self::get_default_thumbnail_aspect_ratio(),
             'columns_mobile' => 1, 'columns_tablet' => 2, 'columns_desktop' => 3, 'columns_ultrawide' => 4,
             'module_padding_left' => 0, 'module_padding_right' => 0,
             'gap_size' => 25, 'list_item_gap' => 25,
@@ -688,6 +711,16 @@ class My_Articles_Shortcode {
 
         $options['design_preset'] = $requested_design_preset;
         $options['design_preset_locked'] = $is_preset_locked ? 1 : 0;
+
+        $allowed_thumbnail_ratios = self::get_allowed_thumbnail_aspect_ratios();
+        $default_thumbnail_ratio = self::get_default_thumbnail_aspect_ratio();
+        $thumbnail_ratio         = isset( $options['thumbnail_aspect_ratio'] ) ? (string) $options['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+
+        if ( ! in_array( $thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
+            $thumbnail_ratio = $default_thumbnail_ratio;
+        }
+
+        $options['thumbnail_aspect_ratio'] = $thumbnail_ratio;
 
         $aria_label = '';
         if ( isset( $options['aria_label'] ) && is_string( $options['aria_label'] ) ) {
@@ -1173,7 +1206,7 @@ class My_Articles_Shortcode {
         }
 
         ob_start();
-        $this->render_inline_styles($options, $id);
+        $this->enqueue_dynamic_styles( $options, $id );
 
         $wrapper_class = 'my-articles-wrapper my-articles-' . esc_attr($options['display_mode']);
 
@@ -1868,7 +1901,7 @@ class My_Articles_Shortcode {
         }
     }
 
-    private function render_inline_styles($options, $id) {
+    private function enqueue_dynamic_styles( $options, $id ) {
         $defaults = self::get_default_options();
 
         $min_card_width = 220;
@@ -1909,6 +1942,14 @@ class My_Articles_Shortcode {
         $vignette_bg_color    = my_articles_sanitize_color( $options['vignette_bg_color'] ?? '', $defaults['vignette_bg_color'] );
         $title_wrapper_bg     = my_articles_sanitize_color( $options['title_wrapper_bg_color'] ?? '', $defaults['title_wrapper_bg_color'] );
 
+        $allowed_thumbnail_ratios = self::get_allowed_thumbnail_aspect_ratios();
+        $default_thumbnail_ratio  = self::get_default_thumbnail_aspect_ratio();
+        $thumbnail_ratio          = isset( $options['thumbnail_aspect_ratio'] ) ? (string) $options['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+
+        if ( ! in_array( $thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
+            $thumbnail_ratio = $default_thumbnail_ratio;
+        }
+
         $dynamic_css = "
         #my-articles-wrapper-{$id} {
             --my-articles-cols-mobile: {$columns_mobile};
@@ -1936,6 +1977,7 @@ class My_Articles_Shortcode {
             --my-articles-pinned-border-color: {$pinned_border_color};
             --my-articles-badge-bg-color: {$pinned_badge_bg};
             --my-articles-badge-text-color: {$pinned_badge_text};
+            --my-articles-thumbnail-aspect-ratio: {$thumbnail_ratio};
             background-color: {$module_bg_color};
             padding-left: {$module_padding_left}px;
             padding-right: {$module_padding_right}px;
