@@ -674,6 +674,29 @@ if (!function_exists('update_option')) {
     }
 }
 
+if (!function_exists('delete_option')) {
+    function delete_option(string $option)
+    {
+        global $mon_articles_test_options_store, $mon_articles_test_options;
+
+        if (!is_array($mon_articles_test_options_store)) {
+            $mon_articles_test_options_store = array();
+        }
+
+        $option = (string) $option;
+
+        $existed = array_key_exists($option, $mon_articles_test_options_store);
+
+        unset($mon_articles_test_options_store[$option]);
+
+        if (is_array($mon_articles_test_options) && array_key_exists($option, $mon_articles_test_options)) {
+            unset($mon_articles_test_options[$option]);
+        }
+
+        return $existed;
+    }
+}
+
 if (!class_exists('WP_Styles')) {
     class WP_Styles
     {
