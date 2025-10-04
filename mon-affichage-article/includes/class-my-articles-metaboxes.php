@@ -620,21 +620,51 @@ class My_Articles_Metaboxes {
         $sanitized['design_preset'] = $design_preset;
 
         $sanitized['display_mode'] = in_array($input['display_mode'] ?? 'grid', ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
-        $sanitized['columns_mobile'] = isset( $input['columns_mobile'] ) ? max( 1, absint( $input['columns_mobile'] ) ) : 1;
-        $sanitized['columns_tablet'] = isset( $input['columns_tablet'] ) ? max( 1, absint( $input['columns_tablet'] ) ) : 2;
-        $sanitized['columns_desktop'] = isset( $input['columns_desktop'] ) ? max( 1, absint( $input['columns_desktop'] ) ) : 3;
-        $sanitized['columns_ultrawide'] = isset( $input['columns_ultrawide'] ) ? max( 1, absint( $input['columns_ultrawide'] ) ) : 4;
-        $sanitized['module_padding_left'] = isset( $input['module_padding_left'] ) ? absint( $input['module_padding_left'] ) : 0;
-        $sanitized['module_padding_right'] = isset( $input['module_padding_right'] ) ? absint( $input['module_padding_right'] ) : 0;
-        $sanitized['gap_size'] = isset( $input['gap_size'] ) ? absint( $input['gap_size'] ) : 25;
-        $sanitized['list_item_gap'] = isset( $input['list_item_gap'] ) ? absint( $input['list_item_gap'] ) : 25;
-        $sanitized['list_content_padding_top'] = isset( $input['list_content_padding_top'] ) ? absint( $input['list_content_padding_top'] ) : 0;
-        $sanitized['list_content_padding_right'] = isset( $input['list_content_padding_right'] ) ? absint( $input['list_content_padding_right'] ) : 0;
-        $sanitized['list_content_padding_bottom'] = isset( $input['list_content_padding_bottom'] ) ? absint( $input['list_content_padding_bottom'] ) : 0;
-        $sanitized['list_content_padding_left'] = isset( $input['list_content_padding_left'] ) ? absint( $input['list_content_padding_left'] ) : 0;
-        $sanitized['border_radius'] = isset( $input['border_radius'] ) ? absint( $input['border_radius'] ) : 12;
-        $sanitized['title_font_size'] = isset( $input['title_font_size'] ) ? absint( $input['title_font_size'] ) : 16;
-        $sanitized['meta_font_size'] = isset( $input['meta_font_size'] ) ? absint( $input['meta_font_size'] ) : 12;
+        $sanitized['columns_mobile'] = isset( $input['columns_mobile'] )
+            ? min( 3, max( 1, absint( $input['columns_mobile'] ) ) )
+            : 1;
+        $sanitized['columns_tablet'] = isset( $input['columns_tablet'] )
+            ? min( 4, max( 1, absint( $input['columns_tablet'] ) ) )
+            : 2;
+        $sanitized['columns_desktop'] = isset( $input['columns_desktop'] )
+            ? min( 6, max( 1, absint( $input['columns_desktop'] ) ) )
+            : 3;
+        $sanitized['columns_ultrawide'] = isset( $input['columns_ultrawide'] )
+            ? min( 8, max( 1, absint( $input['columns_ultrawide'] ) ) )
+            : 4;
+        $sanitized['module_padding_left'] = isset( $input['module_padding_left'] )
+            ? min( 200, max( 0, absint( $input['module_padding_left'] ) ) )
+            : 0;
+        $sanitized['module_padding_right'] = isset( $input['module_padding_right'] )
+            ? min( 200, max( 0, absint( $input['module_padding_right'] ) ) )
+            : 0;
+        $sanitized['gap_size'] = isset( $input['gap_size'] )
+            ? min( 50, max( 0, absint( $input['gap_size'] ) ) )
+            : 25;
+        $sanitized['list_item_gap'] = isset( $input['list_item_gap'] )
+            ? min( 50, max( 0, absint( $input['list_item_gap'] ) ) )
+            : 25;
+        $sanitized['list_content_padding_top'] = isset( $input['list_content_padding_top'] )
+            ? min( 100, max( 0, absint( $input['list_content_padding_top'] ) ) )
+            : 0;
+        $sanitized['list_content_padding_right'] = isset( $input['list_content_padding_right'] )
+            ? min( 100, max( 0, absint( $input['list_content_padding_right'] ) ) )
+            : 0;
+        $sanitized['list_content_padding_bottom'] = isset( $input['list_content_padding_bottom'] )
+            ? min( 100, max( 0, absint( $input['list_content_padding_bottom'] ) ) )
+            : 0;
+        $sanitized['list_content_padding_left'] = isset( $input['list_content_padding_left'] )
+            ? min( 100, max( 0, absint( $input['list_content_padding_left'] ) ) )
+            : 0;
+        $sanitized['border_radius'] = isset( $input['border_radius'] )
+            ? min( 50, max( 0, absint( $input['border_radius'] ) ) )
+            : 12;
+        $sanitized['title_font_size'] = isset( $input['title_font_size'] )
+            ? min( 40, max( 10, absint( $input['title_font_size'] ) ) )
+            : 16;
+        $sanitized['meta_font_size'] = isset( $input['meta_font_size'] )
+            ? min( 20, max( 8, absint( $input['meta_font_size'] ) ) )
+            : 12;
         $sanitized['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
         $sanitized['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
         $sanitized['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
@@ -660,7 +690,9 @@ class My_Articles_Metaboxes {
         $sanitized['show_excerpt'] = isset( $input['show_excerpt'] ) ? 1 : 0;
         $sanitized['excerpt_length'] = isset( $input['excerpt_length'] ) ? absint($input['excerpt_length']) : 25;
         $sanitized['excerpt_more_text'] = isset( $input['excerpt_more_text'] ) ? sanitize_text_field( wp_unslash( $input['excerpt_more_text'] ) ) : 'Lire la suite';
-        $sanitized['excerpt_font_size'] = isset( $input['excerpt_font_size'] ) ? absint($input['excerpt_font_size']) : 14;
+        $sanitized['excerpt_font_size'] = isset( $input['excerpt_font_size'] )
+            ? min( 100, max( 0, absint( $input['excerpt_font_size'] ) ) )
+            : 14;
         $sanitized['excerpt_color'] = my_articles_sanitize_color($input['excerpt_color'] ?? '', '#4b5563');
 
         $sanitized['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
