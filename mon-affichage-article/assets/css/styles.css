@@ -6,6 +6,14 @@
     --my-articles-skeleton-base: rgba(31, 41, 51, 0.08);
     --my-articles-skeleton-highlight: rgba(31, 41, 51, 0.16);
     --my-articles-skeleton-radius: var(--my-articles-border-radius, 12px);
+    --my-articles-module-padding-top: 0px;
+    --my-articles-module-padding-right: 0px;
+    --my-articles-module-padding-bottom: 0px;
+    --my-articles-module-padding-left: 0px;
+    padding-top: var(--my-articles-module-padding-top);
+    padding-right: var(--my-articles-module-padding-right);
+    padding-bottom: var(--my-articles-module-padding-bottom);
+    padding-left: var(--my-articles-module-padding-left);
 }
 
 .my-articles-wrapper--loading,

@@ -120,6 +120,10 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
         yield 'title font size maximum' => array('title_font_size', 99, 40);
         yield 'meta font size minimum' => array('meta_font_size', 1, 8);
         yield 'meta font size maximum' => array('meta_font_size', 999, 20);
+        yield 'module padding top minimum' => array('module_padding_top', -50, 0);
+        yield 'module padding top maximum' => array('module_padding_top', 999, 200);
+        yield 'module padding bottom minimum' => array('module_padding_bottom', -50, 0);
+        yield 'module padding bottom maximum' => array('module_padding_bottom', 999, 200);
         yield 'module margin left minimum' => array('module_margin_left', -50, 0);
         yield 'module margin left maximum' => array('module_margin_left', 999, 200);
         yield 'module margin right minimum' => array('module_margin_right', -50, 0);

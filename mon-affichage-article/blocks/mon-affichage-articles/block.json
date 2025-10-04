@@ -110,6 +110,16 @@
             "default": 0,
             "description": "Marge interne droite du module (px)."
         },
+        "module_padding_top": {
+            "type": "integer",
+            "default": 0,
+            "description": "Marge interne supérieure du module (px)."
+        },
+        "module_padding_bottom": {
+            "type": "integer",
+            "default": 0,
+            "description": "Marge interne inférieure du module (px)."
+        },
         "list_content_padding_top": {
             "type": "integer",
             "default": 0,

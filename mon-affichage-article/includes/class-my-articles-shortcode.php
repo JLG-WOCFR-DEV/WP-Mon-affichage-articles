@@ -40,6 +40,8 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#2563eb',
                     'shadow_color'                => 'rgba(15,23,42,0.08)',
                     'shadow_color_hover'          => 'rgba(37,99,235,0.16)',
+                    'module_padding_top'          => 24,
+                    'module_padding_bottom'       => 24,
                     'module_padding_left'         => 24,
                     'module_padding_right'        => 24,
                     'gap_size'                    => 24,
@@ -69,6 +71,8 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#93c5fd',
                     'shadow_color'                => 'rgba(0,0,0,0.4)',
                     'shadow_color_hover'          => 'rgba(30,64,175,0.6)',
+                    'module_padding_top'          => 32,
+                    'module_padding_bottom'       => 32,
                     'module_padding_left'         => 32,
                     'module_padding_right'        => 32,
                     'gap_size'                    => 20,
@@ -99,6 +103,8 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#1d4ed8',
                     'shadow_color'                => 'rgba(0,0,0,0.04)',
                     'shadow_color_hover'          => 'rgba(0,0,0,0.08)',
+                    'module_padding_top'          => 16,
+                    'module_padding_bottom'       => 16,
                     'module_padding_left'         => 16,
                     'module_padding_right'        => 16,
                     'gap_size'                    => 20,
@@ -562,6 +568,7 @@ class My_Articles_Shortcode {
             'enable_debug_mode' => 0,
             'display_mode' => 'grid',
             'columns_mobile' => 1, 'columns_tablet' => 2, 'columns_desktop' => 3, 'columns_ultrawide' => 4,
+            'module_padding_top' => 0, 'module_padding_bottom' => 0,
             'module_padding_left' => 0, 'module_padding_right' => 0,
             'gap_size' => 25, 'list_item_gap' => 25,
             'list_content_padding_top' => 0, 'list_content_padding_right' => 0,
@@ -595,8 +602,10 @@ class My_Articles_Shortcode {
         $aliases = array(
             'desktop_columns'     => 'columns_desktop',
             'mobile_columns'      => 'columns_mobile',
-            'module_margin_left'  => 'module_padding_left',
-            'module_margin_right' => 'module_padding_right',
+            'module_margin_top'    => 'module_padding_top',
+            'module_margin_bottom' => 'module_padding_bottom',
+            'module_margin_left'   => 'module_padding_left',
+            'module_margin_right'  => 'module_padding_right',
         );
 
         foreach ( $aliases as $stored_key => $option_key ) {
@@ -1892,8 +1901,10 @@ class My_Articles_Shortcode {
         $title_font_size     = max( 1, absint( $options['title_font_size'] ?? $defaults['title_font_size'] ) );
         $meta_font_size      = max( 1, absint( $options['meta_font_size'] ?? $defaults['meta_font_size'] ) );
         $excerpt_font_size   = max( 1, absint( $options['excerpt_font_size'] ?? $defaults['excerpt_font_size'] ) );
-        $module_padding_left  = max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) );
-        $module_padding_right = max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) );
+        $module_padding_top    = max( 0, absint( $options['module_padding_top'] ?? $defaults['module_padding_top'] ) );
+        $module_padding_bottom = max( 0, absint( $options['module_padding_bottom'] ?? $defaults['module_padding_bottom'] ) );
+        $module_padding_left   = max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) );
+        $module_padding_right  = max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) );
 
         $title_color          = my_articles_sanitize_color( $options['title_color'] ?? '', $defaults['title_color'] );
         $meta_color           = my_articles_sanitize_color( $options['meta_color'] ?? '', $defaults['meta_color'] );
@@ -1923,6 +1934,10 @@ class My_Articles_Shortcode {
             --my-articles-list-padding-bottom: {$padding_bottom}px;
             --my-articles-list-padding-left: {$padding_left}px;
             --my-articles-border-radius: {$border_radius}px;
+            --my-articles-module-padding-top: {$module_padding_top}px;
+            --my-articles-module-padding-right: {$module_padding_right}px;
+            --my-articles-module-padding-bottom: {$module_padding_bottom}px;
+            --my-articles-module-padding-left: {$module_padding_left}px;
             --my-articles-title-color: {$title_color};
             --my-articles-title-font-size: {$title_font_size}px;
             --my-articles-meta-color: {$meta_color};
@@ -1937,8 +1952,10 @@ class My_Articles_Shortcode {
             --my-articles-badge-bg-color: {$pinned_badge_bg};
             --my-articles-badge-text-color: {$pinned_badge_text};
             background-color: {$module_bg_color};
-            padding-left: {$module_padding_left}px;
+            padding-top: {$module_padding_top}px;
             padding-right: {$module_padding_right}px;
+            padding-bottom: {$module_padding_bottom}px;
+            padding-left: {$module_padding_left}px;
         }
         #my-articles-wrapper-{$id} .my-article-item { background-color: {$vignette_bg_color}; }
         #my-articles-wrapper-{$id}.my-articles-grid .my-article-item .article-title-wrapper,

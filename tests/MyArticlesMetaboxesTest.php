@@ -257,6 +257,8 @@ final class MyArticlesMetaboxesTest extends TestCase
                 'columns_tablet'              => 0,
                 'columns_desktop'             => 99,
                 'columns_ultrawide'           => 999,
+                'module_padding_top'          => 250,
+                'module_padding_bottom'       => -20,
                 'module_padding_left'         => 250,
                 'module_padding_right'        => 1,
                 'gap_size'                    => 200,
@@ -282,6 +284,8 @@ final class MyArticlesMetaboxesTest extends TestCase
         self::assertSame(1, $saved['columns_tablet']);
         self::assertSame(6, $saved['columns_desktop']);
         self::assertSame(8, $saved['columns_ultrawide']);
+        self::assertSame(200, $saved['module_padding_top']);
+        self::assertSame(20, $saved['module_padding_bottom']);
         self::assertSame(200, $saved['module_padding_left']);
         self::assertSame(1, $saved['module_padding_right']);
         self::assertSame(50, $saved['gap_size']);
