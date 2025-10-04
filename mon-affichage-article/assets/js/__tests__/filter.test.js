@@ -207,6 +207,7 @@ describe('filter endpoint interactions', () => {
         expect(postCallCount).toBe(2);
         expect(nonceCallCount).toBe(1);
         expect(window.myArticlesFilter.restNonce).toBe('nonce-refreshed');
+        expect(window.myArticlesLoadMore.restNonce).toBe('nonce-refreshed');
 
         expect(postCalls[0].headers['X-WP-Nonce']).toBe('nonce-123');
         expect(postCalls[1].headers['X-WP-Nonce']).toBe('nonce-refreshed');
