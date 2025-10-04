@@ -102,6 +102,15 @@ class My_Articles_Settings {
         $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] )
             ? min( 3, max( 1, intval( $input['mobile_columns'] ) ) )
             : 1;
+        $allowed_thumbnail_ratios = My_Articles_Shortcode::get_allowed_thumbnail_aspect_ratios();
+        $default_thumbnail_ratio  = My_Articles_Shortcode::get_default_thumbnail_aspect_ratio();
+        $requested_thumbnail_ratio = isset( $input['thumbnail_aspect_ratio'] ) ? (string) $input['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+
+        if ( ! in_array( $requested_thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
+            $requested_thumbnail_ratio = $default_thumbnail_ratio;
+        }
+
+        $sanitized_input['thumbnail_aspect_ratio'] = $requested_thumbnail_ratio;
         $sanitized_input['gap_size'] = isset( $input['gap_size'] )
             ? min( 50, max( 0, intval( $input['gap_size'] ) ) )
             : 25;

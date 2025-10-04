@@ -27,6 +27,7 @@ Utiliser le shortcode :
 - **design_preset** (`custom`, `lcv-classique`, `dark-spotlight`, `editorial-focus`)
   - Contrôle l’application d’un préréglage complet (couleurs, ombres, espacements). Le modèle « Focus éditorial » est verrouillé et fige les réglages associés.
 - **display_mode** (`grid`, `list`, `slideshow`)
+- **thumbnail_aspect_ratio** (`1`, `4/3`, `3/2`, `16/9`) – contraint les images et squelettes à un ratio précis.
 - **posts_per_page** (nombre d'articles, `0` pour illimité)
 - **pagination_mode** (`none`, `load_more`, `numbered`)
 - **aria_label** (libellé ARIA du module, basé par défaut sur le titre de l’instance sélectionnée)

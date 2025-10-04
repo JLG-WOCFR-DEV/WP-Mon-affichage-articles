@@ -140,4 +140,53 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
             'Unlimited instances should forward -1 to WP_Query.'
         );
     }
+
+    public function test_sanitize_thumbnail_aspect_ratio_accepts_only_whitelist(): void
+    {
+        $settings = My_Articles_Settings::get_instance();
+        $defaults = My_Articles_Shortcode::get_default_options();
+
+        $invalid = $settings->sanitize(array('thumbnail_aspect_ratio' => '42/7'));
+
+        self::assertSame(
+            $defaults['thumbnail_aspect_ratio'],
+            $invalid['thumbnail_aspect_ratio'] ?? null,
+            'Unexpected ratios should fall back to the default value.'
+        );
+
+        $valid = $settings->sanitize(array('thumbnail_aspect_ratio' => '4/3'));
+
+        self::assertSame(
+            '4/3',
+            $valid['thumbnail_aspect_ratio'] ?? null,
+            'Allowed ratios should be preserved during sanitization.'
+        );
+    }
+
+    public function test_normalize_instance_options_enforces_thumbnail_aspect_ratio_whitelist(): void
+    {
+        $defaults = My_Articles_Shortcode::get_default_options();
+
+        $normalizedInvalid = My_Articles_Shortcode::normalize_instance_options(
+            array('thumbnail_aspect_ratio' => '7/5'),
+            array('source' => __METHOD__)
+        );
+
+        self::assertSame(
+            $defaults['thumbnail_aspect_ratio'],
+            $normalizedInvalid['thumbnail_aspect_ratio'],
+            'Invalid ratios should revert to the default thumbnail aspect ratio.'
+        );
+
+        $normalizedValid = My_Articles_Shortcode::normalize_instance_options(
+            array('thumbnail_aspect_ratio' => '3/2'),
+            array('source' => __METHOD__)
+        );
+
+        self::assertSame(
+            '3/2',
+            $normalizedValid['thumbnail_aspect_ratio'],
+            'Allowed ratios should survive normalization.'
+        );
+    }
 }

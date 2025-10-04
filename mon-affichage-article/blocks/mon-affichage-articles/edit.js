@@ -44,6 +44,28 @@
 
     var designPresets = window.myArticlesDesignPresets || {};
     var DESIGN_PRESET_FALLBACK = 'custom';
+    var DEFAULT_THUMBNAIL_ASPECT_RATIO = '16/9';
+    var THUMBNAIL_ASPECT_RATIO_OPTIONS = [
+        { value: '1', label: __('Carré (1:1)', 'mon-articles') },
+        { value: '4/3', label: __('Classique (4:3)', 'mon-articles') },
+        { value: '3/2', label: __('Photo (3:2)', 'mon-articles') },
+        { value: '16/9', label: __('Panoramique (16:9)', 'mon-articles') },
+    ];
+    var THUMBNAIL_ASPECT_RATIO_VALUES = THUMBNAIL_ASPECT_RATIO_OPTIONS.map(function (option) {
+        return option.value;
+    });
+
+    function sanitizeThumbnailAspectRatio(value) {
+        if (typeof value !== 'string') {
+            value = '';
+        }
+
+        if (THUMBNAIL_ASPECT_RATIO_VALUES.indexOf(value) === -1) {
+            return DEFAULT_THUMBNAIL_ASPECT_RATIO;
+        }
+
+        return value;
+    }
 
     var SSRContentWrapper = function (props) {
         var onChange = props.onChange;
@@ -138,6 +160,7 @@
             var previewRenderCount = _useState5[0];
             var setPreviewRenderCount = _useState5[1];
             var ssrAttributesKey = JSON.stringify(attributes || {});
+            var thumbnailAspectRatio = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
 
             var isDesignPresetLocked = false;
 
@@ -170,6 +193,17 @@
                         : false,
                 };
             }, [attributes.instanceId]);
+
+            useEffect(
+                function () {
+                    var sanitized = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
+
+                    if (sanitized !== attributes.thumbnail_aspect_ratio) {
+                        setAttributes({ thumbnail_aspect_ratio: sanitized });
+                    }
+                },
+                [attributes.thumbnail_aspect_ratio]
+            );
 
             var canEditPosts = useSelect(function (select) {
                 var core = select('core');
@@ -695,6 +729,16 @@
                             setAttributes({ pagination_mode: value });
                         }),
                         disabled: isAttributeLocked('pagination_mode'),
+                    }),
+                    el(SelectControl, {
+                        label: __('Ratio des vignettes', 'mon-articles'),
+                        value: thumbnailAspectRatio,
+                        options: THUMBNAIL_ASPECT_RATIO_OPTIONS,
+                        onChange: withLockedGuard('thumbnail_aspect_ratio', function (value) {
+                            setAttributes({ thumbnail_aspect_ratio: sanitizeThumbnailAspectRatio(value) });
+                        }),
+                        help: __('Seuls les ratios 1, 4/3, 3/2 et 16/9 sont acceptés.', 'mon-articles'),
+                        disabled: isAttributeLocked('thumbnail_aspect_ratio'),
                     }),
                     isSlideshowMode
                         ? el(Fragment, {},
