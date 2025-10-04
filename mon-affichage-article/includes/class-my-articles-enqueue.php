@@ -55,6 +55,10 @@ class My_Articles_Enqueue {
         $editor_handle = 'mon-affichage-articles-editor-script';
 
         if ( class_exists( 'My_Articles_Shortcode' ) && function_exists( 'wp_add_inline_script' ) && wp_script_is( $editor_handle, 'registered' ) ) {
+            if ( function_exists( 'wp_set_script_translations' ) ) {
+                wp_set_script_translations( $editor_handle, 'mon-articles', plugin_dir_path( MY_ARTICLES_PLUGIN_DIR ) . 'languages' );
+            }
+
             $presets = My_Articles_Shortcode::get_design_presets();
             $export  = array();
 

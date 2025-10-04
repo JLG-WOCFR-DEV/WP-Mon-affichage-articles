@@ -1,0 +1,311 @@
+{
+    "translation-revision-date": "2025-10-04 16:24:18+0000",
+    "generator": "manual",
+    "domain": "mon-articles",
+    "locale_data": {
+        "mon-articles": {
+            "": {
+                "domain": "mon-articles",
+                "lang": "fr",
+                "plural-forms": "nplurals=2; plural=n > 1;"
+            },
+            "(Sans titre)": [
+                "(Sans titre)"
+            ],
+            "Accessibilité": [
+                "Accessibilité"
+            ],
+            "Actif uniquement si la lecture automatique est activée.": [
+                "Actif uniquement si la lecture automatique est activée."
+            ],
+            "Affichage": [
+                "Affichage"
+            ],
+            "Afficher la catégorie": [
+                "Afficher la catégorie"
+            ],
+            "Afficher la date": [
+                "Afficher la date"
+            ],
+            "Afficher la pagination": [
+                "Afficher la pagination"
+            ],
+            "Afficher le filtre de catégories": [
+                "Afficher le filtre de catégories"
+            ],
+            "Afficher les flèches de navigation": [
+                "Afficher les flèches de navigation"
+            ],
+            "Afficher l’auteur": [
+                "Afficher l’auteur"
+            ],
+            "Afficher l’extrait": [
+                "Afficher l’extrait"
+            ],
+            "Alignement du filtre": [
+                "Alignement du filtre"
+            ],
+            "Arrondi des bordures (px)": [
+                "Arrondi des bordures (px)"
+            ],
+            "Articles par page": [
+                "Articles par page"
+            ],
+            "Aucune": [
+                "Aucune"
+            ],
+            "Aucune instance « mon_affichage » n’a été trouvée.": [
+                "Aucune instance « mon_affichage » n’a été trouvée."
+            ],
+            "Bordure (épinglés)": [
+                "Bordure (épinglés)"
+            ],
+            "Boucle infinie": [
+                "Boucle infinie"
+            ],
+            "Bouton « Charger plus »": [
+                "Bouton « Charger plus »"
+            ],
+            "Ce modèle verrouille certains réglages de design.": [
+                "Ce modèle verrouille certains réglages de design."
+            ],
+            "Centre": [
+                "Centre"
+            ],
+            "Charger plus de résultats": [
+                "Charger plus de résultats"
+            ],
+            "Clé de méta personnalisée": [
+                "Clé de méta personnalisée"
+            ],
+            "Colonnes (desktop)": [
+                "Colonnes (desktop)"
+            ],
+            "Colonnes (mobile)": [
+                "Colonnes (mobile)"
+            ],
+            "Colonnes (tablette)": [
+                "Colonnes (tablette)"
+            ],
+            "Colonnes (ultra-large)": [
+                "Colonnes (ultra-large)"
+            ],
+            "Couleur (méta, survol)": [
+                "Couleur (méta, survol)"
+            ],
+            "Couleur de l’extrait": [
+                "Couleur de l’extrait"
+            ],
+            "Couleur de pagination": [
+                "Couleur de pagination"
+            ],
+            "Couleur du texte (méta)": [
+                "Couleur du texte (méta)"
+            ],
+            "Couleur du titre": [
+                "Couleur du titre"
+            ],
+            "Couleurs": [
+                "Couleurs"
+            ],
+            "Croissant (A → Z)": [
+                "Croissant (A → Z)"
+            ],
+            "Créer un nouveau module": [
+                "Créer un nouveau module"
+            ],
+            "Date de publication": [
+                "Date de publication"
+            ],
+            "Diaporama": [
+                "Diaporama"
+            ],
+            "Disponible pour Grille et Diaporama.": [
+                "Disponible pour Grille et Diaporama."
+            ],
+            "Disposition": [
+                "Disposition"
+            ],
+            "Droite": [
+                "Droite"
+            ],
+            "Décroissant (Z → A)": [
+                "Décroissant (Z → A)"
+            ],
+            "Définissez 0 pour désactiver la limite.": [
+                "Définissez 0 pour désactiver la limite."
+            ],
+            "Délai entre les diapositives (ms)": [
+                "Délai entre les diapositives (ms)"
+            ],
+            "Espacement des vignettes (px)": [
+                "Espacement des vignettes (px)"
+            ],
+            "Espacement vertical (liste)": [
+                "Espacement vertical (liste)"
+            ],
+            "Espacements & typographie": [
+                "Espacements & typographie"
+            ],
+            "Fond de la vignette": [
+                "Fond de la vignette"
+            ],
+            "Fond du badge épinglé": [
+                "Fond du badge épinglé"
+            ],
+            "Fond du bloc titre": [
+                "Fond du bloc titre"
+            ],
+            "Fond du module": [
+                "Fond du module"
+            ],
+            "Gauche": [
+                "Gauche"
+            ],
+            "Grille": [
+                "Grille"
+            ],
+            "Instance": [
+                "Instance"
+            ],
+            "La sélection de couleur n’est pas disponible dans cet environnement.": [
+                "La sélection de couleur n’est pas disponible dans cet environnement."
+            ],
+            "Laissez vide pour générer automatiquement une étiquette basée sur le titre du module.": [
+                "Laissez vide pour générer automatiquement une étiquette basée sur le titre du module."
+            ],
+            "Laissez vide pour utiliser automatiquement le titre du module.": [
+                "Laissez vide pour utiliser automatiquement le titre du module."
+            ],
+            "Le composant ServerSideRender est indisponible sur ce site.": [
+                "Le composant ServerSideRender est indisponible sur ce site."
+            ],
+            "Le module sélectionné est introuvable.": [
+                "Le module sélectionné est introuvable."
+            ],
+            "Lecture automatique": [
+                "Lecture automatique"
+            ],
+            "Libellé ARIA du filtre de catégories": [
+                "Libellé ARIA du filtre de catégories"
+            ],
+            "Libellé ARIA du module": [
+                "Libellé ARIA du module"
+            ],
+            "Liste": [
+                "Liste"
+            ],
+            "Longueur de l’extrait": [
+                "Longueur de l’extrait"
+            ],
+            "Marge intérieure droite (px)": [
+                "Marge intérieure droite (px)"
+            ],
+            "Marge intérieure gauche (px)": [
+                "Marge intérieure gauche (px)"
+            ],
+            "Mettre en pause au survol": [
+                "Mettre en pause au survol"
+            ],
+            "Mettre en pause lors des interactions": [
+                "Mettre en pause lors des interactions"
+            ],
+            "Mode d’affichage": [
+                "Mode d’affichage"
+            ],
+            "Module": [
+                "Module"
+            ],
+            "Module d’articles": [
+                "Module d’articles"
+            ],
+            "Module d’articles %d": [
+                "Module d’articles %d"
+            ],
+            "Modèle": [
+                "Modèle"
+            ],
+            "Méta personnalisée": [
+                "Méta personnalisée"
+            ],
+            "Méta-données": [
+                "Méta-données"
+            ],
+            "Ombre": [
+                "Ombre"
+            ],
+            "Ombre (survol)": [
+                "Ombre (survol)"
+            ],
+            "Ordre de tri": [
+                "Ordre de tri"
+            ],
+            "Ordre du menu": [
+                "Ordre du menu"
+            ],
+            "Padding contenu liste – bas (px)": [
+                "Padding contenu liste – bas (px)"
+            ],
+            "Padding contenu liste – droite (px)": [
+                "Padding contenu liste – droite (px)"
+            ],
+            "Padding contenu liste – gauche (px)": [
+                "Padding contenu liste – gauche (px)"
+            ],
+            "Padding contenu liste – haut (px)": [
+                "Padding contenu liste – haut (px)"
+            ],
+            "Pagination": [
+                "Pagination"
+            ],
+            "Pagination numérotée": [
+                "Pagination numérotée"
+            ],
+            "Personnalisé": [
+                "Personnalisé"
+            ],
+            "Renseignez la clé utilisée pour le tri par méta.": [
+                "Renseignez la clé utilisée pour le tri par méta."
+            ],
+            "Réglage verrouillé par le modèle.": [
+                "Réglage verrouillé par le modèle."
+            ],
+            "Sens du tri": [
+                "Sens du tri"
+            ],
+            "Sélectionnez un module dans la barre latérale.": [
+                "Sélectionnez un module dans la barre latérale."
+            ],
+            "Taille de l’extrait (px)": [
+                "Taille de l’extrait (px)"
+            ],
+            "Taille des métadonnées (px)": [
+                "Taille des métadonnées (px)"
+            ],
+            "Taille du titre (px)": [
+                "Taille du titre (px)"
+            ],
+            "Texte du badge épinglé": [
+                "Texte du badge épinglé"
+            ],
+            "Titre": [
+                "Titre"
+            ],
+            "Tous les contenus sont chargés": [
+                "Tous les contenus sont chargés"
+            ],
+            "Tri & ordre": [
+                "Tri & ordre"
+            ],
+            "Tuiles – LCV": [
+                "Tuiles – LCV"
+            ],
+            "Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.": [
+                "Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure."
+            ]
+        }
+    },
+    "comment": {
+        "reference": "blocks\/mon-affichage-articles\/edit.js"
+    }
+}
