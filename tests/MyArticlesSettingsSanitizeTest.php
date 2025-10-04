@@ -82,6 +82,49 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
         );
     }
 
+    /**
+     * @param non-empty-string $field
+     * @param int $input
+     * @param int $expected
+     *
+     * @dataProvider provide_clamped_integer_settings
+     */
+    public function test_sanitize_clamps_integer_settings(string $field, int $input, int $expected): void
+    {
+        $settings = My_Articles_Settings::get_instance();
+
+        $result = $settings->sanitize(array($field => $input));
+
+        self::assertSame(
+            $expected,
+            $result[$field] ?? null,
+            sprintf('The sanitize routine should clamp %s values to the UI boundaries.', $field)
+        );
+    }
+
+    /**
+     * @return iterable<string, array{0: non-empty-string, 1: int, 2: int}>
+     */
+    public function provide_clamped_integer_settings(): iterable
+    {
+        yield 'desktop columns minimum' => array('desktop_columns', -5, 1);
+        yield 'desktop columns maximum' => array('desktop_columns', 99, 6);
+        yield 'mobile columns minimum' => array('mobile_columns', 0, 1);
+        yield 'mobile columns maximum' => array('mobile_columns', 10, 3);
+        yield 'gap size minimum' => array('gap_size', -10, 0);
+        yield 'gap size maximum' => array('gap_size', 120, 50);
+        yield 'border radius minimum' => array('border_radius', -20, 0);
+        yield 'border radius maximum' => array('border_radius', 120, 50);
+        yield 'title font size minimum' => array('title_font_size', 1, 10);
+        yield 'title font size maximum' => array('title_font_size', 99, 40);
+        yield 'meta font size minimum' => array('meta_font_size', 1, 8);
+        yield 'meta font size maximum' => array('meta_font_size', 999, 20);
+        yield 'module margin left minimum' => array('module_margin_left', -50, 0);
+        yield 'module margin left maximum' => array('module_margin_left', 999, 200);
+        yield 'module margin right minimum' => array('module_margin_right', -50, 0);
+        yield 'module margin right maximum' => array('module_margin_right', 999, 200);
+    }
+
     public function test_normalize_instance_options_treats_zero_as_unlimited(): void
     {
         $options = My_Articles_Shortcode::normalize_instance_options(
