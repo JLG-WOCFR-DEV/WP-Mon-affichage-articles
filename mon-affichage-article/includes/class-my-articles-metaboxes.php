@@ -192,6 +192,16 @@ class My_Articles_Metaboxes {
             ],
             'description' => __('Ne s\'applique pas au mode Diaporama.', 'mon-articles'),
         ]);
+        $this->render_field(
+            'enable_keyword_search',
+            esc_html__( 'Activer la recherche par mots-clés', 'mon-articles' ),
+            'checkbox',
+            $opts,
+            [
+                'default'     => 0,
+                'description' => __( 'Affiche un champ permettant aux visiteurs de filtrer par mots-clés.', 'mon-articles' ),
+            ]
+        );
         $this->render_field('show_category_filter', esc_html__('Afficher le filtre de catégories', 'mon-articles'), 'checkbox', $opts, ['default' => 0]);
         $this->render_field('filter_alignment', esc_html__('Alignement du filtre', 'mon-articles'), 'select', $opts, [
             'default' => 'right',
@@ -576,6 +586,7 @@ class My_Articles_Metaboxes {
             $meta_key = trim( $meta_key );
         }
         $sanitized['meta_key'] = $meta_key;
+        $sanitized['enable_keyword_search'] = isset( $input['enable_keyword_search'] ) ? 1 : 0;
         $sanitized['show_category_filter'] = isset( $input['show_category_filter'] ) ? 1 : 0;
         $sanitized['filter_alignment'] = isset($input['filter_alignment']) && in_array($input['filter_alignment'], ['left', 'center', 'right']) ? $input['filter_alignment'] : 'right';
         

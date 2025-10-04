@@ -64,6 +64,7 @@ class My_Articles_Settings {
         add_settings_section( 'setting_section_general', __( 'Réglages Généraux', 'mon-articles' ), null, 'my-articles-admin' );
         add_settings_field( 'default_category', __( 'Catégorie par défaut', 'mon-articles' ), array( $this, 'default_category_callback' ), 'my-articles-admin', 'setting_section_general' );
         add_settings_field( 'posts_per_page', __( 'Nombre d\'articles à afficher', 'mon-articles' ), array( $this, 'posts_per_page_callback' ), 'my-articles-admin', 'setting_section_general' );
+        add_settings_field( 'enable_keyword_search', __( 'Activer la recherche par mots-clés', 'mon-articles' ), array( $this, 'enable_keyword_search_callback' ), 'my-articles-admin', 'setting_section_general' );
 
         add_settings_section( 'setting_section_layout', __( 'Mise en page', 'mon-articles' ), null, 'my-articles-admin' );
         add_settings_field( 'display_mode', __( 'Mode d\'affichage', 'mon-articles' ), array( $this, 'display_mode_callback' ), 'my-articles-admin', 'setting_section_layout' );
@@ -96,6 +97,7 @@ class My_Articles_Settings {
         $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] )
             ? min( 50, max( 0, intval( $input['posts_per_page'] ) ) )
             : 10;
+        $sanitized_input['enable_keyword_search'] = isset( $input['enable_keyword_search'] ) ? 1 : 0;
         $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] )
             ? min( 6, max( 1, intval( $input['desktop_columns'] ) ) )
             : 3;
@@ -178,6 +180,10 @@ class My_Articles_Settings {
     public function posts_per_page_callback() {
         $this->render_number_input('posts_per_page', 10, 0, 50);
         echo '<p class="description">' . esc_html__( 'Utilisez 0 pour afficher un nombre illimité d\'articles.', 'mon-articles' ) . '</p>';
+    }
+    public function enable_keyword_search_callback() {
+        $this->render_checkbox('enable_keyword_search');
+        echo '<p class="description">' . esc_html__( 'Affiche un champ de recherche sur les modules compatibles.', 'mon-articles' ) . '</p>';
     }
     public function desktop_columns_callback() { $this->render_number_input('desktop_columns', 3, 1, 6); }
     public function mobile_columns_callback() { $this->render_number_input('mobile_columns', 1, 1, 3); }

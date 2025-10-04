@@ -189,6 +189,106 @@
     opacity: 1;
 }
 
+.my-articles-search-form {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.my-articles-search-controls {
+    display: flex;
+    align-items: stretch;
+    width: 100%;
+    max-width: 540px;
+    border: 1px solid rgba(31, 41, 51, 0.18);
+    border-radius: 999px;
+    background-color: #ffffff;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    overflow: hidden;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.my-articles-search-controls:focus-within {
+    border-color: #111827;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.1);
+}
+
+.my-articles-search-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: none;
+    background: transparent;
+    font: inherit;
+    font-size: 15px;
+    color: #1f2933;
+    min-width: 0;
+    min-height: 46px;
+}
+
+.my-articles-search-input:focus {
+    outline: none;
+}
+
+.my-articles-search-submit {
+    border: none;
+    background: #222;
+    color: #fff;
+    font: inherit;
+    font-weight: 600;
+    padding: 0 18px;
+    min-height: 46px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.my-articles-search-submit:hover,
+.my-articles-search-submit:focus-visible {
+    background-color: #111;
+    color: #fff;
+}
+
+.my-articles-search-submit:focus-visible,
+.my-articles-search-clear:focus-visible {
+    outline: 2px solid #111;
+    outline-offset: 2px;
+}
+
+.my-articles-search-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.my-articles-search-clear {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    width: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    min-height: 46px;
+    cursor: pointer;
+    transition: color 0.2s ease, opacity 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.my-articles-search-clear:hover {
+    color: #111827;
+}
+
+.my-articles-search-form.has-value .my-articles-search-clear {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.my-articles-search-form .my-articles-search-submit + .my-articles-search-clear {
+    border-left: 1px solid rgba(31, 41, 51, 0.12);
+}
+
 .my-articles-filter-nav {
     margin-bottom: 20px;
 }

@@ -4,6 +4,7 @@
 
     var filterSettings = (typeof myArticlesFilter !== 'undefined') ? myArticlesFilter : {};
     var pendingNonceDeferred = null;
+    var SEARCH_DEBOUNCE_DELAY = 400;
 
     function getNonceEndpoint(settings) {
         if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
@@ -126,6 +127,124 @@
         }
 
         return false;
+    }
+
+    function getFilterEndpoint(settings) {
+        if (settings && typeof settings.endpoint === 'string' && settings.endpoint.length > 0) {
+            return settings.endpoint;
+        }
+
+        if (settings && typeof settings.restRoot === 'string' && settings.restRoot.length > 0) {
+            return settings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/filter';
+        }
+
+        return '';
+    }
+
+    function getContentArea(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        return wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
+    }
+
+    function getSearchForm(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        return wrapper.find('.my-articles-search-form').first();
+    }
+
+    function getActiveCategorySlug(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return '';
+        }
+
+        var activeButton = wrapper.find('.my-articles-filter-nav li.active [data-category]').first();
+
+        if (!activeButton.length) {
+            return '';
+        }
+
+        var category = activeButton.data('category');
+
+        if (typeof category === 'undefined' || category === null) {
+            return '';
+        }
+
+        return String(category);
+    }
+
+    function normalizeSearchValue(value) {
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (value === null || typeof value === 'undefined') {
+            return '';
+        }
+
+        return String(value);
+    }
+
+    function prepareSearchValue(value) {
+        var normalized = normalizeSearchValue(value);
+
+        if (normalized.length === 0) {
+            return '';
+        }
+
+        return normalized.replace(/\s+/g, ' ').trim();
+    }
+
+    function updateSearchFormState(form, value) {
+        if (!form || !form.length) {
+            return;
+        }
+
+        var normalizedValue = normalizeSearchValue(value);
+        form.attr('data-current-search', normalizedValue);
+
+        if (normalizedValue.length > 0) {
+            form.addClass('has-value');
+        } else {
+            form.removeClass('has-value');
+        }
+
+        var input = form.find('.my-articles-search-input').first();
+        if (input.length && input.val() !== normalizedValue) {
+            input.val(normalizedValue);
+        }
+    }
+
+    function syncWrapperSearchState(wrapper, value) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var normalizedValue = normalizeSearchValue(value);
+        wrapper.attr('data-search-query', normalizedValue);
+    }
+
+    function buildFilterRequestData(wrapper, instanceId, categorySlug, searchQuery) {
+        var currentUrl = '';
+        if (typeof window !== 'undefined' && window.location && typeof window.location.href === 'string') {
+            currentUrl = window.location.href;
+        }
+
+        var requestData = {
+            instance_id: instanceId,
+            category: categorySlug,
+            current_url: currentUrl,
+        };
+
+        if (typeof searchQuery === 'string') {
+            requestData.search = searchQuery;
+        }
+
+        return requestData;
     }
 
     function getFeedbackElement(wrapper) {
@@ -326,6 +445,355 @@
         focusElement(wrapper);
     }
 
+    function handleFilterSuccess(wrapper, contentArea, instanceId, categorySlug, searchQuery, responseData) {
+        if (!responseData || typeof responseData !== 'object') {
+            return false;
+        }
+
+        var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
+        var sanitizedSearch = '';
+
+        if (typeof responseData.search_query === 'string') {
+            sanitizedSearch = responseData.search_query;
+        }
+
+        syncWrapperSearchState(wrapper, sanitizedSearch);
+
+        var searchForm = getSearchForm(wrapper);
+        if (searchForm.length) {
+            updateSearchFormState(searchForm, sanitizedSearch);
+            searchForm.data('last-value', sanitizedSearch);
+            searchForm.data('pending-search', null);
+        }
+
+        if (contentArea && contentArea.length) {
+            contentArea.html(typeof responseData.html === 'string' ? responseData.html : '');
+        }
+
+        var totalPages = parseInt(responseData.total_pages, 10);
+        if (isNaN(totalPages)) {
+            totalPages = 0;
+        }
+
+        var nextPage = parseInt(responseData.next_page, 10);
+        if (isNaN(nextPage)) {
+            nextPage = 0;
+        }
+
+        var pinnedIds = '';
+        if (typeof responseData.pinned_ids !== 'undefined') {
+            pinnedIds = responseData.pinned_ids;
+        }
+
+        var loadMoreBtn = wrapper.find('.my-articles-load-more-btn').first();
+
+        if (!loadMoreBtn.length && totalPages > 1) {
+            var loadMoreText = (typeof window.myArticlesLoadMore !== 'undefined' && window.myArticlesLoadMore.loadMoreText)
+                ? window.myArticlesLoadMore.loadMoreText
+                : 'Charger plus';
+            var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
+            var initialNextPage = nextPage > 0 ? nextPage : 2;
+            var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
+                .attr('data-instance-id', instanceId)
+                .attr('data-paged', initialNextPage)
+                .attr('data-total-pages', totalPages)
+                .attr('data-pinned-ids', pinnedIds)
+                .attr('data-category', categorySlug)
+                .attr('data-search', sanitizedSearch)
+                .text(loadMoreText);
+
+            loadMoreContainer.append(newLoadMoreBtn);
+
+            if (contentArea && contentArea.length) {
+                contentArea.last().after(loadMoreContainer);
+            } else {
+                wrapper.append(loadMoreContainer);
+            }
+
+            loadMoreBtn = newLoadMoreBtn;
+        }
+
+        if (loadMoreBtn.length) {
+            loadMoreBtn.data('category', categorySlug);
+            loadMoreBtn.attr('data-category', categorySlug);
+
+            loadMoreBtn.data('total-pages', totalPages);
+            loadMoreBtn.attr('data-total-pages', totalPages);
+
+            loadMoreBtn.data('pinned-ids', pinnedIds);
+            loadMoreBtn.attr('data-pinned-ids', pinnedIds);
+
+            loadMoreBtn.data('search', sanitizedSearch);
+            loadMoreBtn.attr('data-search', sanitizedSearch);
+
+            if (totalPages > 1) {
+                if (nextPage < 2) {
+                    nextPage = 2;
+                }
+                loadMoreBtn.data('paged', nextPage);
+                loadMoreBtn.attr('data-paged', nextPage);
+                loadMoreBtn.show();
+                loadMoreBtn.prop('disabled', false);
+            } else {
+                loadMoreBtn.data('paged', nextPage);
+                loadMoreBtn.attr('data-paged', nextPage);
+                loadMoreBtn.hide();
+                loadMoreBtn.prop('disabled', false);
+
+                var orphanContainer = loadMoreBtn.closest('.my-articles-load-more-container');
+                if (orphanContainer.length) {
+                    orphanContainer.remove();
+                }
+            }
+        }
+
+        if (typeof responseData.pagination_html !== 'undefined') {
+            var paginationHtml = responseData.pagination_html;
+            var paginationElement = wrapper.find('.my-articles-pagination').first();
+
+            if (typeof paginationHtml === 'string' && paginationHtml.trim().length > 0) {
+                if (paginationElement.length) {
+                    paginationElement.replaceWith(paginationHtml);
+                } else if (contentArea.length) {
+                    contentArea.after(paginationHtml);
+                }
+            } else if (paginationElement.length) {
+                paginationElement.remove();
+            }
+        }
+
+        if (typeof window.myArticlesInitWrappers === 'function') {
+            window.myArticlesInitWrappers(wrapperElement);
+        }
+
+        if (typeof window.myArticlesInitSwipers === 'function') {
+            window.myArticlesInitSwipers(wrapperElement);
+        }
+
+        if (instanceId) {
+            var queryParams = {};
+            queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
+            queryParams['my_articles_search_' + instanceId] = sanitizedSearch || null;
+            queryParams['paged_' + instanceId] = '1';
+            updateInstanceQueryParams(instanceId, queryParams);
+        }
+
+        var totalArticles = contentArea.find('.my-article-item').length;
+        var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
+        var feedbackElement = getFeedbackElement(wrapper);
+        feedbackElement.removeClass('is-error')
+            .removeAttr('role')
+            .attr('aria-live', 'polite')
+            .text(feedbackMessage)
+            .show();
+
+        var firstArticle = contentArea.find('.my-article-item').first();
+        focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
+
+        return true;
+    }
+
+    function sendFilterRequest(wrapper, requestData, callbacks) {
+        var requestUrl = getFilterEndpoint(filterSettings);
+        var hasRetried = false;
+
+        if (!requestUrl) {
+            if (callbacks && typeof callbacks.onError === 'function') {
+                callbacks.onError(null, null);
+            }
+            return;
+        }
+
+        function performRequest() {
+            var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
+
+            $.ajax({
+                url: requestUrl,
+                type: 'POST',
+                headers: {
+                    'X-WP-Nonce': nonceHeader
+                },
+                data: requestData,
+                beforeSend: function () {
+                    if (callbacks && typeof callbacks.beforeSend === 'function') {
+                        callbacks.beforeSend();
+                    }
+                },
+                success: function (response) {
+                    if (response && response.success) {
+                        if (callbacks && typeof callbacks.onSuccess === 'function') {
+                            callbacks.onSuccess(response.data, response);
+                        }
+
+                        return;
+                    }
+
+                    if (!hasRetried && isInvalidNonceResponse(null, response)) {
+                        hasRetried = true;
+                        refreshRestNonce(filterSettings)
+                            .done(function () {
+                                performRequest();
+                            })
+                            .fail(function () {
+                                if (callbacks && typeof callbacks.onError === 'function') {
+                                    callbacks.onError(null, response);
+                                }
+                            });
+
+                        return;
+                    }
+
+                    if (callbacks && typeof callbacks.onError === 'function') {
+                        callbacks.onError(null, response);
+                    }
+                },
+                error: function (jqXHR) {
+                    if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
+                        hasRetried = true;
+                        refreshRestNonce(filterSettings)
+                            .done(function () {
+                                performRequest();
+                            })
+                            .fail(function () {
+                                if (callbacks && typeof callbacks.onError === 'function') {
+                                    callbacks.onError(jqXHR);
+                                }
+                            });
+
+                        return;
+                    }
+
+                    if (callbacks && typeof callbacks.onError === 'function') {
+                        callbacks.onError(jqXHR);
+                    }
+                },
+                complete: function () {
+                    if (callbacks && typeof callbacks.onComplete === 'function') {
+                        callbacks.onComplete();
+                    }
+                }
+            });
+        }
+
+        performRequest();
+    }
+
+    function triggerSearchRequest(wrapper, form, rawValue) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var instanceId = wrapper.data('instance-id');
+
+        if (!instanceId) {
+            return;
+        }
+
+        var categorySlug = getActiveCategorySlug(wrapper);
+        var searchValue = prepareSearchValue(rawValue);
+        var contentArea = getContentArea(wrapper);
+        var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
+
+        form.data('pending-search', searchValue);
+
+        var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
+
+        sendFilterRequest(wrapper, requestData, {
+            beforeSend: function () {
+                wrapper.attr('aria-busy', 'true');
+                wrapper.addClass('is-loading');
+                clearFeedback(wrapper);
+
+                form.addClass('is-loading');
+                var input = form.find('.my-articles-search-input').first();
+                if (input.length) {
+                    input.attr('aria-busy', 'true');
+                }
+            },
+            onSuccess: function (responseData) {
+                var success = handleFilterSuccess(wrapper, contentArea, instanceId, categorySlug, searchValue, responseData);
+
+                if (!success) {
+                    showError(wrapper, fallbackMessage);
+                }
+            },
+            onError: function (jqXHR, response) {
+                var errorMessage = '';
+
+                if (response && response.data && response.data.message) {
+                    errorMessage = response.data.message;
+                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                    errorMessage = jqXHR.responseJSON.data.message;
+                }
+
+                if (!errorMessage) {
+                    errorMessage = fallbackMessage;
+                }
+
+                showError(wrapper, errorMessage);
+            },
+            onComplete: function () {
+                wrapper.attr('aria-busy', 'false');
+                wrapper.removeClass('is-loading');
+
+                form.removeClass('is-loading');
+                var input = form.find('.my-articles-search-input').first();
+                if (input.length) {
+                    input.attr('aria-busy', 'false');
+                }
+
+                form.data('pending-search', null);
+            }
+        });
+    }
+
+    function queueSearchRequest(form, options) {
+        if (!form || !form.length) {
+            return;
+        }
+
+        var wrapper = form.closest('.my-articles-wrapper');
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var input = form.find('.my-articles-search-input').first();
+        var rawValue = input.length ? input.val() : '';
+        var searchValue = prepareSearchValue(rawValue);
+        var forceRequest = options && options.force;
+        var immediate = options && options.immediate;
+
+        if (!forceRequest) {
+            var lastValue = form.data('last-value');
+            if (typeof lastValue === 'string' && prepareSearchValue(lastValue) === searchValue) {
+                return;
+            }
+
+            var pendingValue = form.data('pending-search');
+            if (typeof pendingValue === 'string' && prepareSearchValue(pendingValue) === searchValue) {
+                return;
+            }
+        }
+
+        var debounceDelay = immediate ? 0 : SEARCH_DEBOUNCE_DELAY;
+        var existingTimer = form.data('search-timer');
+
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+        }
+
+        if (debounceDelay > 0) {
+            var timerId = setTimeout(function () {
+                form.data('search-timer', null);
+                triggerSearchRequest(wrapper, form, searchValue);
+            }, debounceDelay);
+
+            form.data('search-timer', timerId);
+        } else {
+            triggerSearchRequest(wrapper, form, searchValue);
+        }
+    }
+
     $(document).on('click', '.my-articles-filter-nav button, .my-articles-filter-nav a', function (e) {
         e.preventDefault();
 
@@ -333,13 +801,24 @@
         var filterItem = filterLink.closest('li');
         var navList = filterItem.closest('ul');
         var previousActiveItem = navList.find('li.active').first();
-        var categorySlug = filterLink.data('category');
         var wrapper = filterLink.closest('.my-articles-wrapper');
         var instanceId = wrapper.data('instance-id');
-        var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
 
         if (filterItem.hasClass('active')) {
-            return; // Ne rien faire si on clique sur le filtre déjà actif
+            return;
+        }
+
+        if (!instanceId) {
+            return;
+        }
+
+        var searchForm = getSearchForm(wrapper);
+        if (searchForm.length) {
+            var pendingTimer = searchForm.data('search-timer');
+            if (pendingTimer) {
+                clearTimeout(pendingTimer);
+                searchForm.data('search-timer', null);
+            }
         }
 
         navList.find('li').removeClass('active');
@@ -347,14 +826,22 @@
         filterItem.addClass('active');
         filterLink.attr('aria-pressed', 'true');
 
-        var requestUrl = (filterSettings && typeof filterSettings.endpoint === 'string') ? filterSettings.endpoint : '';
-
-        if (!requestUrl && filterSettings && typeof filterSettings.restRoot === 'string') {
-            requestUrl = filterSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/filter';
+        var categoryData = filterLink.data('category');
+        var categorySlug = '';
+        if (typeof categoryData !== 'undefined' && categoryData !== null) {
+            categorySlug = normalizeSearchValue(categoryData).trim();
         }
 
+        var searchValue = '';
+        if (searchForm.length) {
+            var inputVal = searchForm.find('.my-articles-search-input').val();
+            searchValue = prepareSearchValue(inputVal);
+        } else if (wrapper && wrapper.length) {
+            searchValue = prepareSearchValue(wrapper.attr('data-search-query'));
+        }
+
+        var contentArea = getContentArea(wrapper);
         var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
-        var hasRetried = false;
 
         function restorePreviousFilterState() {
             filterItem.removeClass('active');
@@ -365,214 +852,72 @@
             }
         }
 
-        function handleErrorResponse(jqXHR, response) {
-            restorePreviousFilterState();
+        var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
-            var errorMessage = '';
+        sendFilterRequest(wrapper, requestData, {
+            beforeSend: function () {
+                wrapper.attr('aria-busy', 'true');
+                wrapper.addClass('is-loading');
+                clearFeedback(wrapper);
+            },
+            onSuccess: function (responseData) {
+                var success = handleFilterSuccess(wrapper, contentArea, instanceId, categorySlug, searchValue, responseData);
 
-            if (response && response.data && response.data.message) {
-                errorMessage = response.data.message;
-            } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                errorMessage = jqXHR.responseJSON.data.message;
-            }
-
-            if (!errorMessage) {
-                errorMessage = fallbackMessage;
-            }
-
-            showError(wrapper, errorMessage);
-        }
-
-        function handleSuccessResponse(response) {
-            if (!response || !response.data) {
-                handleErrorResponse(null, response);
-                return;
-            }
-
-            var responseData = response.data;
-            var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
-            contentArea.html(responseData.html);
-
-            var totalPages = (typeof responseData.total_pages !== 'undefined') ? parseInt(responseData.total_pages, 10) : 0;
-            totalPages = isNaN(totalPages) ? 0 : totalPages;
-            var nextPage = (typeof responseData.next_page !== 'undefined') ? parseInt(responseData.next_page, 10) : 0;
-            nextPage = isNaN(nextPage) ? 0 : nextPage;
-            var pinnedIds = (typeof responseData.pinned_ids !== 'undefined') ? responseData.pinned_ids : '';
-
-            if (totalPages <= 1) {
-                var existingLoadMoreContainer = wrapper.find('.my-articles-load-more-container');
-                if (existingLoadMoreContainer.length) {
-                    existingLoadMoreContainer.remove();
+                if (!success) {
+                    restorePreviousFilterState();
+                    showError(wrapper, fallbackMessage);
                 }
-            }
+            },
+            onError: function (jqXHR, response) {
+                restorePreviousFilterState();
 
-            var loadMoreBtn = wrapper.find('.my-articles-load-more-btn');
+                var errorMessage = '';
 
-            if (!loadMoreBtn.length && totalPages > 1) {
-                var loadMoreText = (typeof myArticlesLoadMore !== 'undefined' && myArticlesLoadMore.loadMoreText) ? myArticlesLoadMore.loadMoreText : 'Charger plus';
-                var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
-                var initialNextPage = nextPage > 0 ? nextPage : 2;
-                var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
-                    .attr('data-instance-id', instanceId)
-                    .attr('data-paged', initialNextPage)
-                    .attr('data-total-pages', totalPages)
-                    .attr('data-pinned-ids', pinnedIds)
-                    .attr('data-category', categorySlug)
-                    .text(loadMoreText);
-
-                loadMoreContainer.append(newLoadMoreBtn);
-
-                if (contentArea.length) {
-                    contentArea.last().after(loadMoreContainer);
-                } else {
-                    wrapper.append(loadMoreContainer);
+                if (response && response.data && response.data.message) {
+                    errorMessage = response.data.message;
+                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                    errorMessage = jqXHR.responseJSON.data.message;
                 }
 
-                loadMoreBtn = newLoadMoreBtn;
-            }
-
-            if (loadMoreBtn.length) {
-                loadMoreBtn.data('category', categorySlug);
-                loadMoreBtn.attr('data-category', categorySlug);
-
-                loadMoreBtn.data('total-pages', totalPages);
-                loadMoreBtn.attr('data-total-pages', totalPages);
-
-                loadMoreBtn.data('pinned-ids', pinnedIds);
-                loadMoreBtn.attr('data-pinned-ids', pinnedIds);
-
-                if (totalPages > 1) {
-                    if (nextPage < 2) {
-                        nextPage = 2;
-                    }
-                    loadMoreBtn.data('paged', nextPage);
-                    loadMoreBtn.attr('data-paged', nextPage);
-                    loadMoreBtn.show();
-                    loadMoreBtn.prop('disabled', false);
-                } else {
-                    loadMoreBtn.data('paged', nextPage);
-                    loadMoreBtn.attr('data-paged', nextPage);
-                    loadMoreBtn.hide();
-                    loadMoreBtn.prop('disabled', false);
-
-                    var orphanContainer = loadMoreBtn.closest('.my-articles-load-more-container');
-                    if (orphanContainer.length) {
-                        orphanContainer.remove();
-                    }
+                if (!errorMessage) {
+                    errorMessage = fallbackMessage;
                 }
+
+                showError(wrapper, errorMessage);
+            },
+            onComplete: function () {
+                wrapper.attr('aria-busy', 'false');
+                wrapper.removeClass('is-loading');
             }
+        });
+    });
 
-            if (typeof responseData.pagination_html !== 'undefined') {
-                var paginationHtml = responseData.pagination_html;
-                var paginationElement = wrapper.find('.my-articles-pagination').first();
+    $(document).on('submit', '.my-articles-search-form', function (e) {
+        e.preventDefault();
 
-                if (typeof paginationHtml === 'string' && paginationHtml.trim().length > 0) {
-                    if (paginationElement.length) {
-                        paginationElement.replaceWith(paginationHtml);
-                    } else if (contentArea.length) {
-                        contentArea.after(paginationHtml);
-                    }
-                } else if (paginationElement.length) {
-                    paginationElement.remove();
-                }
-            }
+        var form = $(this);
+        queueSearchRequest(form, { immediate: true, force: true });
+    });
 
-            if (typeof window.myArticlesInitWrappers === 'function') {
-                window.myArticlesInitWrappers(wrapperElement);
-            }
+    $(document).on('input', '.my-articles-search-input', function () {
+        var input = $(this);
+        var form = input.closest('.my-articles-search-form');
 
-            if (typeof window.myArticlesInitSwipers === 'function') {
-                window.myArticlesInitSwipers(wrapperElement);
-            }
+        updateSearchFormState(form, input.val());
+        queueSearchRequest(form, { immediate: false });
+    });
 
-            if (instanceId) {
-                var queryParams = {};
-                queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
-                queryParams['paged_' + instanceId] = '1';
-                updateInstanceQueryParams(instanceId, queryParams);
-            }
+    $(document).on('click', '.my-articles-search-clear', function (e) {
+        e.preventDefault();
 
-            var totalArticles = contentArea.find('.my-article-item').length;
-            var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
-            var feedbackElement = getFeedbackElement(wrapper);
-            feedbackElement.removeClass('is-error')
-                .removeAttr('role')
-                .attr('aria-live', 'polite')
-                .text(feedbackMessage)
-                .show();
+        var button = $(this);
+        var form = button.closest('.my-articles-search-form');
+        var input = form.find('.my-articles-search-input').first();
 
-            var firstArticle = contentArea.find('.my-article-item').first();
-            focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
-        }
-
-        function sendAjaxRequest() {
-            var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
-
-            $.ajax({
-                url: requestUrl,
-                type: 'POST',
-                headers: {
-                    'X-WP-Nonce': nonceHeader
-                },
-                data: {
-                    instance_id: instanceId,
-                    category: categorySlug,
-                    current_url: window.location && window.location.href ? window.location.href : ''
-                },
-                beforeSend: function () {
-                    if (wrapper && wrapper.length) {
-                        wrapper.attr('aria-busy', 'true');
-                        wrapper.addClass('is-loading');
-                    }
-                    clearFeedback(wrapper);
-                },
-                success: function (response) {
-                    if (response && response.success) {
-                        handleSuccessResponse(response);
-                        return;
-                    }
-
-                    if (!hasRetried && isInvalidNonceResponse(null, response)) {
-                        hasRetried = true;
-                        refreshRestNonce(filterSettings)
-                            .done(function () {
-                                sendAjaxRequest();
-                            })
-                            .fail(function () {
-                                handleErrorResponse(null, response);
-                            });
-
-                        return;
-                    }
-
-                    handleErrorResponse(null, response);
-                },
-                error: function (jqXHR) {
-                    if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
-                        hasRetried = true;
-                        refreshRestNonce(filterSettings)
-                            .done(function () {
-                                sendAjaxRequest();
-                            })
-                            .fail(function () {
-                                handleErrorResponse(jqXHR);
-                            });
-
-                        return;
-                    }
-
-                    handleErrorResponse(jqXHR);
-                },
-                complete: function () {
-                    if (wrapper && wrapper.length) {
-                        wrapper.attr('aria-busy', 'false');
-                        wrapper.removeClass('is-loading');
-                    }
-                }
-            });
-        }
-
-        sendAjaxRequest();
+        input.val('');
+        updateSearchFormState(form, '');
+        queueSearchRequest(form, { immediate: true, force: true });
+        input.trigger('focus');
     });
 
 })(jQuery);

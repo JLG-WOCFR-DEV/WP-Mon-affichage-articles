@@ -56,6 +56,11 @@
             "type": "boolean",
             "default": false
         },
+        "enable_keyword_search": {
+            "type": "boolean",
+            "default": false,
+            "description": "Active la recherche par mots-clés pour les visiteurs."
+        },
         "category_filter_aria_label": {
             "type": "string",
             "default": "",
