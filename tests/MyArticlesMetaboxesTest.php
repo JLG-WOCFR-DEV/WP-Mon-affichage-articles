@@ -80,6 +80,43 @@ if (!function_exists('wp_localize_script')) {
     }
 }
 
+if (!function_exists('wp_unslash')) {
+    function wp_unslash($value)
+    {
+        if (is_array($value)) {
+            return array_map('wp_unslash', $value);
+        }
+
+        return $value;
+    }
+}
+
+if (!function_exists('current_user_can')) {
+    function current_user_can($capability, ...$args): bool
+    {
+        return true;
+    }
+}
+
+if (!function_exists('update_post_meta')) {
+    function update_post_meta($post_id, $meta_key, $meta_value)
+    {
+        global $mon_articles_test_saved_meta;
+
+        if (!is_array($mon_articles_test_saved_meta)) {
+            $mon_articles_test_saved_meta = array();
+        }
+
+        if (!isset($mon_articles_test_saved_meta[$post_id])) {
+            $mon_articles_test_saved_meta[$post_id] = array();
+        }
+
+        $mon_articles_test_saved_meta[$post_id][$meta_key] = $meta_value;
+
+        return true;
+    }
+}
+
 if (!function_exists('wp_create_nonce')) {
     function wp_create_nonce($action): string
     {
@@ -125,6 +162,14 @@ final class MyArticlesMetaboxesTest extends TestCase
 
         if (!class_exists(My_Articles_Metaboxes::class)) {
             require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-metaboxes.php';
+        }
+
+        if (!function_exists('my_articles_normalize_post_type')) {
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/helpers.php';
+        }
+
+        if (!class_exists(\My_Articles_Shortcode::class)) {
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-shortcode.php';
         }
 
         $mon_articles_test_enqueued_styles    = array();
@@ -190,6 +235,67 @@ final class MyArticlesMetaboxesTest extends TestCase
             $localized_handles,
             'Expected localization data to be attached to the required handles.'
         );
+    }
+
+    public function test_save_meta_data_clamps_numeric_fields_to_ui_ranges(): void
+    {
+        global $mon_articles_test_saved_meta,
+            $mon_articles_test_valid_nonces,
+            $_POST;
+
+        $mon_articles_test_saved_meta = array();
+        $mon_articles_test_valid_nonces = array(
+            'valid-nonce' => array('my_articles_save_meta_box_data'),
+        );
+
+        $_POST = array(
+            'my_articles_meta_box_nonce' => 'valid-nonce',
+            '_my_articles_settings'      => array(
+                'post_type'                   => 'post',
+                'display_mode'                => 'grid',
+                'columns_mobile'              => 0,
+                'columns_tablet'              => 0,
+                'columns_desktop'             => 99,
+                'columns_ultrawide'           => 999,
+                'module_padding_left'         => 250,
+                'module_padding_right'        => 1,
+                'gap_size'                    => 200,
+                'list_item_gap'               => 75,
+                'list_content_padding_top'    => 101,
+                'list_content_padding_right'  => 200,
+                'list_content_padding_bottom' => 999,
+                'list_content_padding_left'   => 150,
+                'border_radius'               => 120,
+                'title_font_size'             => 5,
+                'meta_font_size'              => 40,
+                'excerpt_font_size'           => 150,
+            ),
+        );
+
+        $metaboxes = My_Articles_Metaboxes::get_instance();
+        $metaboxes->save_meta_data(123);
+
+        $saved = $mon_articles_test_saved_meta[123]['_my_articles_settings'] ?? null;
+
+        self::assertIsArray($saved, 'Expected the sanitized settings to be stored.');
+        self::assertSame(1, $saved['columns_mobile']);
+        self::assertSame(1, $saved['columns_tablet']);
+        self::assertSame(6, $saved['columns_desktop']);
+        self::assertSame(8, $saved['columns_ultrawide']);
+        self::assertSame(200, $saved['module_padding_left']);
+        self::assertSame(1, $saved['module_padding_right']);
+        self::assertSame(50, $saved['gap_size']);
+        self::assertSame(50, $saved['list_item_gap']);
+        self::assertSame(100, $saved['list_content_padding_top']);
+        self::assertSame(100, $saved['list_content_padding_right']);
+        self::assertSame(100, $saved['list_content_padding_bottom']);
+        self::assertSame(100, $saved['list_content_padding_left']);
+        self::assertSame(50, $saved['border_radius']);
+        self::assertSame(10, $saved['title_font_size']);
+        self::assertSame(20, $saved['meta_font_size']);
+        self::assertSame(100, $saved['excerpt_font_size']);
+
+        $_POST = array();
     }
 }
 
