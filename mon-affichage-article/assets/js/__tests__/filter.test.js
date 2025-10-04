@@ -20,6 +20,7 @@ describe('filter endpoint interactions', () => {
         window.myArticlesFilter = {
             restRoot: 'http://example.com/wp-json',
             restNonce: 'nonce-123',
+            nonceEndpoint: 'http://example.com/wp-json/my-articles/v1/nonce',
             errorText: 'Une erreur est survenue.',
         };
         window.myArticlesLoadMore = { loadMoreText: 'Charger plus' };
@@ -138,5 +139,84 @@ describe('filter endpoint interactions', () => {
         expect(feedback).not.toBeNull();
         expect(feedback.classList.contains('is-error')).toBe(true);
         expect(feedback.textContent).toBe('Erreur REST');
+    });
+
+    it('refreshes the nonce once and retries the request on 403 errors', () => {
+        let postCallCount = 0;
+        let nonceCallCount = 0;
+        const postCalls = [];
+
+        $.ajax = jest.fn((options) => {
+            if (options.type === 'GET' && options.url.indexOf('/nonce') !== -1) {
+                nonceCallCount += 1;
+
+                if (options.success) {
+                    options.success({ success: true, data: { nonce: 'nonce-refreshed' } });
+                }
+
+                if (options.complete) {
+                    options.complete();
+                }
+
+                return;
+            }
+
+            if (options.type === 'POST') {
+                postCallCount += 1;
+                postCalls.push(options);
+
+                if (options.beforeSend) {
+                    options.beforeSend();
+                }
+
+                if (postCallCount === 1) {
+                    if (options.error) {
+                        options.error({
+                            status: 403,
+                            responseJSON: {
+                                code: 'my_articles_invalid_nonce',
+                                data: { status: 403 },
+                            },
+                        });
+                    }
+                } else {
+                    if (options.success) {
+                        options.success({
+                            success: true,
+                            data: {
+                                html: '<article class="my-article-item">Nouveau</article>',
+                                total_pages: 1,
+                                next_page: 0,
+                                pinned_ids: '',
+                            },
+                        });
+                    }
+                }
+
+                if (options.complete) {
+                    options.complete();
+                }
+            }
+        });
+
+        require('../filter');
+
+        const secondFilter = $('.my-articles-filter-nav li').eq(1).find('button');
+        secondFilter.trigger('click');
+
+        expect(postCallCount).toBe(2);
+        expect(nonceCallCount).toBe(1);
+        expect(window.myArticlesFilter.restNonce).toBe('nonce-refreshed');
+
+        expect(postCalls[0].headers['X-WP-Nonce']).toBe('nonce-123');
+        expect(postCalls[1].headers['X-WP-Nonce']).toBe('nonce-refreshed');
+
+        const articles = document.querySelectorAll('.my-articles-grid-content .my-article-item');
+        expect(articles).toHaveLength(1);
+        expect(articles[0].textContent).toBe('Nouveau');
+
+        const activeFilter = document.querySelector('.my-articles-filter-nav li.active');
+        expect(activeFilter).not.toBeNull();
+        expect(activeFilter.querySelector('button').dataset.category).toBe('news');
     });
 });

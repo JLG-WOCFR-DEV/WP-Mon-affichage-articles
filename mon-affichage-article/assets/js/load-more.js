@@ -3,6 +3,111 @@
     'use strict';
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
+    var pendingNonceDeferred = null;
+
+    function getNonceEndpoint(settings) {
+        if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
+            return settings.nonceEndpoint;
+        }
+
+        if (settings && typeof settings.restRoot === 'string' && settings.restRoot.length > 0) {
+            return settings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/nonce';
+        }
+
+        return '';
+    }
+
+    function extractNonceFromResponse(response) {
+        if (!response || typeof response !== 'object') {
+            return '';
+        }
+
+        if (typeof response.nonce === 'string' && response.nonce.length > 0) {
+            return response.nonce;
+        }
+
+        if (response.data && typeof response.data.nonce === 'string' && response.data.nonce.length > 0) {
+            return response.data.nonce;
+        }
+
+        return '';
+    }
+
+    function refreshRestNonce(settings) {
+        if (pendingNonceDeferred) {
+            return pendingNonceDeferred.promise();
+        }
+
+        var deferred = $.Deferred();
+        pendingNonceDeferred = deferred;
+
+        var endpoint = getNonceEndpoint(settings);
+
+        if (!endpoint) {
+            deferred.reject(new Error('Missing nonce endpoint'));
+            pendingNonceDeferred = null;
+
+            return deferred.promise();
+        }
+
+        $.ajax({
+            url: endpoint,
+            type: 'GET',
+            success: function (response) {
+                var nonce = extractNonceFromResponse(response);
+
+                if (nonce) {
+                    if (settings) {
+                        settings.restNonce = nonce;
+                    }
+
+                    deferred.resolve(nonce);
+
+                    return;
+                }
+
+                deferred.reject(new Error('Invalid nonce payload'));
+            },
+            error: function () {
+                deferred.reject(new Error('Nonce request failed'));
+            },
+            complete: function () {
+                pendingNonceDeferred = null;
+            }
+        });
+
+        return deferred.promise();
+    }
+
+    function isInvalidNonceResponse(jqXHR, response) {
+        var payload = response || null;
+
+        if (!payload && jqXHR && jqXHR.responseJSON && typeof jqXHR.responseJSON === 'object') {
+            payload = jqXHR.responseJSON;
+        }
+
+        if (!payload && jqXHR && typeof jqXHR.responseText === 'string') {
+            try {
+                payload = JSON.parse(jqXHR.responseText);
+            } catch (error) {
+                payload = null;
+            }
+        }
+
+        if (!payload || typeof payload !== 'object') {
+            return false;
+        }
+
+        if (typeof payload.code === 'string' && payload.code === 'my_articles_invalid_nonce') {
+            return true;
+        }
+
+        if (payload.data && typeof payload.data.code === 'string' && payload.data.code === 'my_articles_invalid_nonce') {
+            return true;
+        }
+
+        return false;
+    }
 
     function getFeedbackElement(wrapper) {
         var feedback = wrapper.find('.my-articles-feedback');
@@ -277,161 +382,206 @@
             requestUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/load-more';
         }
 
-        $.ajax({
-            url: requestUrl,
-            type: 'POST',
-            headers: {
-                'X-WP-Nonce': loadMoreSettings && loadMoreSettings.restNonce ? loadMoreSettings.restNonce : ''
-            },
-            data: {
-                instance_id: instanceId,
-                paged: paged,
-                pinned_ids: pinnedIds,
-                category: category
-            },
-            beforeSend: function () {
-                var loadingText = loadMoreSettings.loadingText || originalButtonText;
-                button.text(loadingText);
-                button.prop('disabled', true);
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'true');
-                    wrapper.addClass('is-loading');
+        var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
+        var hasRetried = false;
+
+        function handleErrorResponse(jqXHR, response) {
+            var errorMessage = '';
+
+            if (response && response.data && response.data.message) {
+                errorMessage = response.data.message;
+            } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                errorMessage = jqXHR.responseJSON.data.message;
+            }
+
+            if (!errorMessage) {
+                errorMessage = fallbackMessage;
+            }
+
+            var resetText = loadMoreSettings.loadMoreText || originalButtonText;
+            button.text(resetText);
+            button.prop('disabled', false);
+            showError(wrapper, errorMessage);
+
+            if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                console.error(errorMessage);
+            }
+        }
+
+        function handleSuccessResponse(response) {
+            if (!response || !response.data) {
+                handleErrorResponse(null, response);
+                return;
+            }
+
+            var responseData = response.data;
+            var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
+
+            if (typeof responseData.html !== 'undefined') {
+                contentArea.append(responseData.html);
+            }
+
+            if (typeof window.myArticlesInitWrappers === 'function') {
+                window.myArticlesInitWrappers(wrapperElement);
+            }
+
+            if (typeof window.myArticlesInitSwipers === 'function') {
+                window.myArticlesInitSwipers(wrapperElement);
+            }
+
+            var totalArticles = contentArea.find('.my-article-item').length;
+            var addedCount = totalArticles - previousArticleCount;
+            if (addedCount < 0) {
+                addedCount = 0;
+            }
+
+            var focusArticle = null;
+            if (addedCount > 0) {
+                focusArticle = contentArea.find('.my-article-item').eq(previousArticleCount);
+            } else {
+                focusArticle = contentArea.find('.my-article-item').first();
+            }
+
+            var feedbackMessage = buildLoadMoreFeedbackMessage(totalArticles, addedCount);
+            var feedbackElement = getFeedbackElement(wrapper);
+            feedbackElement.removeClass('is-error')
+                .removeAttr('role')
+                .attr('aria-live', 'polite')
+                .text(feedbackMessage)
+                .show();
+
+            focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
+
+            if (typeof responseData.pinned_ids !== 'undefined') {
+                var updatedPinnedIds = responseData.pinned_ids;
+                button.data('pinned-ids', updatedPinnedIds);
+                button.attr('data-pinned-ids', updatedPinnedIds);
+            }
+
+            if (typeof responseData.total_pages !== 'undefined') {
+                var serverTotalPages = parseInt(responseData.total_pages, 10);
+                if (!isNaN(serverTotalPages)) {
+                    totalPages = serverTotalPages;
+                    button.data('total-pages', totalPages);
+                    button.attr('data-total-pages', totalPages);
                 }
-                clearFeedback(wrapper);
-            },
-            success: function (response) {
-                if (response.success) {
-                    var responseData = response.data || {};
-                    var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
+            }
 
-                    // Ajoute les nouveaux articles à la suite des anciens
-                    if (typeof responseData.html !== 'undefined') {
-                        contentArea.append(responseData.html);
+            var nextPageFromServer = null;
+            if (typeof responseData.next_page !== 'undefined') {
+                var parsedNext = parseInt(responseData.next_page, 10);
+                if (!isNaN(parsedNext)) {
+                    nextPageFromServer = parsedNext;
+                }
+            }
+
+            var loadMoreText = loadMoreSettings.loadMoreText || originalButtonText;
+            button.text(loadMoreText);
+
+            if (instanceId && requestedPage > 0) {
+                var historyParams = {};
+                historyParams['paged_' + instanceId] = String(requestedPage);
+                updateInstanceQueryParams(instanceId, historyParams);
+            }
+
+            if (nextPageFromServer !== null) {
+                paged = nextPageFromServer;
+                button.data('paged', paged);
+                button.attr('data-paged', paged);
+
+                if (paged <= 0) {
+                    button.hide();
+                    button.prop('disabled', false);
+                    return;
+                }
+            } else {
+                var newPage = paged + 1;
+                paged = newPage;
+                button.data('paged', newPage);
+                button.attr('data-paged', newPage);
+            }
+
+            if (!totalPages || paged > totalPages) {
+                button.hide();
+                button.prop('disabled', false);
+                return;
+            }
+
+            button.prop('disabled', false);
+        }
+
+        function sendAjaxRequest() {
+            var nonceHeader = loadMoreSettings && loadMoreSettings.restNonce ? loadMoreSettings.restNonce : '';
+
+            $.ajax({
+                url: requestUrl,
+                type: 'POST',
+                headers: {
+                    'X-WP-Nonce': nonceHeader
+                },
+                data: {
+                    instance_id: instanceId,
+                    paged: paged,
+                    pinned_ids: pinnedIds,
+                    category: category
+                },
+                beforeSend: function () {
+                    var loadingText = loadMoreSettings.loadingText || originalButtonText;
+                    button.text(loadingText);
+                    button.prop('disabled', true);
+                    if (wrapper && wrapper.length) {
+                        wrapper.attr('aria-busy', 'true');
+                        wrapper.addClass('is-loading');
                     }
-
-                    if (typeof window.myArticlesInitWrappers === 'function') {
-                        window.myArticlesInitWrappers(wrapperElement);
-                    }
-
-                    if (typeof window.myArticlesInitSwipers === 'function') {
-                        window.myArticlesInitSwipers(wrapperElement);
-                    }
-
-                    var totalArticles = contentArea.find('.my-article-item').length;
-                    var addedCount = totalArticles - previousArticleCount;
-                    if (addedCount < 0) {
-                        addedCount = 0;
-                    }
-
-                    var focusArticle = null;
-                    if (addedCount > 0) {
-                        focusArticle = contentArea.find('.my-article-item').eq(previousArticleCount);
-                    } else {
-                        focusArticle = contentArea.find('.my-article-item').first();
-                    }
-
-                    var feedbackMessage = buildLoadMoreFeedbackMessage(totalArticles, addedCount);
-                    var feedbackElement = getFeedbackElement(wrapper);
-                    feedbackElement.removeClass('is-error')
-                        .removeAttr('role')
-                        .attr('aria-live', 'polite')
-                        .text(feedbackMessage)
-                        .show();
-
-                    focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
-
-                    if (typeof responseData.pinned_ids !== 'undefined') {
-                        var updatedPinnedIds = responseData.pinned_ids;
-                        button.data('pinned-ids', updatedPinnedIds);
-                        button.attr('data-pinned-ids', updatedPinnedIds);
-                    }
-
-                    if (typeof responseData.total_pages !== 'undefined') {
-                        var serverTotalPages = parseInt(responseData.total_pages, 10);
-                        if (!isNaN(serverTotalPages)) {
-                            totalPages = serverTotalPages;
-                            button.data('total-pages', totalPages);
-                            button.attr('data-total-pages', totalPages);
-                        }
-                    }
-
-                    var nextPageFromServer = null;
-                    if (typeof responseData.next_page !== 'undefined') {
-                        var parsedNext = parseInt(responseData.next_page, 10);
-                        if (!isNaN(parsedNext)) {
-                            nextPageFromServer = parsedNext;
-                        }
-                    }
-
-                    var loadMoreText = loadMoreSettings.loadMoreText || originalButtonText;
-                    button.text(loadMoreText);
-
-                    if (instanceId && requestedPage > 0) {
-                        var historyParams = {};
-                        historyParams['paged_' + instanceId] = String(requestedPage);
-                        updateInstanceQueryParams(instanceId, historyParams);
-                    }
-
-                    if (nextPageFromServer !== null) {
-                        paged = nextPageFromServer;
-                        button.data('paged', paged);
-                        button.attr('data-paged', paged);
-
-                        if (paged <= 0) {
-                            button.hide();
-                            button.prop('disabled', false);
-                            return;
-                        }
-                    } else {
-                        var newPage = paged + 1;
-                        paged = newPage;
-                        button.data('paged', newPage);
-                        button.attr('data-paged', newPage);
-                    }
-
-                    if (!totalPages || paged > totalPages) {
-                        // S'il n'y a plus de page, on cache le bouton
-                        button.hide();
-                        button.prop('disabled', false);
+                    clearFeedback(wrapper);
+                },
+                success: function (response) {
+                    if (response && response.success) {
+                        handleSuccessResponse(response);
                         return;
                     }
 
-                    button.prop('disabled', false);
-                } else {
-                    var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                    var responseMessage = (response.data && response.data.message) ? response.data.message : '';
-                    var message = responseMessage || fallbackMessage;
+                    if (!hasRetried && isInvalidNonceResponse(null, response)) {
+                        hasRetried = true;
+                        refreshRestNonce(loadMoreSettings)
+                            .done(function () {
+                                sendAjaxRequest();
+                            })
+                            .fail(function () {
+                                handleErrorResponse(null, response);
+                            });
 
-                    var resetText = loadMoreSettings.loadMoreText || originalButtonText;
-                    button.text(resetText);
-                    button.prop('disabled', false);
-                    showError(wrapper, message);
-                }
-            },
-            error: function (jqXHR) {
-                var errorMessage = '';
+                        return;
+                    }
 
-                if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
+                    handleErrorResponse(null, response);
+                },
+                error: function (jqXHR) {
+                    if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
+                        hasRetried = true;
+                        refreshRestNonce(loadMoreSettings)
+                            .done(function () {
+                                sendAjaxRequest();
+                            })
+                            .fail(function () {
+                                handleErrorResponse(jqXHR);
+                            });
 
-                if (!errorMessage) {
-                    errorMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
-                }
+                        return;
+                    }
 
-                var resetText = loadMoreSettings.loadMoreText || originalButtonText;
-                button.text(resetText);
-                button.prop('disabled', false);
-                showError(wrapper, errorMessage);
-                console.error(errorMessage);
-            },
-            complete: function () {
-                if (wrapper && wrapper.length) {
-                    wrapper.attr('aria-busy', 'false');
-                    wrapper.removeClass('is-loading');
+                    handleErrorResponse(jqXHR);
+                },
+                complete: function () {
+                    if (wrapper && wrapper.length) {
+                        wrapper.attr('aria-busy', 'false');
+                        wrapper.removeClass('is-loading');
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        sendAjaxRequest();
     });
 
 })(jQuery);

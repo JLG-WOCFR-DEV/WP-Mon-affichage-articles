@@ -69,6 +69,18 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/nonce',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => array( $this, 'get_rest_nonce' ),
+                    'permission_callback' => '__return_true',
+                ),
+            )
+        );
     }
 
     /**
@@ -170,6 +182,33 @@ class My_Articles_Controller extends WP_REST_Controller {
     }
 
     /**
+     * Validates request origin information to ensure it targets the current site.
+     *
+     * @param WP_REST_Request $request REST request.
+     *
+     * @return true|WP_Error
+     */
+    protected function validate_request_origin( WP_REST_Request $request ) {
+        $home_url = home_url();
+
+        $raw_origin  = $request->get_header( 'origin' );
+        $raw_referer = $request->get_header( 'referer' );
+
+        $normalized_origin  = is_string( $raw_origin ) ? my_articles_normalize_internal_url( $raw_origin, $home_url ) : '';
+        $normalized_referer = is_string( $raw_referer ) ? my_articles_normalize_internal_url( $raw_referer, $home_url ) : '';
+
+        if ( '' === $normalized_origin && '' === $normalized_referer ) {
+            return new WP_Error(
+                'my_articles_invalid_request_origin',
+                __( 'Origine de la requête invalide.', 'mon-articles' ),
+                array( 'status' => 403 )
+            );
+        }
+
+        return true;
+    }
+
+    /**
      * Handles filtering articles requests.
      *
      * @param WP_REST_Request $request REST request.
@@ -255,5 +294,29 @@ class My_Articles_Controller extends WP_REST_Controller {
         }
 
         return rest_ensure_response( $response );
+    }
+
+    /**
+     * Provides a refreshed REST API nonce for front-end interactions.
+     *
+     * @param WP_REST_Request $request REST request.
+     *
+     * @return WP_REST_Response|WP_Error
+     */
+    public function get_rest_nonce( WP_REST_Request $request ) {
+        $origin_validation = $this->validate_request_origin( $request );
+
+        if ( is_wp_error( $origin_validation ) ) {
+            return $origin_validation;
+        }
+
+        return rest_ensure_response(
+            array(
+                'success' => true,
+                'data'    => array(
+                    'nonce' => wp_create_nonce( 'wp_rest' ),
+                ),
+            )
+        );
     }
 }
