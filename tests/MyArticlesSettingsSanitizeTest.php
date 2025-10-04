@@ -107,6 +107,7 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
      */
     public function provide_clamped_integer_settings(): iterable
     {
+        yield 'posts per page minimum' => array('posts_per_page', -10, 0);
         yield 'desktop columns minimum' => array('desktop_columns', -5, 1);
         yield 'desktop columns maximum' => array('desktop_columns', 99, 6);
         yield 'mobile columns minimum' => array('mobile_columns', 0, 1);
