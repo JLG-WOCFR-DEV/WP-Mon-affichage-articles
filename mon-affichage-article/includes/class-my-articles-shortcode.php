@@ -62,8 +62,10 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#2563eb',
                     'shadow_color'                => 'rgba(15,23,42,0.08)',
                     'shadow_color_hover'          => 'rgba(37,99,235,0.16)',
-                    'module_padding_left'         => 24,
+                    'module_padding_top'          => 24,
                     'module_padding_right'        => 24,
+                    'module_padding_bottom'       => 24,
+                    'module_padding_left'         => 24,
                     'gap_size'                    => 24,
                     'list_item_gap'               => 28,
                     'border_radius'               => 18,
@@ -91,8 +93,10 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#93c5fd',
                     'shadow_color'                => 'rgba(0,0,0,0.4)',
                     'shadow_color_hover'          => 'rgba(30,64,175,0.6)',
-                    'module_padding_left'         => 32,
+                    'module_padding_top'          => 32,
                     'module_padding_right'        => 32,
+                    'module_padding_bottom'       => 32,
+                    'module_padding_left'         => 32,
                     'gap_size'                    => 20,
                     'list_item_gap'               => 32,
                     'border_radius'               => 20,
@@ -121,8 +125,10 @@ class My_Articles_Shortcode {
                     'pagination_color'            => '#1d4ed8',
                     'shadow_color'                => 'rgba(0,0,0,0.04)',
                     'shadow_color_hover'          => 'rgba(0,0,0,0.08)',
-                    'module_padding_left'         => 16,
+                    'module_padding_top'          => 16,
                     'module_padding_right'        => 16,
+                    'module_padding_bottom'       => 16,
+                    'module_padding_left'         => 16,
                     'gap_size'                    => 20,
                     'list_item_gap'               => 24,
                     'border_radius'               => 8,
@@ -596,7 +602,8 @@ class My_Articles_Shortcode {
             'display_mode' => 'grid',
             'thumbnail_aspect_ratio' => self::get_default_thumbnail_aspect_ratio(),
             'columns_mobile' => 1, 'columns_tablet' => 2, 'columns_desktop' => 3, 'columns_ultrawide' => 4,
-            'module_padding_left' => 0, 'module_padding_right' => 0,
+            'module_padding_top' => 0, 'module_padding_right' => 0,
+            'module_padding_bottom' => 0, 'module_padding_left' => 0,
             'gap_size' => 25, 'list_item_gap' => 25,
             'list_content_padding_top' => 0, 'list_content_padding_right' => 0,
             'list_content_padding_bottom' => 0, 'list_content_padding_left' => 0,
@@ -629,8 +636,10 @@ class My_Articles_Shortcode {
         $aliases = array(
             'desktop_columns'     => 'columns_desktop',
             'mobile_columns'      => 'columns_mobile',
-            'module_margin_left'  => 'module_padding_left',
-            'module_margin_right' => 'module_padding_right',
+            'module_margin_top'    => 'module_padding_top',
+            'module_margin_left'   => 'module_padding_left',
+            'module_margin_bottom' => 'module_padding_bottom',
+            'module_margin_right'  => 'module_padding_right',
         );
 
         foreach ( $aliases as $stored_key => $option_key ) {
@@ -1009,6 +1018,11 @@ class My_Articles_Shortcode {
         $options['requested_category']         = $requested_category;
         $options['is_requested_category_valid'] = $is_requested_category_valid;
 
+        $options['module_padding_top']    = min( 200, max( 0, absint( $options['module_padding_top'] ?? $defaults['module_padding_top'] ) ) );
+        $options['module_padding_right']  = min( 200, max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) ) );
+        $options['module_padding_bottom'] = min( 200, max( 0, absint( $options['module_padding_bottom'] ?? $defaults['module_padding_bottom'] ) ) );
+        $options['module_padding_left']   = min( 200, max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) ) );
+
         self::$normalized_options_cache[ $cache_key ] = $options;
 
         return $options;
@@ -1279,7 +1293,7 @@ class My_Articles_Shortcode {
         }
 
         ob_start();
-        $this->enqueue_dynamic_styles( $options, $id );
+        $this->render_inline_styles( $options, $id );
 
         $wrapper_class = 'my-articles-wrapper my-articles-' . esc_attr($options['display_mode']);
 
@@ -2004,7 +2018,7 @@ class My_Articles_Shortcode {
         }
     }
 
-    private function enqueue_dynamic_styles( $options, $id ) {
+    private function render_inline_styles( $options, $id ) {
         $defaults = self::get_default_options();
 
         $min_card_width = 220;
@@ -2024,12 +2038,14 @@ class My_Articles_Shortcode {
         $padding_bottom = max( 0, absint( $options['list_content_padding_bottom'] ?? $defaults['list_content_padding_bottom'] ) );
         $padding_left   = max( 0, absint( $options['list_content_padding_left'] ?? $defaults['list_content_padding_left'] ) );
 
-        $border_radius       = max( 0, absint( $options['border_radius'] ?? $defaults['border_radius'] ) );
-        $title_font_size     = max( 1, absint( $options['title_font_size'] ?? $defaults['title_font_size'] ) );
-        $meta_font_size      = max( 1, absint( $options['meta_font_size'] ?? $defaults['meta_font_size'] ) );
-        $excerpt_font_size   = max( 1, absint( $options['excerpt_font_size'] ?? $defaults['excerpt_font_size'] ) );
-        $module_padding_left  = max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) );
-        $module_padding_right = max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) );
+        $border_radius        = max( 0, absint( $options['border_radius'] ?? $defaults['border_radius'] ) );
+        $title_font_size      = max( 1, absint( $options['title_font_size'] ?? $defaults['title_font_size'] ) );
+        $meta_font_size       = max( 1, absint( $options['meta_font_size'] ?? $defaults['meta_font_size'] ) );
+        $excerpt_font_size    = max( 1, absint( $options['excerpt_font_size'] ?? $defaults['excerpt_font_size'] ) );
+        $module_padding_top    = max( 0, absint( $options['module_padding_top'] ?? $defaults['module_padding_top'] ) );
+        $module_padding_right  = max( 0, absint( $options['module_padding_right'] ?? $defaults['module_padding_right'] ) );
+        $module_padding_bottom = max( 0, absint( $options['module_padding_bottom'] ?? $defaults['module_padding_bottom'] ) );
+        $module_padding_left   = max( 0, absint( $options['module_padding_left'] ?? $defaults['module_padding_left'] ) );
 
         $title_color          = my_articles_sanitize_color( $options['title_color'] ?? '', $defaults['title_color'] );
         $meta_color           = my_articles_sanitize_color( $options['meta_color'] ?? '', $defaults['meta_color'] );
@@ -2081,9 +2097,15 @@ class My_Articles_Shortcode {
             --my-articles-badge-bg-color: {$pinned_badge_bg};
             --my-articles-badge-text-color: {$pinned_badge_text};
             --my-articles-thumbnail-aspect-ratio: {$thumbnail_ratio};
+            --my-articles-module-padding-top: {$module_padding_top}px;
+            --my-articles-module-padding-right: {$module_padding_right}px;
+            --my-articles-module-padding-bottom: {$module_padding_bottom}px;
+            --my-articles-module-padding-left: {$module_padding_left}px;
             background-color: {$module_bg_color};
-            padding-left: {$module_padding_left}px;
+            padding-top: {$module_padding_top}px;
             padding-right: {$module_padding_right}px;
+            padding-bottom: {$module_padding_bottom}px;
+            padding-left: {$module_padding_left}px;
         }
         #my-articles-wrapper-{$id} .my-article-item { background-color: {$vignette_bg_color}; }
         #my-articles-wrapper-{$id}.my-articles-grid .my-article-item .article-title-wrapper,

@@ -109,6 +109,16 @@
             "default": true,
             "description": "Affiche la pagination (puces) du diaporama."
         },
+        "module_padding_top": {
+            "type": "integer",
+            "default": 0,
+            "description": "Marge interne haute du module (px)."
+        },
+        "module_padding_bottom": {
+            "type": "integer",
+            "default": 0,
+            "description": "Marge interne basse du module (px)."
+        },
         "module_padding_left": {
             "type": "integer",
             "default": 0,
