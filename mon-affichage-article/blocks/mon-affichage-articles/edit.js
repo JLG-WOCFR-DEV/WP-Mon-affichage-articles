@@ -32,7 +32,6 @@
     var useSelect = wp.data.useSelect;
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
-    var useRef = wp.element.useRef;
     var useCallback = wp.element.useCallback;
     var useAsyncDebounce =
         wp.compose && (wp.compose.useAsyncDebounce || wp.compose.useDebounce)
@@ -50,7 +49,7 @@
             : function (value) {
                   return value;
               };
-    var ServerSideRender = wp.serverSideRender;
+    var PreviewPane = window.myArticlesBlocks && window.myArticlesBlocks.PreviewPane ? window.myArticlesBlocks.PreviewPane : null;
 
     var designPresets = window.myArticlesDesignPresets || {};
     var DESIGN_PRESET_FALLBACK = 'custom';
@@ -76,65 +75,6 @@
 
         return value;
     }
-
-    var SSRContentWrapper = function (props) {
-        var onChange = props.onChange;
-        var children = props.children;
-        var forwardedRef = props.forwardRef;
-        var containerRef = useRef(null);
-        var wrapperProps = {};
-
-        Object.keys(props).forEach(function (key) {
-            if (key !== 'onChange' && key !== 'children' && key !== 'forwardRef') {
-                wrapperProps[key] = props[key];
-            }
-        });
-
-        var setContainerRef = useCallback(
-            function (node) {
-                containerRef.current = node;
-
-                if (typeof forwardedRef === 'function') {
-                    forwardedRef(node);
-                } else if (forwardedRef && typeof forwardedRef === 'object') {
-                    forwardedRef.current = node;
-                }
-            },
-            [forwardedRef]
-        );
-
-        useEffect(
-            function () {
-                if (!containerRef.current || typeof onChange !== 'function' || typeof MutationObserver === 'undefined') {
-                    return undefined;
-                }
-
-                var observer = new MutationObserver(function () {
-                    onChange();
-                });
-
-                observer.observe(containerRef.current, { childList: true, subtree: true });
-
-                return function () {
-                    observer.disconnect();
-                };
-            },
-            [onChange]
-        );
-
-        useEffect(
-            function () {
-                if (typeof onChange === 'function') {
-                    onChange();
-                }
-            },
-            [onChange]
-        );
-
-        wrapperProps.ref = setContainerRef;
-
-        return el('div', wrapperProps, children);
-    };
 
     var MODULE_QUERY_DEFAULTS = {
         orderby: 'title',
@@ -166,10 +106,6 @@
             var hasMoreResults = _useState4[0];
             var setHasMoreResults = _useState4[1];
 
-            var _useState5 = useState(0);
-            var previewRenderCount = _useState5[0];
-            var setPreviewRenderCount = _useState5[1];
-            var ssrAttributesKey = JSON.stringify(attributes || {});
             var thumbnailAspectRatio = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
 
             var isDesignPresetLocked = false;
@@ -273,36 +209,6 @@
                     setHasMoreResults(listData.instances.length === MODULES_PER_PAGE);
                 },
                 [listData && listData.instances, listData && listData.isResolving, currentPage]
-            );
-
-            useEffect(
-                function () {
-                    if (!attributes.instanceId) {
-                        return;
-                    }
-
-                    if (typeof window === 'undefined') {
-                        return;
-                    }
-
-                    if (typeof window.myArticlesInitWrappers === 'function') {
-                        window.myArticlesInitWrappers();
-                    }
-
-                    if (typeof window.myArticlesInitSwipers === 'function') {
-                        window.myArticlesInitSwipers();
-                    }
-                },
-                [previewRenderCount, ssrAttributesKey]
-            );
-
-            var handlePreviewChange = useCallback(
-                function () {
-                    setPreviewRenderCount(function (count) {
-                        return count + 1;
-                    });
-                },
-                [setPreviewRenderCount]
             );
 
             var filterValueChangeHandler = useCallback(
@@ -1299,7 +1205,7 @@
                     { status: 'warning', isDismissible: false },
                     __('Le module sélectionné est introuvable.', 'mon-articles')
                 );
-            } else if (ServerSideRender) {
+            } else if (PreviewPane) {
                 var title = selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
                     ? selectedData.selectedInstance.title.rendered
                     : __('(Sans titre)', 'mon-articles');
@@ -1307,17 +1213,19 @@
                     'div',
                     { className: 'my-articles-block-preview' },
                     el('p', { className: 'my-articles-block-preview__title' }, title),
-                    el(
-                        SSRContentWrapper,
-                        { onChange: handlePreviewChange },
-                        el(ServerSideRender, { block: 'mon-affichage/articles', attributes: attributes })
-                    )
+                    el(PreviewPane, {
+                        key: 'preview-pane',
+                        className: 'my-articles-block-preview__pane',
+                        instanceId: attributes.instanceId,
+                        attributes: attributes,
+                        displayMode: displayMode,
+                    })
                 );
             } else {
                 previewContent = el(
                     Notice,
                     { status: 'warning', isDismissible: false },
-                    __('Le composant ServerSideRender est indisponible sur ce site.', 'mon-articles')
+                    __('Le composant de prévisualisation est indisponible sur ce site.', 'mon-articles')
                 );
             }
 

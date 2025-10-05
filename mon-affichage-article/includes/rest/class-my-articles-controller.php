@@ -81,6 +81,19 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/render-preview',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => array( $this, 'render_preview' ),
+                    'permission_callback' => array( $this, 'preview_permission_check' ),
+                    'args'                => $this->get_render_preview_args(),
+                ),
+            )
+        );
     }
 
     /**
@@ -330,5 +343,224 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+    }
+
+    /**
+     * Permission check for preview rendering requests.
+     *
+     * @param WP_REST_Request $request REST request instance.
+     *
+     * @return true|WP_Error
+     */
+    public function preview_permission_check( WP_REST_Request $request ) {
+        if ( ! current_user_can( 'edit_posts' ) ) {
+            return new WP_Error(
+                'my_articles_preview_forbidden',
+                __( 'Vous n’avez pas les droits nécessaires pour prévisualiser ce module.', 'mon-articles' ),
+                array( 'status' => rest_authorization_required_code() )
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * Argument definitions for the preview endpoint.
+     *
+     * @return array
+     */
+    protected function get_render_preview_args() {
+        return array(
+            'instance_id' => array(
+                'type'              => 'integer',
+                'required'          => true,
+                'sanitize_callback' => 'absint',
+                'validate_callback' => function ( $value ) {
+                    return $value > 0;
+                },
+            ),
+            'attributes'  => array(
+                'type'     => 'object',
+                'required' => false,
+            ),
+        );
+    }
+
+    /**
+     * Handles preview rendering requests for the block editor.
+     *
+     * @param WP_REST_Request $request REST request.
+     *
+     * @return WP_REST_Response|WP_Error
+     */
+    public function render_preview( WP_REST_Request $request ) {
+        $nonce_validation = $this->validate_request_nonce( $request );
+
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
+        }
+
+        $instance_id = absint( $request->get_param( 'instance_id' ) );
+
+        if ( $instance_id <= 0 ) {
+            return new WP_Error(
+                'my_articles_missing_instance_id',
+                __( 'ID d\'instance manquant.', 'mon-articles' ),
+                array( 'status' => 400 )
+            );
+        }
+
+        if ( ! current_user_can( 'edit_post', $instance_id ) ) {
+            return new WP_Error(
+                'my_articles_preview_forbidden',
+                __( 'Vous n’avez pas les droits nécessaires pour prévisualiser ce module.', 'mon-articles' ),
+                array( 'status' => rest_authorization_required_code() )
+            );
+        }
+
+        $validation = $this->plugin->validate_instance_for_request( $instance_id );
+        if ( is_wp_error( $validation ) ) {
+            return $validation;
+        }
+
+        if ( ! class_exists( 'My_Articles_Shortcode' ) ) {
+            return new WP_Error(
+                'my_articles_shortcode_unavailable',
+                __( 'Le shortcode est indisponible.', 'mon-articles' ),
+                array( 'status' => 500 )
+            );
+        }
+
+        $attributes = $request->get_param( 'attributes' );
+        if ( ! is_array( $attributes ) ) {
+            $attributes = array();
+        }
+
+        $overrides = array();
+
+        if ( class_exists( 'My_Articles_Block' ) && method_exists( 'My_Articles_Block', 'prepare_overrides_from_attributes' ) ) {
+            $overrides = My_Articles_Block::prepare_overrides_from_attributes( $attributes );
+        } else {
+            $overrides = $this->build_preview_overrides( $attributes );
+        }
+
+        $shortcode_instance = My_Articles_Shortcode::get_instance();
+
+        $html = $shortcode_instance->render_shortcode(
+            array(
+                'id'        => $instance_id,
+                'overrides' => $overrides,
+            )
+        );
+
+        $options_meta = get_post_meta( $instance_id, '_my_articles_settings', true );
+        if ( ! is_array( $options_meta ) ) {
+            $options_meta = array();
+        }
+
+        $normalized_options = My_Articles_Shortcode::normalize_instance_options( array_merge( $options_meta, $overrides ) );
+
+        $instance_title = get_the_title( $instance_id );
+        $metadata       = array(
+            'instance_id'            => $instance_id,
+            'instance_title'         => sanitize_text_field( wp_strip_all_tags( $instance_title ) ),
+            'display_mode'           => isset( $normalized_options['display_mode'] ) ? sanitize_key( $normalized_options['display_mode'] ) : '',
+            'has_swiper'             => isset( $normalized_options['display_mode'] ) && 'slideshow' === $normalized_options['display_mode'],
+            'design_preset'          => isset( $normalized_options['design_preset'] ) ? sanitize_key( $normalized_options['design_preset'] ) : '',
+            'design_preset_locked'   => ! empty( $normalized_options['design_preset_locked'] ),
+            'thumbnail_aspect_ratio' => isset( $normalized_options['thumbnail_aspect_ratio'] ) ? sanitize_text_field( (string) $normalized_options['thumbnail_aspect_ratio'] ) : '',
+            'has_content'            => ( '' !== trim( wp_strip_all_tags( (string) $html ) ) ),
+        );
+
+        return rest_ensure_response(
+            array(
+                'html'     => $html,
+                'metadata' => $metadata,
+            )
+        );
+    }
+
+    /**
+     * Builds shortcode overrides when the block helper is unavailable.
+     *
+     * @param array $attributes Block attributes.
+     *
+     * @return array
+     */
+    protected function build_preview_overrides( array $attributes ) {
+        $defaults  = My_Articles_Shortcode::get_default_options();
+        $overrides = array();
+        $filtered  = array_intersect_key( $attributes, $defaults );
+
+        $boolean_override_keys = array(
+            'slideshow_loop',
+            'slideshow_autoplay',
+            'slideshow_pause_on_interaction',
+            'slideshow_pause_on_mouse_enter',
+            'slideshow_show_navigation',
+            'slideshow_show_pagination',
+            'load_more_auto',
+        );
+
+        foreach ( $filtered as $key => $raw_value ) {
+            $default_value = $defaults[ $key ];
+
+            if ( null === $raw_value ) {
+                continue;
+            }
+
+            if ( in_array( $key, $boolean_override_keys, true ) ) {
+                $overrides[ $key ] = ! empty( $raw_value ) ? 1 : 0;
+                continue;
+            }
+
+            if ( 'slideshow_delay' === $key ) {
+                $value = (int) $raw_value;
+
+                if ( $value < 0 ) {
+                    $value = 0;
+                }
+
+                if ( $value > 0 && $value < 1000 ) {
+                    $value = 1000;
+                }
+
+                if ( $value > 20000 ) {
+                    $value = 20000;
+                }
+
+                if ( 0 === $value ) {
+                    $value = (int) $default_value;
+                }
+
+                $overrides[ $key ] = $value;
+                continue;
+            }
+
+            if ( is_array( $default_value ) ) {
+                if ( is_array( $raw_value ) ) {
+                    $overrides[ $key ] = $raw_value;
+                }
+                continue;
+            }
+
+            if ( is_int( $default_value ) ) {
+                if ( is_bool( $raw_value ) ) {
+                    $overrides[ $key ] = $raw_value ? 1 : 0;
+                } else {
+                    $overrides[ $key ] = (int) $raw_value;
+                }
+                continue;
+            }
+
+            if ( is_float( $default_value ) ) {
+                $overrides[ $key ] = (float) $raw_value;
+                continue;
+            }
+
+            $overrides[ $key ] = (string) $raw_value;
+        }
+
+        return $overrides;
     }
 }

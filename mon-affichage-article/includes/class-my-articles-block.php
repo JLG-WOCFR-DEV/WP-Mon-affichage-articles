@@ -46,7 +46,7 @@ class My_Articles_Block {
             return '';
         }
 
-        $overrides = $this->prepare_overrides( $attributes );
+        $overrides = self::prepare_overrides_from_attributes( $attributes );
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
 
@@ -58,7 +58,7 @@ class My_Articles_Block {
         );
     }
 
-    private function prepare_overrides( array $attributes ) {
+    public static function prepare_overrides_from_attributes( array $attributes ) {
         $defaults  = My_Articles_Shortcode::get_default_options();
         $overrides = array();
         $filtered  = array_intersect_key( $attributes, $defaults );
