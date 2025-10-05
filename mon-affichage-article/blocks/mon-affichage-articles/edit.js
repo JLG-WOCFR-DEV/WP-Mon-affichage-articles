@@ -19,23 +19,58 @@
     var useSetting = wp.blockEditor
         ? wp.blockEditor.useSetting || wp.blockEditor.__experimentalUseSetting
         : wp.editor && (wp.editor.useSetting || wp.editor.__experimentalUseSetting);
-    var PanelBody = wp.components.PanelBody;
-    var ToolbarGroup = wp.components.ToolbarGroup;
-    var ToolbarButton = wp.components.ToolbarButton;
-    var ComboboxControl = wp.components.ComboboxControl;
-    var Button = wp.components.Button;
-    var SelectControl = wp.components.SelectControl;
-    var ToggleControl = wp.components.ToggleControl;
-    var RangeControl = wp.components.RangeControl;
-    var TextControl = wp.components.TextControl;
-    var BaseControl = wp.components.BaseControl;
-    var FormTokenField = wp.components.FormTokenField;
-    var ColorIndicator = wp.components.ColorIndicator;
-    var Placeholder = wp.components.Placeholder;
-    var Spinner = wp.components.Spinner;
-    var Notice = wp.components.Notice;
+    var components = wp.components || {};
+    var PanelBody = components.PanelBody;
+    var ToolbarGroup = components.ToolbarGroup;
+    var ToolbarButton = components.ToolbarButton;
+    var ComboboxControl = components.ComboboxControl;
+    var Button = components.Button;
+    var SelectControl = components.SelectControl;
+    var ToggleControl = components.ToggleControl;
+    var RangeControl = components.RangeControl;
+    var TextControl = components.TextControl;
+    var BaseControl = components.BaseControl;
+    var FormTokenField = components.FormTokenField;
+    var ColorIndicator = components.ColorIndicator;
+    var Placeholder = components.Placeholder || null;
+    var Spinner = components.Spinner || null;
+    var Notice = components.Notice || null;
     var Fragment = wp.element.Fragment;
     var el = wp.element.createElement;
+
+    if (!Spinner) {
+        Spinner = function () {
+            return el('span', { className: 'components-spinner' });
+        };
+    }
+
+    if (!Notice) {
+        Notice = function (props) {
+            return el(
+                'div',
+                { className: 'components-notice is-' + (props.status || 'info') },
+                props.children
+            );
+        };
+    }
+
+    if (!Placeholder) {
+        Placeholder = function (props) {
+            return el(
+                'div',
+                { className: 'components-placeholder' },
+                props.label ? el('h2', { className: 'components-placeholder__label' }, props.label) : null,
+                props.instructions
+                    ? el(
+                          'p',
+                          { className: 'components-placeholder__instructions' },
+                          props.instructions
+                      )
+                    : null,
+                props.children
+            );
+        };
+    }
     var useSelect = wp.data.useSelect;
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
