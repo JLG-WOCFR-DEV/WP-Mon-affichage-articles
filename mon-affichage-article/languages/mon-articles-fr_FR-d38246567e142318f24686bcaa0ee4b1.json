@@ -18,6 +18,9 @@
             "Actif uniquement si la lecture automatique est activée.": [
                 "Actif uniquement si la lecture automatique est activée."
             ],
+            "Activer le déclenchement automatique": [
+                "Activer le déclenchement automatique"
+            ],
             "Affichage": [
                 "Affichage"
             ],
@@ -114,6 +117,12 @@
             "Créer un nouveau module": [
                 "Créer un nouveau module"
             ],
+            "Déclenche le bouton « Charger plus » dès qu’il devient visible à l’écran.": [
+                "Déclenche le bouton « Charger plus » dès qu’il devient visible à l’écran."
+            ],
+            "Déclencher automatiquement le bouton « Charger plus »": [
+                "Déclencher automatiquement le bouton « Charger plus »"
+            ],
             "Date de publication": [
                 "Date de publication"
             ],
@@ -170,6 +179,9 @@
             ],
             "La sélection de couleur n’est pas disponible dans cet environnement.": [
                 "La sélection de couleur n’est pas disponible dans cet environnement."
+            ],
+            "Lance la requête dès que le bouton devient visible. Se désactive automatiquement si le navigateur est incompatible ou après un clic manuel.": [
+                "Lance la requête dès que le bouton devient visible. Se désactive automatiquement si le navigateur est incompatible ou après un clic manuel."
             ],
             "Laissez vide pour générer automatiquement une étiquette basée sur le titre du module.": [
                 "Laissez vide pour générer automatiquement une étiquette basée sur le titre du module."

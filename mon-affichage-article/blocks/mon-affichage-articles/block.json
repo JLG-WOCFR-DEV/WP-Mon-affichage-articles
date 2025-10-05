@@ -74,6 +74,10 @@
             "type": "string",
             "default": "none"
         },
+        "load_more_auto": {
+            "type": "boolean",
+            "default": false
+        },
         "slideshow_loop": {
             "type": "boolean",
             "default": true,

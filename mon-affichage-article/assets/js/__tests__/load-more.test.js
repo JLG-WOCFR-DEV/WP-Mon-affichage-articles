@@ -1,6 +1,7 @@
 describe('load-more endpoint interactions', () => {
     let $;
     let fetchMock;
+    let consoleErrorSpy;
 
     const setupDom = () => {
         document.body.innerHTML = `
@@ -16,6 +17,7 @@ describe('load-more endpoint interactions', () => {
                         data-total-pages="4"
                         data-pinned-ids=""
                         data-category="news"
+                        data-auto-load="0"
                     >Charger plus</button>
                 </div>
             </div>
@@ -46,6 +48,8 @@ describe('load-more endpoint interactions', () => {
 
         fetchMock = jest.fn(() => Promise.resolve());
         global.fetch = fetchMock;
+
+        consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {
@@ -55,7 +59,12 @@ describe('load-more endpoint interactions', () => {
         delete window.myArticlesFilter;
         delete window.myArticlesInitWrappers;
         delete window.myArticlesInitSwipers;
+        delete window.myArticlesRefreshAutoLoadButtons;
+        delete window.IntersectionObserver;
         delete window.fetch;
+        if (consoleErrorSpy) {
+            consoleErrorSpy.mockRestore();
+        }
         jest.resetModules();
     });
 
@@ -145,6 +154,80 @@ describe('load-more endpoint interactions', () => {
         expect(feedback).not.toBeNull();
         expect(feedback.classList.contains('is-error')).toBe(true);
         expect(feedback.textContent).toBe('Erreur serveur');
+    });
+
+    it('installs an observer and triggers automatic loading when enabled', () => {
+        document.body.innerHTML = `
+            <div class="my-articles-wrapper" data-instance-id="21">
+                <div class="my-articles-grid-content">
+                    <article class="my-article-item">Initial</article>
+                </div>
+                <div class="my-articles-load-more-container">
+                    <button
+                        class="my-articles-load-more-btn"
+                        data-instance-id="21"
+                        data-paged="2"
+                        data-total-pages="3"
+                        data-pinned-ids=""
+                        data-category="news"
+                        data-auto-load="1"
+                    >Charger plus</button>
+                </div>
+            </div>
+        `;
+
+        const observers = [];
+        window.IntersectionObserver = jest.fn(function (callback) {
+            observers.push(callback);
+            this.observe = jest.fn();
+            this.disconnect = jest.fn();
+        });
+
+        $.ajax = jest.fn((options) => {
+            if (options.beforeSend) {
+                options.beforeSend();
+            }
+
+            if (options.success) {
+                options.success({
+                    success: true,
+                    data: {
+                        html: '<article class="my-article-item">Auto</article>',
+                        total_pages: 3,
+                        next_page: 3,
+                        pinned_ids: '',
+                    },
+                });
+            }
+
+            if (options.complete) {
+                options.complete();
+            }
+        });
+
+        require('../load-more');
+
+        expect(typeof window.myArticlesRefreshAutoLoadButtons).toBe('function');
+
+        // Force initialization explicitly in case ready callbacks are delayed.
+        window.myArticlesRefreshAutoLoadButtons(document);
+
+        expect(window.IntersectionObserver).toHaveBeenCalled();
+
+        const observerCallback = observers[0];
+        const button = document.querySelector('.my-articles-load-more-btn');
+
+        expect(observerCallback).toBeInstanceOf(Function);
+
+        observerCallback([
+            { isIntersecting: true, target: button },
+        ]);
+
+        expect($.ajax).toHaveBeenCalledTimes(1);
+
+        const items = document.querySelectorAll('.my-articles-grid-content .my-article-item');
+        expect(items).toHaveLength(2);
+        expect(items[1].textContent).toBe('Auto');
     });
 
     it('refreshes the nonce and retries once before succeeding', () => {

@@ -388,12 +388,318 @@
         focusElement(wrapper);
     }
 
-    $(document).on('click', '.my-articles-load-more-btn', function (e) {
-        e.preventDefault();
+    var AUTO_STATE_KEY = 'myArticlesAutoState';
+    var AUTO_DISABLED_KEY = 'myArticlesAutoDisabled';
+    var AUTO_THROTTLE_DELAY = 600;
 
-        var button = $(this);
+    function isAutoLoadRequested(button) {
+        if (!button || !button.length) {
+            return false;
+        }
+
+        var attribute = button.attr('data-auto-load');
+
+        if (typeof attribute === 'undefined' || attribute === null) {
+            return false;
+        }
+
+        if (typeof attribute === 'string') {
+            var normalized = attribute.toLowerCase();
+
+            return normalized === '1' || normalized === 'true' || normalized === 'yes';
+        }
+
+        return !!attribute;
+    }
+
+    function hasMorePages(button) {
+        if (!button || !button.length) {
+            return false;
+        }
+
+        var nextPage = parseInt(button.data('paged'), 10) || 0;
+
+        if (!nextPage || nextPage <= 0) {
+            return false;
+        }
+
+        var totalPages = parseInt(button.data('total-pages'), 10);
+
+        if (!totalPages || isNaN(totalPages)) {
+            return true;
+        }
+
+        return nextPage <= totalPages;
+    }
+
+    function isButtonReadyForAuto(button, state) {
+        if (!button || !button.length) {
+            return false;
+        }
+
+        var shouldCheckVisibility = true;
+
+        if (state && state.usingScrollFallback === false) {
+            shouldCheckVisibility = false;
+        }
+
+        if (shouldCheckVisibility && typeof button.is === 'function' && !button.is(':visible')) {
+            return false;
+        }
+
+        if (button.prop('disabled')) {
+            return false;
+        }
+
+        return hasMorePages(button);
+    }
+
+    function getAutoState(button, createIfMissing) {
+        if (!button || !button.length) {
+            return null;
+        }
+
+        var state = button.data(AUTO_STATE_KEY);
+
+        if (!state && createIfMissing) {
+            state = {
+                throttleDelay: AUTO_THROTTLE_DELAY,
+                lastTrigger: 0,
+                isFetching: false,
+                eventNamespace: '.myArticlesAutoLoad' + Math.floor(Math.random() * 1000000),
+                usingScrollFallback: false,
+                observer: null,
+                scrollHandler: null,
+            };
+
+            button.data(AUTO_STATE_KEY, state);
+        }
+
+        return state;
+    }
+
+    function detachScrollFallback(state) {
+        if (!state || !state.eventNamespace) {
+            return;
+        }
+
+        if (state.scrollHandler) {
+            $(window).off('scroll' + state.eventNamespace, state.scrollHandler);
+            $(window).off('resize' + state.eventNamespace, state.scrollHandler);
+            state.scrollHandler = null;
+        }
+    }
+
+    function disableAutoLoad(button, reason, persist) {
+        if (!button || !button.length) {
+            return;
+        }
+
+        var state = getAutoState(button, false);
+
+        if (state) {
+            if (state.observer && typeof state.observer.disconnect === 'function') {
+                state.observer.disconnect();
+            }
+
+            detachScrollFallback(state);
+
+            button.removeData(AUTO_STATE_KEY);
+        }
+
+        button.attr('data-auto-active', '0');
+
+        if (persist) {
+            button.data(AUTO_DISABLED_KEY, reason || true);
+        }
+    }
+
+    function triggerAutoLoad(button, state) {
+        if (!button || !button.length) {
+            return;
+        }
+
+        state = state || getAutoState(button, false);
+
+        if (!state || state.isFetching) {
+            return;
+        }
+
+        if (!isButtonReadyForAuto(button, state)) {
+            return;
+        }
+
+        var now = Date.now();
+
+        if (state.lastTrigger && now - state.lastTrigger < state.throttleDelay) {
+            return;
+        }
+
+        state.lastTrigger = now;
+
+        requestLoadMore(button, { auto: true });
+    }
+
+    function isElementNearViewport(element, offset) {
+        if (!element || typeof element.getBoundingClientRect !== 'function') {
+            return false;
+        }
+
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        var rect = element.getBoundingClientRect();
+        var winHeight = window.innerHeight || (document.documentElement && document.documentElement.clientHeight) || 0;
+        var winWidth = window.innerWidth || (document.documentElement && document.documentElement.clientWidth) || 0;
+        var margin = typeof offset === 'number' ? offset : 200;
+
+        return (
+            rect.bottom >= -margin &&
+            rect.top <= winHeight + margin &&
+            rect.right >= -margin &&
+            rect.left <= winWidth + margin
+        );
+    }
+
+    function setupIntersectionObserver(button, state) {
+        if (typeof window === 'undefined' || typeof window.IntersectionObserver !== 'function') {
+            return false;
+        }
+
+        var target = button && button.length ? button.get(0) : null;
+
+        if (!target) {
+            return false;
+        }
+
+        try {
+            state.observer = new window.IntersectionObserver(function (entries) {
+                for (var i = 0; i < entries.length; i += 1) {
+                    if (entries[i] && entries[i].isIntersecting) {
+                        triggerAutoLoad(button, state);
+                        break;
+                    }
+                }
+            }, { rootMargin: '200px 0px', threshold: 0.05 });
+
+            state.observer.observe(target);
+        } catch (error) {
+            state.observer = null;
+            return false;
+        }
+
+        state.usingScrollFallback = false;
+
+        return true;
+    }
+
+    function setupScrollFallback(button, state) {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        var target = button && button.length ? button.get(0) : null;
+
+        if (!target) {
+            return false;
+        }
+
+        state.scrollHandler = function () {
+            if (!isButtonReadyForAuto(button, state)) {
+                return;
+            }
+
+            if (!isElementNearViewport(target, 220)) {
+                return;
+            }
+
+            triggerAutoLoad(button, state);
+        };
+
+        $(window).on('scroll' + state.eventNamespace, state.scrollHandler);
+        $(window).on('resize' + state.eventNamespace, state.scrollHandler);
+
+        state.usingScrollFallback = true;
+
+        state.scrollHandler();
+
+        return true;
+    }
+
+    function setupAutoLoad(button) {
+        if (!button || !button.length) {
+            return;
+        }
+
+        if (!isAutoLoadRequested(button)) {
+            disableAutoLoad(button);
+            return;
+        }
+
+        if (button.data(AUTO_DISABLED_KEY)) {
+            return;
+        }
+
+        if (!hasMorePages(button)) {
+            disableAutoLoad(button, 'completed', true);
+            button.hide();
+            return;
+        }
+
+        var state = getAutoState(button, false);
+
+        if (state && state.isInitialized) {
+            return;
+        }
+
+        state = getAutoState(button, true);
+
+        if (setupIntersectionObserver(button, state) || setupScrollFallback(button, state)) {
+            state.isInitialized = true;
+            button.attr('data-auto-active', '1');
+            return;
+        }
+
+        disableAutoLoad(button, 'unsupported', true);
+    }
+
+    function initializeAutoLoadButtons(context) {
+        var $context = context ? $(context) : $(document);
+
+        var $buttons = $context.filter('.my-articles-load-more-btn');
+        $buttons = $buttons.add($context.find('.my-articles-load-more-btn'));
+
+        $buttons.each(function () {
+            setupAutoLoad($(this));
+        });
+    }
+
+    function requestLoadMore(button, context) {
+        context = context || {};
+
+        if (!button || !button.length) {
+            return;
+        }
+
+        var isAutoTrigger = !!context.auto;
+
+        if (!hasMorePages(button)) {
+            disableAutoLoad(button, 'completed', true);
+            button.hide();
+            return;
+        }
+
+        if (button.prop('disabled')) {
+            return;
+        }
+
+        var state = getAutoState(button, false);
+        if (isAutoTrigger && state && state.isFetching) {
+            return;
+        }
+
         var wrapper = button.closest('.my-articles-wrapper');
-        // CORRECTION : On cible le conteneur de la grille OU de la liste
         var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
 
         var originalButtonText = button.data('original-text');
@@ -412,9 +718,9 @@
         var searchValue = sanitizeSearchValue(button.data('search'));
         var requestedPage = paged;
 
-        if (!totalPages || (paged && paged > totalPages)) {
+        if (!paged || paged <= 0) {
+            disableAutoLoad(button, 'completed', true);
             button.hide();
-            button.prop('disabled', false);
             return;
         }
 
@@ -424,10 +730,26 @@
             requestUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/load-more';
         }
 
+        if (!requestUrl) {
+            return;
+        }
+
         var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
         var hasRetried = false;
 
+        if (state) {
+            state.isFetching = true;
+        }
+
+        function finalizeRequest() {
+            if (state) {
+                state.isFetching = false;
+            }
+        }
+
         function handleErrorResponse(jqXHR, response) {
+            finalizeRequest();
+
             var errorMessage = '';
 
             if (response && response.data && response.data.message) {
@@ -445,12 +767,18 @@
             button.prop('disabled', false);
             showError(wrapper, errorMessage);
 
+            if (isAutoTrigger) {
+                disableAutoLoad(button, 'error', true);
+            }
+
             if (typeof console !== 'undefined' && typeof console.error === 'function') {
                 console.error(errorMessage);
             }
         }
 
         function handleSuccessResponse(response) {
+            finalizeRequest();
+
             if (!response || !response.data) {
                 handleErrorResponse(null, response);
                 return;
@@ -470,6 +798,8 @@
             if (typeof window.myArticlesInitSwipers === 'function') {
                 window.myArticlesInitSwipers(wrapperElement);
             }
+
+            initializeAutoLoadButtons(wrapperElement);
 
             var totalArticles = contentArea.find('.my-article-item').length;
             var addedCount = totalArticles - previousArticleCount;
@@ -492,7 +822,9 @@
                 .text(feedbackMessage)
                 .show();
 
-            focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
+            if (!isAutoTrigger) {
+                focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
+            }
 
             if (typeof responseData.pinned_ids !== 'undefined') {
                 var updatedPinnedIds = responseData.pinned_ids;
@@ -539,6 +871,7 @@
 
                 if (paged <= 0) {
                     button.hide();
+                    disableAutoLoad(button, 'completed', true);
                     button.prop('disabled', false);
                     return;
                 }
@@ -551,11 +884,16 @@
 
             if (!totalPages || paged > totalPages) {
                 button.hide();
+                disableAutoLoad(button, 'completed', true);
                 button.prop('disabled', false);
                 return;
             }
 
             button.prop('disabled', false);
+
+            if (!isAutoTrigger) {
+                setupAutoLoad(button);
+            }
         }
 
         function sendAjaxRequest() {
@@ -631,6 +969,22 @@
         }
 
         sendAjaxRequest();
+    }
+
+    $(document).on('click', '.my-articles-load-more-btn', function (e) {
+        e.preventDefault();
+
+        var button = $(this);
+        disableAutoLoad(button, 'manual', true);
+        requestLoadMore(button, { userInitiated: true });
     });
+
+    $(function () {
+        initializeAutoLoadButtons(document);
+    });
+
+    if (typeof window !== 'undefined') {
+        window.myArticlesRefreshAutoLoadButtons = initializeAutoLoadButtons;
+    }
 
 })(jQuery);

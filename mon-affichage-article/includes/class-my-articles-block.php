@@ -70,6 +70,7 @@ class My_Articles_Block {
             'slideshow_pause_on_mouse_enter',
             'slideshow_show_navigation',
             'slideshow_show_pagination',
+            'load_more_auto',
         );
 
         foreach ( $filtered as $key => $raw_value ) {

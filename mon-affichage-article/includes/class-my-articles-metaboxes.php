@@ -192,6 +192,10 @@ class My_Articles_Metaboxes {
             ],
             'description' => __('Ne s\'applique pas au mode Diaporama.', 'mon-articles'),
         ]);
+        $this->render_field('load_more_auto', esc_html__('Déclencher automatiquement le bouton « Charger plus »', 'mon-articles'), 'checkbox', $opts, [
+            'default'     => 0,
+            'description' => __('Lance la requête dès que le bouton devient visible. Se désactive automatiquement si le navigateur est incompatible ou après un clic manuel.', 'mon-articles'),
+        ]);
         $this->render_field(
             'enable_keyword_search',
             esc_html__( 'Activer la recherche par mots-clés', 'mon-articles' ),
@@ -576,6 +580,7 @@ class My_Articles_Metaboxes {
             ? min( 50, max( 0, absint( $input['posts_per_page'] ) ) )
             : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';
+        $sanitized['load_more_auto'] = isset( $input['load_more_auto'] ) ? 1 : 0;
         $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value' );
         $sanitized['orderby'] = isset( $input['orderby'] ) && in_array( $input['orderby'], $allowed_orderby, true ) ? $input['orderby'] : 'date';
         $order = isset( $input['order'] ) ? strtoupper( (string) $input['order'] ) : 'DESC';

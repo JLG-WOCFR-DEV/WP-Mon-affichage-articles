@@ -761,6 +761,20 @@
                         }),
                         disabled: isAttributeLocked('pagination_mode'),
                     }),
+                    attributes.pagination_mode === 'load_more'
+                        ? el(ToggleControl, {
+                              label: __('Activer le déclenchement automatique', 'mon-articles'),
+                              help: __(
+                                  'Déclenche le bouton « Charger plus » dès qu’il devient visible à l’écran.',
+                                  'mon-articles'
+                              ),
+                              checked: !!attributes.load_more_auto,
+                              onChange: withLockedGuard('load_more_auto', function (value) {
+                                  setAttributes({ load_more_auto: !!value });
+                              }),
+                              disabled: isAttributeLocked('load_more_auto'),
+                          })
+                        : null,
                     el(SelectControl, {
                         label: __('Ratio des vignettes', 'mon-articles'),
                         value: thumbnailAspectRatio,

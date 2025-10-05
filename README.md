@@ -57,7 +57,8 @@ Le panneau « Module » de l’éditeur propose un sélecteur de modèle ; le
 Options principales :
 
 - **Filtre de catégorie** : afficher une liste de catégories si l'option est activée.
-- **Pagination** : modes `load_more` (bouton « Charger plus ») ou `numbered` (pagination classique).
+- **Pagination** : modes `load_more` (bouton « Charger plus », avec option d’automatisation) ou `numbered` (pagination classique).
+- **Chargement automatique** : en activant `load_more_auto`, le bouton « Charger plus » déclenche la requête dès qu’il devient visible (IntersectionObserver ou repli via l’événement de scroll). Le module désactive automatiquement ce comportement si le navigateur est incompatible ou après un clic manuel du visiteur.
 - **Articles épinglés** : possibilité d'épingler certains articles, avec option d'ignorer les filtres.
 - **Lazy load** : chargement différé des images pour optimiser les performances.
 - **Étiquette ARIA** : personnalisez le libellé utilisé par les lecteurs d'écran depuis le panneau **Accessibilité** (par défaut, le titre du module sélectionné est proposé en suggestion).
