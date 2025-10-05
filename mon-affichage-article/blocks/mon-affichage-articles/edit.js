@@ -25,6 +25,9 @@
     var BaseControl = wp.components.BaseControl;
     var ColorIndicator = wp.components.ColorIndicator;
     var Placeholder = wp.components.Placeholder;
+    var BlockVariationPicker = wp.blockEditor
+        ? wp.blockEditor.BlockVariationPicker
+        : wp.editor && wp.editor.BlockVariationPicker;
     var Spinner = wp.components.Spinner;
     var Notice = wp.components.Notice;
     var Fragment = wp.element.Fragment;
@@ -33,6 +36,7 @@
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
     var useCallback = wp.element.useCallback;
+    var useMemo = wp.element.useMemo;
     var useAsyncDebounce =
         wp.compose && (wp.compose.useAsyncDebounce || wp.compose.useDebounce)
             ? wp.compose.useAsyncDebounce || wp.compose.useDebounce
@@ -52,6 +56,45 @@
     var PreviewPane = window.myArticlesBlocks && window.myArticlesBlocks.PreviewPane ? window.myArticlesBlocks.PreviewPane : null;
 
     var designPresets = window.myArticlesDesignPresets || {};
+    var VARIATION_ICON_FALLBACK = 'screenoptions';
+
+    function getVariationIconSlug(iconDefinition) {
+        if (!iconDefinition) {
+            return VARIATION_ICON_FALLBACK;
+        }
+
+        if (typeof iconDefinition === 'string') {
+            return iconDefinition;
+        }
+
+        if (typeof iconDefinition === 'object') {
+            if (typeof iconDefinition.src === 'string') {
+                return iconDefinition.src;
+            }
+
+            if (typeof iconDefinition.icon === 'string') {
+                return iconDefinition.icon;
+            }
+        }
+
+        return VARIATION_ICON_FALLBACK;
+    }
+
+    function buildVariationIcon(baseIconSlug, isLocked) {
+        var iconSlug = typeof baseIconSlug === 'string' && baseIconSlug ? baseIconSlug : VARIATION_ICON_FALLBACK;
+        var baseIconClass = 'dashicons dashicons-' + iconSlug;
+
+        if (!isLocked) {
+            return el('span', { className: 'my-articles-variation-icon ' + baseIconClass, 'aria-hidden': true });
+        }
+
+        return el(
+            'span',
+            { className: 'my-articles-variation-icon my-articles-variation-icon--locked', 'aria-hidden': true },
+            el('span', { className: 'my-articles-variation-icon__base ' + baseIconClass }),
+            el('span', { className: 'my-articles-variation-icon__lock dashicons dashicons-lock' })
+        );
+    }
     var DESIGN_PRESET_FALLBACK = 'custom';
     var DEFAULT_THUMBNAIL_ASPECT_RATIO = '16/9';
     var THUMBNAIL_ASPECT_RATIO_OPTIONS = [
@@ -105,6 +148,55 @@
             var _useState4 = useState(true);
             var hasMoreResults = _useState4[0];
             var setHasMoreResults = _useState4[1];
+
+            var blockVariations = useSelect(
+                function (select) {
+                    var blocksStore = select('core/blocks');
+
+                    if (!blocksStore || typeof blocksStore.getBlockVariations !== 'function') {
+                        return [];
+                    }
+
+                    var variations = blocksStore.getBlockVariations('mon-affichage/articles', 'block') || [];
+
+                    if (!Array.isArray(variations)) {
+                        return [];
+                    }
+
+                    return variations;
+                },
+                []
+            );
+
+            var decoratedVariations = useMemo(
+                function () {
+                    return blockVariations.map(function (variation) {
+                        var presetId =
+                            variation && variation.attributes && variation.attributes.design_preset
+                                ? variation.attributes.design_preset
+                                : variation && variation.name
+                                ? variation.name
+                                : '';
+                        var preset = presetId && designPresets[presetId] ? designPresets[presetId] : null;
+                        var isLockedPreset = preset ? !!preset.locked : false;
+                        var baseIconSlug = getVariationIconSlug(variation && variation.icon);
+                        var next = Object.assign({}, variation, {
+                            icon: buildVariationIcon(baseIconSlug, isLockedPreset),
+                        });
+
+                        if (preset && preset.description) {
+                            next.description = preset.description;
+                        }
+
+                        if (preset && preset.label) {
+                            next.title = preset.label;
+                        }
+
+                        return next;
+                    });
+                },
+                [blockVariations, designPresets]
+            );
 
             var thumbnailAspectRatio = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
 
@@ -334,6 +426,41 @@
                     setAttributes(updates);
                 },
                 [setAttributes]
+            );
+
+            var handleVariationSelect = useCallback(
+                function (variation) {
+                    if (!variation) {
+                        return;
+                    }
+
+                    var variationAttributes = (variation && variation.attributes) || {};
+
+                    var resolvedPresetId = variationAttributes.design_preset;
+
+                    if (!resolvedPresetId && variation && variation.name) {
+                        resolvedPresetId = variation.name;
+                    }
+
+                    if (resolvedPresetId) {
+                        handleDesignPresetChange(resolvedPresetId);
+                    }
+
+                    var extraAttributes = {};
+
+                    Object.keys(variationAttributes).forEach(function (key) {
+                        if (key === 'design_preset') {
+                            return;
+                        }
+
+                        extraAttributes[key] = variationAttributes[key];
+                    });
+
+                    if (Object.keys(extraAttributes).length > 0) {
+                        setAttributes(extraAttributes);
+                    }
+                },
+                [handleDesignPresetChange, setAttributes]
             );
 
             var displayMode = attributes.display_mode || 'grid';
@@ -1154,8 +1281,28 @@
 
             var previewContent;
 
+            var shouldShowVariationPicker =
+                !!BlockVariationPicker && !attributes.instanceId && decoratedVariations.length > 0;
+
             if (!attributes.instanceId) {
                 var placeholderChildren = [];
+
+                if (shouldShowVariationPicker) {
+                    placeholderChildren.push(
+                        el(
+                            'div',
+                            { key: 'preset-picker', className: 'my-articles-block-variation-picker' },
+                            el(BlockVariationPicker, {
+                                icon: 'screenoptions',
+                                label: __('Choisir un preset de design', 'mon-articles'),
+                                instructions: __('Sélectionnez un style pour commencer.', 'mon-articles'),
+                                variations: decoratedVariations,
+                                onSelect: handleVariationSelect,
+                                allowSkip: false,
+                            })
+                        )
+                    );
+                }
 
                 if (listData && listData.isResolving && instances.length === 0) {
                     placeholderChildren.push(el(Spinner, { key: 'spinner' }));

@@ -22,3 +22,34 @@
 .wp-block-mon-affichage-articles .my-articles-block-placeholder__actions .components-button {
     text-decoration: none;
 }
+
+.wp-block-mon-affichage-articles .my-articles-block-variation-picker {
+    margin-bottom: 20px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-variation-icon {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-variation-icon__base {
+    font-size: 24px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-variation-icon__lock {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    font-size: 16px;
+    line-height: 1;
+    background: #ffffff;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 0 0 2px #ffffff;
+    color: #1f2937;
+}
