@@ -1078,7 +1078,7 @@ public function prepare_load_more_articles_response( array $args ) {
         }
     }
 
-    public function handle_clean_object_term_cache_invalidation( $object_ids, $taxonomies, $clean_terms = true ) {
+    public function handle_clean_object_term_cache_invalidation( $object_ids, $taxonomies, $clean_terms = null ) {
         if ( empty( $object_ids ) ) {
             return;
         }
