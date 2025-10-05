@@ -395,6 +395,8 @@ class My_Articles_Metaboxes {
             ]
         );
 
+        $this->render_field('module_padding_top', esc_html__('Marge intérieure haute (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
+        $this->render_field('module_padding_bottom', esc_html__('Marge intérieure basse (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('module_padding_left', esc_html__('Marge intérieure gauche (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('module_padding_right', esc_html__('Marge intérieure droite (px)', 'mon-articles'), 'number', $opts, ['default' => 0, 'min' => 0, 'max' => 200]);
         $this->render_field('gap_size', esc_html__('Espacement des vignettes (Grille)', 'mon-articles'), 'number', $opts, ['default' => 25, 'min' => 0, 'max' => 50]);
@@ -668,6 +670,12 @@ class My_Articles_Metaboxes {
         $sanitized['columns_ultrawide'] = isset( $input['columns_ultrawide'] )
             ? min( 8, max( 1, absint( $input['columns_ultrawide'] ) ) )
             : 4;
+        $sanitized['module_padding_top'] = isset( $input['module_padding_top'] )
+            ? min( 200, max( 0, absint( $input['module_padding_top'] ) ) )
+            : 0;
+        $sanitized['module_padding_bottom'] = isset( $input['module_padding_bottom'] )
+            ? min( 200, max( 0, absint( $input['module_padding_bottom'] ) ) )
+            : 0;
         $sanitized['module_padding_left'] = isset( $input['module_padding_left'] )
             ? min( 200, max( 0, absint( $input['module_padding_left'] ) ) )
             : 0;

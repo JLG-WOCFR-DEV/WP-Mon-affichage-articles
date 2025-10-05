@@ -70,6 +70,8 @@ class My_Articles_Settings {
         add_settings_field( 'display_mode', __( 'Mode d\'affichage', 'mon-articles' ), array( $this, 'display_mode_callback' ), 'my-articles-admin', 'setting_section_layout' );
         add_settings_field( 'desktop_columns', __( 'Articles visibles (Desktop)', 'mon-articles' ), array( $this, 'desktop_columns_callback' ), 'my-articles-admin', 'setting_section_layout' );
         add_settings_field( 'mobile_columns', __( 'Articles visibles (Mobile)', 'mon-articles' ), array( $this, 'mobile_columns_callback' ), 'my-articles-admin', 'setting_section_layout' );
+        add_settings_field( 'module_margin_top', __( 'Marge en haut (px)', 'mon-articles' ), array( $this, 'module_margin_top_callback' ), 'my-articles-admin', 'setting_section_layout' );
+        add_settings_field( 'module_margin_bottom', __( 'Marge en bas (px)', 'mon-articles' ), array( $this, 'module_margin_bottom_callback' ), 'my-articles-admin', 'setting_section_layout' );
         add_settings_field( 'module_margin_left', __( 'Marge à gauche (px)', 'mon-articles' ), array( $this, 'module_margin_left_callback' ), 'my-articles-admin', 'setting_section_layout' );
         add_settings_field( 'module_margin_right', __( 'Marge à droite (px)', 'mon-articles' ), array( $this, 'module_margin_right_callback' ), 'my-articles-admin', 'setting_section_layout' );
         
@@ -134,6 +136,12 @@ class My_Articles_Settings {
         $sanitized_input['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
         $sanitized_input['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
         $sanitized_input['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
+        $sanitized_input['module_margin_top'] = isset( $input['module_margin_top'] )
+            ? min( 200, max( 0, intval( $input['module_margin_top'] ) ) )
+            : 0;
+        $sanitized_input['module_margin_bottom'] = isset( $input['module_margin_bottom'] )
+            ? min( 200, max( 0, intval( $input['module_margin_bottom'] ) ) )
+            : 0;
         $sanitized_input['module_margin_left'] = isset( $input['module_margin_left'] )
             ? min( 200, max( 0, intval( $input['module_margin_left'] ) ) )
             : 0;
@@ -200,6 +208,8 @@ class My_Articles_Settings {
     public function module_bg_color_callback() { $this->render_color_input('module_bg_color', 'rgba(255,255,255,0)', true); }
     public function vignette_bg_color_callback() { $this->render_color_input('vignette_bg_color', '#ffffff'); }
     public function title_wrapper_bg_color_callback() { $this->render_color_input('title_wrapper_bg_color', '#ffffff'); }
+    public function module_margin_top_callback() { $this->render_number_input('module_margin_top', 0, 0, 200); }
+    public function module_margin_bottom_callback() { $this->render_number_input('module_margin_bottom', 0, 0, 200); }
     public function module_margin_left_callback() { $this->render_number_input('module_margin_left', 0, 0, 200); }
     public function module_margin_right_callback() { $this->render_number_input('module_margin_right', 0, 0, 200); }
 

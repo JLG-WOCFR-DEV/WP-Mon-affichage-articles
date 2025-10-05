@@ -950,6 +950,34 @@
                     PanelBody,
                     { title: __('Espacements & typographie', 'mon-articles'), initialOpen: false },
                     el(RangeControl, {
+                        label: __('Marge intérieure haute (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.module_padding_top, 0),
+                        min: 0,
+                        max: 200,
+                        allowReset: true,
+                        onChange: withLockedGuard('module_padding_top', function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ module_padding_top: value });
+                        }),
+                        disabled: isAttributeLocked('module_padding_top'),
+                    }),
+                    el(RangeControl, {
+                        label: __('Marge intérieure basse (px)', 'mon-articles'),
+                        value: ensureNumber(attributes.module_padding_bottom, 0),
+                        min: 0,
+                        max: 200,
+                        allowReset: true,
+                        onChange: withLockedGuard('module_padding_bottom', function (value) {
+                            if (typeof value !== 'number') {
+                                value = 0;
+                            }
+                            setAttributes({ module_padding_bottom: value });
+                        }),
+                        disabled: isAttributeLocked('module_padding_bottom'),
+                    }),
+                    el(RangeControl, {
                         label: __('Marge intérieure gauche (px)', 'mon-articles'),
                         value: ensureNumber(attributes.module_padding_left, 0),
                         min: 0,
