@@ -600,7 +600,8 @@ public function prepare_load_more_articles_response( array $args ) {
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
-        $search_term = '';
+        $search_term       = '';
+        $requested_sort    = '';
 
         if ( isset( $args['search'] ) ) {
             $raw_search = $args['search'];
@@ -611,6 +612,18 @@ public function prepare_load_more_articles_response( array $args ) {
 
             if ( is_scalar( $raw_search ) ) {
                 $search_term = sanitize_text_field( (string) $raw_search );
+            }
+        }
+
+        if ( isset( $args['sort'] ) ) {
+            $raw_sort = $args['sort'];
+
+            if ( is_array( $raw_sort ) ) {
+                $raw_sort = reset( $raw_sort );
+            }
+
+            if ( is_scalar( $raw_sort ) ) {
+                $requested_sort = sanitize_key( (string) $raw_sort );
             }
         }
 
@@ -642,6 +655,10 @@ public function prepare_load_more_articles_response( array $args ) {
 
         if ( '' !== $search_term ) {
             $normalize_context['requested_search'] = $search_term;
+        }
+
+        if ( '' !== $requested_sort ) {
+            $normalize_context['requested_sort'] = $requested_sort;
         }
 
         if ( ! empty( $requested_filters ) ) {
