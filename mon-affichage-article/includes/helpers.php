@@ -15,6 +15,10 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
     function my_articles_sanitize_color( $color, $default = '' ) {
         if ( is_string( $color ) ) {
             $color = trim( $color );
+        } elseif ( is_numeric( $color ) ) {
+            $color = (string) $color;
+        } else {
+            return $default;
         }
 
         if ( preg_match(
