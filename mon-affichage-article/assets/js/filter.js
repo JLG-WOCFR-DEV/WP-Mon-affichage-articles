@@ -189,6 +189,18 @@
         return String(value);
     }
 
+    function normalizeSortValue(value) {
+        if (typeof value === 'string') {
+            return value;
+        }
+
+        if (value === null || typeof value === 'undefined') {
+            return '';
+        }
+
+        return String(value);
+    }
+
     function prepareSearchValue(value) {
         var normalized = normalizeSearchValue(value);
 
@@ -197,6 +209,16 @@
         }
 
         return normalized.replace(/\s+/g, ' ').trim();
+    }
+
+    function sanitizeSortValue(value) {
+        var normalized = normalizeSortValue(value).trim();
+
+        if (!normalized) {
+            return '';
+        }
+
+        return normalized.replace(/[^a-z0-9_\-]+/gi, '').toLowerCase();
     }
 
     function updateSearchFormState(form, value) {
@@ -240,6 +262,13 @@
             current_url: currentUrl,
         };
 
+        var currentSort = '';
+        if (wrapper && wrapper.length) {
+            currentSort = sanitizeSortValue(wrapper.attr('data-sort'));
+        }
+
+        requestData.sort = currentSort;
+
         if (typeof searchQuery === 'string') {
             requestData.search = searchQuery;
         }
@@ -266,6 +295,23 @@
 
         if (instanceId) {
             return 'my_articles_search_' + instanceId;
+        }
+
+        return '';
+    }
+
+    function getSortQueryParamKey(wrapper, instanceId) {
+        var key = '';
+
+        if (wrapper && wrapper.length) {
+            key = wrapper.attr('data-sort-param') || '';
+            if (key) {
+                return String(key);
+            }
+        }
+
+        if (instanceId) {
+            return 'my_articles_sort_' + instanceId;
         }
 
         return '';
@@ -476,12 +522,25 @@
 
         var wrapperElement = (wrapper && wrapper.length) ? wrapper.get(0) : null;
         var sanitizedSearch = '';
+        var sanitizedSort = '';
 
         if (typeof responseData.search_query === 'string') {
             sanitizedSearch = responseData.search_query;
         }
 
         syncWrapperSearchState(wrapper, sanitizedSearch);
+
+        if (typeof responseData.sort === 'string') {
+            sanitizedSort = sanitizeSortValue(responseData.sort);
+        }
+
+        if (!sanitizedSort && wrapper && wrapper.length) {
+            sanitizedSort = sanitizeSortValue(wrapper.attr('data-sort'));
+        }
+
+        if (wrapper && wrapper.length) {
+            wrapper.attr('data-sort', sanitizedSort);
+        }
 
         var searchForm = getSearchForm(wrapper);
         if (searchForm.length) {
@@ -524,6 +583,8 @@
                 .attr('data-pinned-ids', pinnedIds)
                 .attr('data-category', categorySlug)
                 .attr('data-search', sanitizedSearch)
+                .attr('data-sort', sanitizedSort)
+                .data('sort', sanitizedSort)
                 .text(loadMoreText);
 
             loadMoreContainer.append(newLoadMoreBtn);
@@ -549,6 +610,9 @@
 
             loadMoreBtn.data('search', sanitizedSearch);
             loadMoreBtn.attr('data-search', sanitizedSearch);
+
+            loadMoreBtn.data('sort', sanitizedSort);
+            loadMoreBtn.attr('data-sort', sanitizedSort);
 
             if (totalPages > 1) {
                 if (nextPage < 2) {
@@ -600,6 +664,10 @@
             var searchParamKey = getSearchQueryParamKey(wrapper, instanceId, searchForm);
             if (searchParamKey) {
                 queryParams[searchParamKey] = sanitizedSearch || null;
+            }
+            var sortParamKey = getSortQueryParamKey(wrapper, instanceId);
+            if (sortParamKey) {
+                queryParams[sortParamKey] = sanitizedSort || null;
             }
             queryParams['paged_' + instanceId] = '1';
             updateInstanceQueryParams(instanceId, queryParams);

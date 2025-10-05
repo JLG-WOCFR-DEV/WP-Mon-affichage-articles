@@ -4,7 +4,7 @@ describe('filter endpoint interactions', () => {
 
     const setupDom = () => {
         document.body.innerHTML = `
-            <div class="my-articles-wrapper" data-instance-id="42">
+            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date" data-sort-param="my_articles_sort_42">
                 <ul class="my-articles-filter-nav">
                     <li class="active"><button data-category="all" aria-pressed="true">Tous</button></li>
                     <li><button data-category="news">Actualités</button></li>
@@ -75,6 +75,7 @@ describe('filter endpoint interactions', () => {
                         total_pages: 2,
                         next_page: 3,
                         pinned_ids: '5,7',
+                        sort: 'comment_count',
                         pagination_html: '<nav class="my-articles-pagination">Page 1</nav>',
                     },
                 });
@@ -97,6 +98,8 @@ describe('filter endpoint interactions', () => {
             expect.objectContaining({ method: 'POST' })
         );
 
+        expect(ajaxOptions.data.sort).toBe('date');
+
         const contentHtml = document.querySelector('.my-articles-grid-content').innerHTML;
         expect(contentHtml).toContain('Filtré');
 
@@ -107,6 +110,10 @@ describe('filter endpoint interactions', () => {
         const loadMoreButton = document.querySelector('.my-articles-load-more-btn');
         expect(loadMoreButton).not.toBeNull();
         expect(loadMoreButton.getAttribute('data-pinned-ids')).toBe('5,7');
+        expect(loadMoreButton.getAttribute('data-sort')).toBe('comment_count');
+
+        const wrapper = document.querySelector('.my-articles-wrapper');
+        expect(wrapper.getAttribute('data-sort')).toBe('comment_count');
     });
 
     it('shows API error messages when the request fails', () => {

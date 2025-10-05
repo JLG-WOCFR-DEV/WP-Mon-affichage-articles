@@ -47,6 +47,7 @@ final class ControllerRoutesTest extends TestCase
                         'next_page'   => 2,
                         'pinned_ids'  => '1,2',
                         'search_query' => 'hello world',
+                        'sort'        => 'comment_count',
                     );
                 },
             )
@@ -59,6 +60,7 @@ final class ControllerRoutesTest extends TestCase
         $request->set_param('category', 'news');
         $request->set_param('current_url', 'http://example.com/page');
         $request->set_param('search', ' hello   world ');
+        $request->set_param('sort', 'comment_count');
 
         $response = $controller->filter_articles($request);
 
@@ -70,6 +72,7 @@ final class ControllerRoutesTest extends TestCase
                 'next_page'   => 2,
                 'pinned_ids'  => '1,2',
                 'search_query' => 'hello world',
+                'sort'        => 'comment_count',
             ),
             $response->get_data()
         );
@@ -81,6 +84,7 @@ final class ControllerRoutesTest extends TestCase
                 'current_url'  => 'http://example.com/page',
                 'http_referer' => 'http://example.com/ref',
                 'search'       => ' hello   world ',
+                'sort'         => 'comment_count',
             ),
             $capturedArgs
         );
@@ -143,6 +147,7 @@ final class ControllerRoutesTest extends TestCase
                         'total_pages' => 5,
                         'next_page'   => 4,
                         'search_query' => 'top stories',
+                        'sort'        => 'title',
                     );
                 },
             )
@@ -155,6 +160,7 @@ final class ControllerRoutesTest extends TestCase
         $request->set_param('pinned_ids', '1,2,3');
         $request->set_param('category', 'featured');
         $request->set_param('search', 'top stories');
+        $request->set_param('sort', 'title');
 
         $response = $controller->load_more_articles($request);
 
@@ -166,6 +172,7 @@ final class ControllerRoutesTest extends TestCase
                 'total_pages' => 5,
                 'next_page'   => 4,
                 'search_query' => 'top stories',
+                'sort'        => 'title',
             ),
             $response->get_data()
         );
@@ -176,6 +183,7 @@ final class ControllerRoutesTest extends TestCase
                 'pinned_ids'  => '1,2,3',
                 'category'    => 'featured',
                 'search'      => 'top stories',
+                'sort'        => 'title',
             ),
             $capturedArgs
         );

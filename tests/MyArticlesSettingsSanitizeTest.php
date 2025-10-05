@@ -189,4 +189,36 @@ final class MyArticlesSettingsSanitizeTest extends TestCase
             'Allowed ratios should survive normalization.'
         );
     }
+
+    public function test_normalize_instance_options_applies_requested_sort_to_orderby(): void
+    {
+        $normalized = My_Articles_Shortcode::normalize_instance_options(
+            array(
+                'orderby' => 'date',
+                'sort' => 'date',
+                'meta_key' => '',
+            ),
+            array('requested_sort' => 'comment_count')
+        );
+
+        self::assertSame('comment_count', $normalized['orderby']);
+        self::assertSame('comment_count', $normalized['sort']);
+    }
+
+    public function test_normalize_instance_options_falls_back_when_sort_requires_meta_key(): void
+    {
+        $defaults = My_Articles_Shortcode::get_default_options();
+
+        $normalized = My_Articles_Shortcode::normalize_instance_options(
+            array(
+                'orderby' => 'date',
+                'sort' => 'date',
+                'meta_key' => '',
+            ),
+            array('requested_sort' => 'meta_value')
+        );
+
+        self::assertSame($defaults['orderby'], $normalized['orderby']);
+        self::assertSame($defaults['sort'], $normalized['sort']);
+    }
 }

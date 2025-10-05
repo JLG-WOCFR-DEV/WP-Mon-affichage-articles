@@ -27,14 +27,14 @@
     }
 
     function toggleMetaKeyOption() {
-        var $orderbySelect = $('#orderby');
+        var $sortSelect = $('#sort');
         var $metaKeyOption = $('.meta-key-option');
 
         if (!$metaKeyOption.length) {
             return;
         }
 
-        if ($orderbySelect.length && $orderbySelect.val() === 'meta_value') {
+        if ($sortSelect.length && $sortSelect.val() === 'meta_value') {
             $metaKeyOption.show();
         } else {
             $metaKeyOption.hide();
@@ -150,7 +150,7 @@
     // Écouteurs d'événements
     $(document).on('change', '#pinned_show_badge', toggleBadgeOptions);
     $(document).on('change', '#show_excerpt', toggleExcerptOptions);
-    $(document).on('change', '#orderby', toggleMetaKeyOption);
+    $(document).on('change', '#sort', toggleMetaKeyOption);
     $(document).on('change', '#display_mode', toggleSlideshowOptions);
 
     // Exécution au chargement de la page pour définir l'état initial

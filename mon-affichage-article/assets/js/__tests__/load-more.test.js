@@ -5,7 +5,7 @@ describe('load-more endpoint interactions', () => {
 
     const setupDom = () => {
         document.body.innerHTML = `
-            <div class="my-articles-wrapper" data-instance-id="42">
+            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date">
                 <div class="my-articles-grid-content">
                     <article class="my-article-item">Initial</article>
                 </div>
@@ -17,6 +17,7 @@ describe('load-more endpoint interactions', () => {
                         data-total-pages="4"
                         data-pinned-ids=""
                         data-category="news"
+                        data-sort="date"
                         data-auto-load="0"
                     >Charger plus</button>
                 </div>
@@ -92,6 +93,7 @@ describe('load-more endpoint interactions', () => {
                         total_pages: 4,
                         next_page: 3,
                         pinned_ids: '10,11',
+                        sort: 'comment_count',
                     },
                 });
             }
@@ -113,6 +115,8 @@ describe('load-more endpoint interactions', () => {
             expect.objectContaining({ method: 'POST' })
         );
 
+        expect(ajaxOptions.data.sort).toBe('date');
+
         const articles = document.querySelectorAll('.my-articles-grid-content .my-article-item');
         expect(articles).toHaveLength(2);
         expect(articles[1].textContent).toBe('Nouveau');
@@ -124,6 +128,10 @@ describe('load-more endpoint interactions', () => {
         const buttonNode = document.querySelector('.my-articles-load-more-btn');
         expect(buttonNode.getAttribute('data-pinned-ids')).toBe('10,11');
         expect(buttonNode.getAttribute('data-paged')).toBe('3');
+        expect(buttonNode.getAttribute('data-sort')).toBe('comment_count');
+
+        const wrapper = document.querySelector('.my-articles-wrapper');
+        expect(wrapper.getAttribute('data-sort')).toBe('comment_count');
     });
 
     it('displays server error messages when the request fails', () => {
@@ -158,7 +166,7 @@ describe('load-more endpoint interactions', () => {
 
     it('installs an observer and triggers automatic loading when enabled', () => {
         document.body.innerHTML = `
-            <div class="my-articles-wrapper" data-instance-id="21">
+            <div class="my-articles-wrapper" data-instance-id="21" data-sort="date">
                 <div class="my-articles-grid-content">
                     <article class="my-article-item">Initial</article>
                 </div>
@@ -170,6 +178,7 @@ describe('load-more endpoint interactions', () => {
                         data-total-pages="3"
                         data-pinned-ids=""
                         data-category="news"
+                        data-sort="date"
                         data-auto-load="1"
                     >Charger plus</button>
                 </div>
@@ -196,6 +205,7 @@ describe('load-more endpoint interactions', () => {
                         total_pages: 3,
                         next_page: 3,
                         pinned_ids: '',
+                        sort: 'date',
                     },
                 });
             }

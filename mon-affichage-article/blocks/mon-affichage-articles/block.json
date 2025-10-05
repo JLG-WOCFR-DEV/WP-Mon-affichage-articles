@@ -31,6 +31,10 @@
             "type": "integer",
             "default": 10
         },
+        "sort": {
+            "type": "string",
+            "default": "date"
+        },
         "orderby": {
             "type": "string",
             "default": "date"
