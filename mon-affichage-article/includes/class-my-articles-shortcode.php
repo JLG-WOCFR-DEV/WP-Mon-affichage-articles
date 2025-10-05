@@ -1267,6 +1267,13 @@ class My_Articles_Shortcode {
         $load_more_rest_endpoint   = esc_url_raw( rest_url( 'my-articles/v1/load-more' ) );
         $nonce_refresh_endpoint    = esc_url_raw( rest_url( 'my-articles/v1/nonce' ) );
 
+        $global_instrumentation = my_articles_get_instrumentation_settings();
+        $instrumentation_payload = array(
+            'enabled' => ! empty( $global_instrumentation['enabled'] ),
+            'channel' => $global_instrumentation['channel'],
+            'fetchUrl' => esc_url_raw( rest_url( 'my-articles/v1/track' ) ),
+        );
+
         if ( ! empty( $options['show_category_filter'] ) || ! empty( $options['enable_keyword_search'] ) ) {
             wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
             wp_localize_script(
@@ -1281,6 +1288,7 @@ class My_Articles_Shortcode {
                     'countSingle' => __( '%s article affiché.', 'mon-articles' ),
                     'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
                     'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
+                    'instrumentation' => $instrumentation_payload,
                 ]
             );
         }
@@ -1304,6 +1312,7 @@ class My_Articles_Shortcode {
                     'addedPlural'  => __( '%s articles ajoutés.', 'mon-articles' ),
                     'noAdditional' => __( 'Aucun article supplémentaire.', 'mon-articles' ),
                     'none'         => __( 'Aucun article à afficher.', 'mon-articles' ),
+                    'instrumentation' => $instrumentation_payload,
                 ]
             );
         }

@@ -530,6 +530,21 @@ public function prepare_filter_articles_response( array $args ) {
             )
         );
 
+        if ( my_articles_is_instrumentation_enabled() ) {
+            do_action(
+                'my_articles_track_interaction',
+                'filter_response',
+                array(
+                    'instance_id'  => $instance_id,
+                    'category'     => $active_category,
+                    'search_query' => $options['search_query'],
+                    'sort'         => $options['sort'],
+                    'total_pages'  => $total_pages,
+                    'next_page'    => $next_page,
+                )
+            );
+        }
+
         return $response;
     }
 
@@ -756,6 +771,22 @@ public function prepare_load_more_articles_response( array $args ) {
                 )
             )
         );
+
+        if ( my_articles_is_instrumentation_enabled() ) {
+            do_action(
+                'my_articles_track_interaction',
+                'load_more_response',
+                array(
+                    'instance_id'  => $instance_id,
+                    'category'     => $active_category,
+                    'search_query' => $options['search_query'],
+                    'sort'         => $options['sort'],
+                    'requested_page' => $paged,
+                    'next_page'    => $response['next_page'],
+                    'total_pages'  => $response['total_pages'],
+                )
+            );
+        }
 
         return $response;
     }

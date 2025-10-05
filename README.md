@@ -66,6 +66,63 @@ Options principales :
 
 > ℹ️ **Diaporama et mode illimité** : lorsque `display_mode` vaut `slideshow`, la récupération des contenus respecte toujours le plafond défini par l'option `unlimited_query_cap` (50 par défaut via le filtre `my_articles_unlimited_batch_size`). Cela évite de charger un nombre excessif d'articles d'un coup tout en conservant un mode quasi illimité.
 
+## Instrumentation et suivi
+
+### Activer le suivi dans l'administration
+
+Le menu **Tuiles – LCV** comporte désormais une section « Instrumentation » :
+
+- **Activer l’instrumentation** : cochez cette case pour exposer des événements front-end lors des interactions (filtre, chargement progressif).
+- **Canal de sortie** : choisissez le mode de collecte associé (`console`, `dataLayer` ou `fetch`). Lorsque « fetch » est sélectionné, un POST JSON est envoyé vers l’endpoint REST `my-articles/v1/track`.
+
+Les scripts front-end reçoivent automatiquement la configuration via `window.myArticlesFilter.instrumentation` et `window.myArticlesLoadMore.instrumentation`.
+
+### Écouter les événements côté front
+
+Deux événements personnalisés sont systématiquement émis, quel que soit le canal choisi :
+
+- `my-articles:filter`
+- `my-articles:load-more`
+
+Chaque événement fournit un objet `detail` contenant au minimum :
+
+- `phase` (`request`, `success`, `error`)
+- `instanceId`
+- `category`, `search`, `sort`
+- Des informations spécifiques (`totalPages`, `addedCount`, `requestedPage`, etc.) suivant le contexte.
+
+Exemple de consommation côté navigateur :
+
+```js
+window.addEventListener('my-articles:filter', (event) => {
+    if (event.detail.phase === 'success') {
+        console.log('Filtre appliqué', event.detail);
+    }
+});
+
+window.addEventListener('my-articles:load-more', (event) => {
+    if (event.detail.phase === 'error') {
+        // Relayer vers une solution d'analytics
+    }
+});
+```
+
+Vous pouvez également fournir un callback personnalisé via `myArticlesFilter.instrumentation.callback` ou `myArticlesLoadMore.instrumentation.callback` pour centraliser le traitement.
+
+### Relayer les interactions côté serveur
+
+Lorsque l’instrumentation est active, chaque réponse réussie déclenche également l’action PHP suivante :
+
+```php
+add_action( 'my_articles_track_interaction', function( $event, $context ) {
+    if ( 'load_more_response' === $event ) {
+        // Transmettre $context vers un outil externe
+    }
+} );
+```
+
+Si le canal « fetch » est sélectionné, les requêtes envoyées par le front à `wp-json/my-articles/v1/track` déclenchent la même action avec un troisième argument (`WP_REST_Request`) permettant de valider/adapter le flux.
+
 ## Structure du projet
 
 ```

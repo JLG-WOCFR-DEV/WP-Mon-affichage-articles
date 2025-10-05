@@ -5,6 +5,153 @@
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
     var pendingNonceDeferred = null;
 
+    var INSTRUMENTATION_DEFAULTS = {
+        enabled: false,
+        channel: 'console',
+        fetchUrl: ''
+    };
+
+    function getInstrumentationSettings() {
+        var config = loadMoreSettings && typeof loadMoreSettings.instrumentation === 'object'
+            ? loadMoreSettings.instrumentation
+            : null;
+
+        if (!config) {
+            return INSTRUMENTATION_DEFAULTS;
+        }
+
+        var channel = typeof config.channel === 'string' ? config.channel : INSTRUMENTATION_DEFAULTS.channel;
+        var enabled = !!config.enabled;
+        var fetchUrl = typeof config.fetchUrl === 'string' ? config.fetchUrl : '';
+
+        if (!fetchUrl && loadMoreSettings && typeof loadMoreSettings.restRoot === 'string') {
+            fetchUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/track';
+        }
+
+        return {
+            enabled: enabled,
+            channel: channel,
+            fetchUrl: fetchUrl,
+            callback: typeof config.callback === 'function' ? config.callback : null
+        };
+    }
+
+    function dispatchCustomEvent(eventName, detail) {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        var eventDetail = detail || {};
+        var customEvent;
+
+        try {
+            if (typeof window.CustomEvent === 'function') {
+                customEvent = new CustomEvent(eventName, { detail: eventDetail });
+            } else if (typeof document !== 'undefined' && document && typeof document.createEvent === 'function') {
+                customEvent = document.createEvent('CustomEvent');
+                customEvent.initCustomEvent(eventName, false, false, eventDetail);
+            }
+
+            if (customEvent && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(customEvent);
+            }
+        } catch (error) {
+            if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                console.error(error);
+            }
+        }
+    }
+
+    function runEventCallbacks(eventName, detail) {
+        if (loadMoreSettings && typeof loadMoreSettings.onEvent === 'function') {
+            try {
+                loadMoreSettings.onEvent(eventName, detail);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+
+        var instrumentation = getInstrumentationSettings();
+        if (instrumentation.callback) {
+            try {
+                instrumentation.callback(eventName, detail);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+    }
+
+    function routeInstrumentation(eventName, detail) {
+        var instrumentation = getInstrumentationSettings();
+
+        if (!instrumentation.enabled) {
+            return;
+        }
+
+        var payload = {
+            event: eventName,
+            detail: detail
+        };
+
+        if (instrumentation.channel === 'dataLayer') {
+            if (typeof window !== 'undefined') {
+                window.dataLayer = window.dataLayer || [];
+                try {
+                    window.dataLayer.push(payload);
+                } catch (error) {
+                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                        console.error(error);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        if (instrumentation.channel === 'fetch') {
+            if (typeof window !== 'undefined' && typeof window.fetch === 'function' && instrumentation.fetchUrl) {
+                var headers = { 'Content-Type': 'application/json' };
+                if (loadMoreSettings && typeof loadMoreSettings.restNonce === 'string' && loadMoreSettings.restNonce.length) {
+                    headers['X-WP-Nonce'] = loadMoreSettings.restNonce;
+                }
+
+                try {
+                    window.fetch(instrumentation.fetchUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        credentials: 'same-origin',
+                        body: JSON.stringify(payload)
+                    }).catch(function () {
+                        return null;
+                    });
+                } catch (error) {
+                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                        console.error(error);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        if (typeof console !== 'undefined' && typeof console.log === 'function') {
+            console.log('[my-articles]', eventName, detail);
+        }
+    }
+
+    function emitLoadMoreInteraction(phase, detail) {
+        var payload = $.extend({ phase: phase }, detail || {});
+        var eventName = 'my-articles:load-more';
+
+        dispatchCustomEvent(eventName, payload);
+        runEventCallbacks(eventName, payload);
+        routeInstrumentation(eventName, payload);
+    }
+
     function getNonceEndpoint(settings) {
         if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
             return settings.nonceEndpoint;
@@ -752,11 +899,25 @@
         }
 
         if (!requestUrl) {
+            instrumentationDetail.errorMessage = 'missing-endpoint';
+            emitLoadMoreInteraction('error', instrumentationDetail);
             return;
         }
 
         var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
         var hasRetried = false;
+
+        var instrumentationDetail = {
+            instanceId: instanceId,
+            requestedPage: requestedPage,
+            totalPages: totalPages,
+            category: typeof category === 'string' ? category : '',
+            search: searchValue,
+            sort: sortValue,
+            autoTriggered: isAutoTrigger,
+            requestUrl: requestUrl,
+            hadNonceRefresh: false
+        };
 
         if (state) {
             state.isFetching = true;
@@ -768,20 +929,42 @@
             }
         }
 
+        function extractErrorMessage(jqXHR, response) {
+            if (response && response.data && response.data.message) {
+                return response.data.message;
+            }
+
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                return jqXHR.responseJSON.data.message;
+            }
+
+            if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
+                return jqXHR.statusText;
+            }
+
+            return '';
+        }
+
+        function extractStatus(jqXHR, response) {
+            if (jqXHR && typeof jqXHR.status === 'number') {
+                return jqXHR.status;
+            }
+
+            if (response && response.data && typeof response.data.status === 'number') {
+                return response.data.status;
+            }
+
+            if (response && typeof response.status === 'number') {
+                return response.status;
+            }
+
+            return 0;
+        }
+
         function handleErrorResponse(jqXHR, response) {
             finalizeRequest();
 
-            var errorMessage = '';
-
-            if (response && response.data && response.data.message) {
-                errorMessage = response.data.message;
-            } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                errorMessage = jqXHR.responseJSON.data.message;
-            }
-
-            if (!errorMessage) {
-                errorMessage = fallbackMessage;
-            }
+            var errorMessage = extractErrorMessage(jqXHR, response) || fallbackMessage;
 
             var resetText = loadMoreSettings.loadMoreText || originalButtonText;
             button.text(resetText);
@@ -791,6 +974,11 @@
             if (isAutoTrigger) {
                 disableAutoLoad(button, 'error', true);
             }
+
+            instrumentationDetail.errorMessage = errorMessage;
+            instrumentationDetail.status = extractStatus(jqXHR, response);
+            instrumentationDetail.hadNonceRefresh = hasRetried;
+            emitLoadMoreInteraction('error', instrumentationDetail);
 
             if (typeof console !== 'undefined' && typeof console.error === 'function') {
                 console.error(errorMessage);
@@ -842,6 +1030,26 @@
                 .attr('aria-live', 'polite')
                 .text(feedbackMessage)
                 .show();
+
+            var totalPagesResponse = parseInt(responseData.total_pages, 10);
+            if (isNaN(totalPagesResponse)) {
+                totalPagesResponse = totalPages;
+            }
+
+            var nextPageResponse = parseInt(responseData.next_page, 10);
+            if (isNaN(nextPageResponse)) {
+                nextPageResponse = 0;
+            }
+
+            instrumentationDetail.totalPages = totalPagesResponse;
+            instrumentationDetail.nextPage = nextPageResponse;
+            instrumentationDetail.addedCount = addedCount;
+            instrumentationDetail.totalArticles = totalArticles;
+            instrumentationDetail.pinnedIds = typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '';
+            instrumentationDetail.hadNonceRefresh = hasRetried;
+            instrumentationDetail.errorMessage = '';
+            instrumentationDetail.status = 0;
+            emitLoadMoreInteraction('success', instrumentationDetail);
 
             if (!isAutoTrigger) {
                 focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
@@ -953,6 +1161,7 @@
                         wrapper.addClass('is-loading');
                     }
                     clearFeedback(wrapper);
+                    emitLoadMoreInteraction('request', instrumentationDetail);
                 },
                 success: function (response) {
                     if (response && response.success) {
@@ -962,6 +1171,7 @@
 
                     if (!hasRetried && isInvalidNonceResponse(null, response)) {
                         hasRetried = true;
+                        instrumentationDetail.hadNonceRefresh = true;
                         refreshRestNonce(loadMoreSettings)
                             .done(function () {
                                 sendAjaxRequest();
@@ -978,6 +1188,7 @@
                 error: function (jqXHR) {
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
+                        instrumentationDetail.hadNonceRefresh = true;
                         refreshRestNonce(loadMoreSettings)
                             .done(function () {
                                 sendAjaxRequest();

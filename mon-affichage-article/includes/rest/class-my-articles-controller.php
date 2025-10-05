@@ -94,6 +94,19 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/track',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => array( $this, 'track_interaction' ),
+                    'permission_callback' => '__return_true',
+                    'args'                => $this->get_track_args(),
+                ),
+            )
+        );
     }
 
     /**
@@ -188,6 +201,25 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'type'              => 'string',
                 'required'          => true,
                 'sanitize_callback' => 'sanitize_key',
+            ),
+        );
+    }
+
+    /**
+     * Argument definitions for the tracking endpoint.
+     *
+     * @return array
+     */
+    protected function get_track_args() {
+        return array(
+            'event'  => array(
+                'type'              => 'string',
+                'required'          => true,
+                'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'detail' => array(
+                'type'     => 'object',
+                'required' => false,
             ),
         );
     }
@@ -353,6 +385,63 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'data'    => array(
                     'nonce' => wp_create_nonce( 'wp_rest' ),
                 ),
+            )
+        );
+    }
+
+    /**
+     * Handles instrumentation events sent from the front-end.
+     *
+     * @param WP_REST_Request $request REST request instance.
+     *
+     * @return WP_REST_Response|WP_Error
+     */
+    public function track_interaction( WP_REST_Request $request ) {
+        $nonce_validation = $this->validate_request_nonce( $request );
+
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
+        }
+
+        if ( ! my_articles_is_instrumentation_enabled() ) {
+            return new WP_Error(
+                'my_articles_tracking_disabled',
+                __( 'L\'instrumentation est désactivée.', 'mon-articles' ),
+                array( 'status' => 403 )
+            );
+        }
+
+        $event_name = (string) $request->get_param( 'event' );
+        $event_name = sanitize_text_field( $event_name );
+
+        if ( '' === $event_name ) {
+            return new WP_Error(
+                'my_articles_invalid_tracking_event',
+                __( 'Événement de suivi invalide.', 'mon-articles' ),
+                array( 'status' => 400 )
+            );
+        }
+
+        $detail = $request->get_param( 'detail' );
+
+        if ( is_null( $detail ) ) {
+            $detail = array();
+        } elseif ( ! is_array( $detail ) ) {
+            $detail = (array) $detail;
+        }
+
+        /**
+         * Allow developers to react to front-end tracking events.
+         *
+         * @param string           $event_name Event identifier.
+         * @param array            $detail     Event payload.
+         * @param WP_REST_Request  $request    Original REST request.
+         */
+        do_action( 'my_articles_track_interaction', $event_name, $detail, $request );
+
+        return rest_ensure_response(
+            array(
+                'success' => true,
             )
         );
     }
