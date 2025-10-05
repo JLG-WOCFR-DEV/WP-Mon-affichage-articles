@@ -294,7 +294,10 @@
             "description": "Affiche ou masque la catégorie associée."
         }
     },
-    "editorScript": "file:./edit.js",
+    "editorScript": [
+        "file:./preview.js",
+        "file:./edit.js"
+    ],
     "editorStyle": "file:./editor.css",
     "style": "file:./style.css"
 }

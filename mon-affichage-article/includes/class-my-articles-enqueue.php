@@ -52,7 +52,12 @@ class My_Articles_Enqueue {
         wp_enqueue_script( 'my-articles-responsive-layout' );
         wp_enqueue_script( 'my-articles-debug-helper' );
 
-        $editor_handle = 'mon-affichage-articles-editor-script';
+        $editor_handle  = 'mon-affichage-articles-editor-script';
+        $preview_handle = 'mon-affichage-articles-preview';
+
+        if ( function_exists( 'wp_set_script_translations' ) && wp_script_is( $preview_handle, 'registered' ) ) {
+            wp_set_script_translations( $preview_handle, 'mon-articles', plugin_dir_path( MY_ARTICLES_PLUGIN_DIR ) . 'languages' );
+        }
 
         if ( class_exists( 'My_Articles_Shortcode' ) && function_exists( 'wp_add_inline_script' ) && wp_script_is( $editor_handle, 'registered' ) ) {
             if ( function_exists( 'wp_set_script_translations' ) ) {
