@@ -245,6 +245,109 @@ if (!function_exists('get_post_types')) {
     }
 }
 
+if (!function_exists('get_object_taxonomies')) {
+    function get_object_taxonomies($post_type, $output = 'names')
+    {
+        global $mon_articles_test_taxonomies;
+
+        if (!is_array($mon_articles_test_taxonomies)) {
+            return array();
+        }
+
+        $post_type = my_articles_normalize_post_type($post_type ?? '');
+
+        if (!isset($mon_articles_test_taxonomies[$post_type])) {
+            return array();
+        }
+
+        $taxonomies = $mon_articles_test_taxonomies[$post_type];
+
+        if ('objects' === $output) {
+            return $taxonomies;
+        }
+
+        if (!is_array($taxonomies)) {
+            return array();
+        }
+
+        return array_keys($taxonomies);
+    }
+}
+
+if (!function_exists('get_terms')) {
+    function get_terms($args = array(), $deprecated = '')
+    {
+        global $mon_articles_test_terms;
+
+        if (!is_array($args)) {
+            $args = array();
+        }
+
+        if (!is_array($mon_articles_test_terms)) {
+            return array();
+        }
+
+        $taxonomy = '';
+
+        if (isset($args['taxonomy'])) {
+            $taxonomy = is_array($args['taxonomy']) ? reset($args['taxonomy']) : (string) $args['taxonomy'];
+        }
+
+        if (!$taxonomy || !isset($mon_articles_test_terms[$taxonomy])) {
+            return array();
+        }
+
+        return $mon_articles_test_terms[$taxonomy];
+    }
+}
+
+if (!function_exists('taxonomy_exists')) {
+    function taxonomy_exists($taxonomy)
+    {
+        global $mon_articles_test_taxonomies;
+
+        $taxonomy = sanitize_key($taxonomy ?? '');
+
+        if (!$taxonomy) {
+            return false;
+        }
+
+        if (is_array($mon_articles_test_taxonomies)) {
+            foreach ($mon_articles_test_taxonomies as $taxonomies) {
+                if (is_array($taxonomies) && isset($taxonomies[$taxonomy])) {
+                    return true;
+                }
+            }
+        }
+
+        return in_array($taxonomy, array('category', 'post_tag'), true);
+    }
+}
+
+if (!function_exists('is_object_in_taxonomy')) {
+    function is_object_in_taxonomy($post_type, $taxonomy)
+    {
+        global $mon_articles_test_taxonomies;
+
+        $post_type = my_articles_normalize_post_type($post_type ?? '');
+        $taxonomy  = sanitize_key($taxonomy ?? '');
+
+        if (!$post_type || !$taxonomy) {
+            return false;
+        }
+
+        if (is_array($mon_articles_test_taxonomies) && isset($mon_articles_test_taxonomies[$post_type])) {
+            $taxonomies = $mon_articles_test_taxonomies[$post_type];
+
+            if (is_array($taxonomies) && isset($taxonomies[$taxonomy])) {
+                return true;
+            }
+        }
+
+        return in_array($taxonomy, array('category', 'post_tag'), true);
+    }
+}
+
 if (!function_exists('post_type_exists')) {
     function post_type_exists($post_type)
     {

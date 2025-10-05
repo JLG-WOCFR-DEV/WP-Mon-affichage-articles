@@ -134,6 +134,16 @@ class My_Articles_Metaboxes {
         $this->render_field('post_type', esc_html__('Source du contenu', 'mon-articles'), 'post_type_select', $opts);
         $this->render_field('taxonomy', esc_html__('Filtrer par taxonomie', 'mon-articles'), 'taxonomy_select', $opts);
         $this->render_field('term', esc_html__('Filtrer par catégorie/terme', 'mon-articles'), 'term_select', $opts);
+        $this->render_field(
+            'tax_filters',
+            esc_html__( 'Filtres additionnels', 'mon-articles' ),
+            'taxonomy_filter_select',
+            $opts,
+            [
+                'post_type'    => $opts['post_type'] ?? '',
+                'description'  => esc_html__( 'Sélectionnez des couples taxonomie + terme appliqués en permanence au module.', 'mon-articles' ),
+            ]
+        );
         $this->render_field('counting_behavior', esc_html__('Comportement du comptage', 'mon-articles'), 'select', $opts, [ 'default' => 'exact', 'options' => [ 'exact' => __('Nombre exact', 'mon-articles'), 'auto_fill' => __('Remplissage automatique (Grille complète)', 'mon-articles') ] ]);
         $this->render_field(
             'posts_per_page',
@@ -568,6 +578,98 @@ class My_Articles_Metaboxes {
             case 'term_select':
                 echo '<div id="term_selector_wrapper" style="display:none;"><select id="term_selector" name="' . $name . '" data-current="' . esc_attr($value) . '"></select></div>';
                 break;
+            case 'taxonomy_filter_select':
+                $normalized_filters = array();
+
+                if ( is_array( $value ) ) {
+                    foreach ( $value as $filter ) {
+                        if ( is_array( $filter ) ) {
+                            $tax = isset( $filter['taxonomy'] ) ? sanitize_key( $filter['taxonomy'] ) : '';
+                            $slug = isset( $filter['slug'] ) ? sanitize_title( $filter['slug'] ) : '';
+
+                            if ( $tax && $slug ) {
+                                $normalized_filters[] = $tax . ':' . $slug;
+                            }
+                        } elseif ( is_string( $filter ) && strpos( $filter, ':' ) !== false ) {
+                            $normalized_filters[] = sanitize_text_field( $filter );
+                        }
+                    }
+                } elseif ( is_string( $value ) ) {
+                    $decoded_filters = json_decode( $value, true );
+
+                    if ( is_array( $decoded_filters ) ) {
+                        foreach ( $decoded_filters as $filter ) {
+                            if ( is_array( $filter ) ) {
+                                $tax = isset( $filter['taxonomy'] ) ? sanitize_key( $filter['taxonomy'] ) : '';
+                                $slug = isset( $filter['slug'] ) ? sanitize_title( $filter['slug'] ) : '';
+
+                                if ( $tax && $slug ) {
+                                    $normalized_filters[] = $tax . ':' . $slug;
+                                }
+                            } elseif ( is_string( $filter ) && strpos( $filter, ':' ) !== false ) {
+                                $normalized_filters[] = sanitize_text_field( $filter );
+                            }
+                        }
+                    } elseif ( strpos( $value, ':' ) !== false ) {
+                        $normalized_filters[] = sanitize_text_field( $value );
+                    }
+                }
+
+                $normalized_filters = array_values( array_unique( $normalized_filters ) );
+
+                $selected_post_type = isset( $args['post_type'] ) ? my_articles_normalize_post_type( $args['post_type'] ) : '';
+                $taxonomy_objects   = array();
+
+                if ( $selected_post_type ) {
+                    $taxonomy_objects = get_object_taxonomies( $selected_post_type, 'objects' );
+                }
+
+                if ( empty( $taxonomy_objects ) ) {
+                    $taxonomy_objects = array();
+                }
+
+                if ( empty( $taxonomy_objects ) ) {
+                    echo '<p class="description">' . esc_html__( 'Aucune taxonomie disponible pour ce type de contenu.', 'mon-articles' ) . '</p>';
+                    break;
+                }
+
+                echo '<select id="' . esc_attr( $id ) . '" name="' . $name . '[]" multiple="multiple" size="8" style="width: 100%;">';
+
+                foreach ( $taxonomy_objects as $taxonomy ) {
+                    if ( ! $taxonomy instanceof WP_Taxonomy ) {
+                        continue;
+                    }
+
+                    $terms = get_terms(
+                        array(
+                            'taxonomy'   => $taxonomy->name,
+                            'hide_empty' => false,
+                        )
+                    );
+
+                    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+                        continue;
+                    }
+
+                    $label = $taxonomy->labels && isset( $taxonomy->labels->name ) ? $taxonomy->labels->name : $taxonomy->name;
+
+                    echo '<optgroup label="' . esc_attr( $label ) . '">';
+
+                    foreach ( $terms as $term ) {
+                        $option_value = $taxonomy->name . ':' . $term->slug;
+                        $selected     = in_array( $option_value, $normalized_filters, true ) ? ' selected="selected"' : '';
+                        echo '<option value="' . esc_attr( $option_value ) . '"' . $selected . '>' . esc_html( $term->name ) . '</option>';
+                    }
+
+                    echo '</optgroup>';
+                }
+
+                echo '</select>';
+
+                if ( isset( $args['description'] ) ) {
+                    echo '<p class="description" style="font-style: italic;">' . esc_html( $args['description'] ) . '</p>';
+                }
+                break;
         }
         echo '</td></tr></table>';
     }
@@ -616,6 +718,11 @@ class My_Articles_Metaboxes {
         if ( isset($input['filter_categories']) && is_array($input['filter_categories']) ) {
             $sanitized['filter_categories'] = array_map('absint', $input['filter_categories']);
         }
+
+        $sanitized['tax_filters'] = My_Articles_Shortcode::sanitize_filter_pairs(
+            $input['tax_filters'] ?? array(),
+            $sanitized['post_type']
+        );
 
         $sanitized['pinned_posts'] = array();
         if ( isset($input['pinned_posts']) && is_array($input['pinned_posts']) ) {

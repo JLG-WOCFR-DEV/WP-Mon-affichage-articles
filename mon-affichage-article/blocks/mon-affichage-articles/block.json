@@ -43,6 +43,10 @@
             "type": "string",
             "default": "DESC"
         },
+        "filters": {
+            "type": "array",
+            "default": []
+        },
         "meta_key": {
             "type": "string",
             "default": ""

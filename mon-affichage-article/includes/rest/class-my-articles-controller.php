@@ -113,6 +113,11 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_title',
             ),
+            'filters'     => array(
+                'type'              => 'array',
+                'required'          => false,
+                'sanitize_callback' => array( $this, 'sanitize_filters_arg' ),
+            ),
             'current_url' => array(
                 'type'              => 'string',
                 'required'          => false,
@@ -158,6 +163,11 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'type'              => 'string',
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_title',
+            ),
+            'filters'     => array(
+                'type'              => 'array',
+                'required'          => false,
+                'sanitize_callback' => array( $this, 'sanitize_filters_arg' ),
             ),
             'search'      => array(
                 'type'              => 'string',
@@ -259,6 +269,7 @@ class My_Articles_Controller extends WP_REST_Controller {
             array(
                 'instance_id'  => $request->get_param( 'instance_id' ),
                 'category'     => $request->get_param( 'category' ),
+                'filters'      => $request->get_param( 'filters' ),
                 'current_url'  => $request->get_param( 'current_url' ),
                 'http_referer' => $request->get_header( 'referer' ),
                 'search'       => $request->get_param( 'search' ),
@@ -293,6 +304,7 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'paged'       => $request->get_param( 'paged' ),
                 'pinned_ids'  => $request->get_param( 'pinned_ids' ),
                 'category'    => $request->get_param( 'category' ),
+                'filters'     => $request->get_param( 'filters' ),
                 'search'      => $request->get_param( 'search' ),
                 'sort'        => $request->get_param( 'sort' ),
             )
@@ -575,4 +587,26 @@ class My_Articles_Controller extends WP_REST_Controller {
 
         return $overrides;
     }
+
+    /**
+     * Sanitizes the filters parameter, accepting JSON strings or arrays.
+     *
+     * @param mixed            $value   Raw value provided by the request.
+     * @param WP_REST_Request  $request REST request instance.
+     * @param string           $param   Parameter name.
+     *
+     * @return array<int, array{taxonomy:string,slug:string}> Sanitized filters.
+     */
+    public function sanitize_filters_arg( $value, $request, $param ) {
+        if ( is_string( $value ) ) {
+            $decoded = json_decode( $value, true );
+
+            if ( is_array( $decoded ) ) {
+                $value = $decoded;
+            }
+        }
+
+        return My_Articles_Shortcode::sanitize_filter_pairs( $value );
+    }
 }
+

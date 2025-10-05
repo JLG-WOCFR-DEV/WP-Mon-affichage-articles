@@ -29,6 +29,7 @@
     var RangeControl = wp.components.RangeControl;
     var TextControl = wp.components.TextControl;
     var BaseControl = wp.components.BaseControl;
+    var FormTokenField = wp.components.FormTokenField;
     var ColorIndicator = wp.components.ColorIndicator;
     var Placeholder = wp.components.Placeholder;
     var Spinner = wp.components.Spinner;
@@ -63,6 +64,29 @@
               };
     var PreviewPane = window.myArticlesBlocks && window.myArticlesBlocks.PreviewPane ? window.myArticlesBlocks.PreviewPane : null;
 
+    if (!FormTokenField) {
+        FormTokenField = function (props) {
+            var tokens = Array.isArray(props.value) ? props.value : [];
+
+            return el(TextControl, {
+                label: props.label,
+                value: tokens.join(', '),
+                onChange: function (value) {
+                    if (typeof props.onChange === 'function') {
+                        var nextTokens = (value || '')
+                            .split(',')
+                            .map(function (item) {
+                                return item.trim();
+                            });
+                        props.onChange(nextTokens);
+                    }
+                },
+                placeholder: props.placeholder,
+                help: props.help,
+            });
+        };
+    }
+
     var designPresets = window.myArticlesDesignPresets || {};
     var DESIGN_PRESET_FALLBACK = 'custom';
     var DEFAULT_THUMBNAIL_ASPECT_RATIO = '16/9';
@@ -86,6 +110,41 @@
         }
 
         return value;
+    }
+
+    function normalizeFilterTokens(tokens) {
+        if (!Array.isArray(tokens)) {
+            return [];
+        }
+
+        var normalized = [];
+
+        tokens.forEach(function (token) {
+            if (typeof token !== 'string') {
+                return;
+            }
+
+            var parts = token.split(':');
+
+            if (parts.length !== 2) {
+                return;
+            }
+
+            var taxonomy = parts[0].trim().toLowerCase();
+            var slug = parts[1].trim().toLowerCase();
+
+            if (!taxonomy || !slug) {
+                return;
+            }
+
+            var sanitized = taxonomy + ':' + slug;
+
+            if (normalized.indexOf(sanitized) === -1) {
+                normalized.push(sanitized);
+            }
+        });
+
+        return normalized;
     }
 
     var MODULE_QUERY_DEFAULTS = {
@@ -180,6 +239,26 @@
                     }
                 },
                 [attributes.thumbnail_aspect_ratio]
+            );
+
+            useEffect(
+                function () {
+                    var normalized = normalizeFilterTokens(attributes.filters || []);
+
+                    if (normalized.length !== (attributes.filters || []).length) {
+                        setAttributes({ filters: normalized });
+                        return;
+                    }
+
+                    var differs = normalized.some(function (token, index) {
+                        return token !== (attributes.filters || [])[index];
+                    });
+
+                    if (differs) {
+                        setAttributes({ filters: normalized });
+                    }
+                },
+                [attributes.filters]
             );
 
             var canEditPosts = useSelect(function (select) {
@@ -1129,6 +1208,19 @@
                     })
                 ),
                 colorSettingsPanel,
+                el(
+                    PanelBody,
+                    { title: __('Filtres additionnels', 'mon-articles'), initialOpen: false },
+                    el(FormTokenField, {
+                        label: __('Taxonomies forcées', 'mon-articles'),
+                        value: normalizeFilterTokens(attributes.filters || []),
+                        onChange: function (tokens) {
+                            setAttributes({ filters: normalizeFilterTokens(tokens) });
+                        },
+                        placeholder: __('Exemple : category:news', 'mon-articles'),
+                        help: __('Ajoutez des couples « taxonomie:slug » pour restreindre définitivement la requête.', 'mon-articles'),
+                    })
+                ),
                 el(
                     PanelBody,
                     { title: __('Tri & ordre', 'mon-articles'), initialOpen: false },

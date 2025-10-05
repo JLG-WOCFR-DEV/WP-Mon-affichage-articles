@@ -297,6 +297,72 @@ final class MyArticlesMetaboxesTest extends TestCase
 
         $_POST = array();
     }
+
+    public function test_save_meta_data_sanitizes_tax_filters(): void
+    {
+        global $mon_articles_test_saved_meta,
+            $mon_articles_test_valid_nonces,
+            $mon_articles_test_taxonomies,
+            $mon_articles_test_terms,
+            $_POST;
+
+        $mon_articles_test_saved_meta = array();
+        $mon_articles_test_valid_nonces = array(
+            'valid-nonce' => array('my_articles_save_meta_box_data'),
+        );
+
+        $mon_articles_test_taxonomies = array(
+            'post' => array(
+                'category' => (object) array(
+                    'name'   => 'category',
+                    'labels' => (object) array('name' => 'Catégories'),
+                ),
+                'post_tag' => (object) array(
+                    'name'   => 'post_tag',
+                    'labels' => (object) array('name' => 'Étiquettes'),
+                ),
+            ),
+        );
+
+        $mon_articles_test_terms = array(
+            'category' => array(
+                (object) array('term_id' => 1, 'name' => 'Actualités', 'slug' => 'news'),
+            ),
+            'post_tag' => array(
+                (object) array('term_id' => 2, 'name' => 'À la une', 'slug' => 'featured'),
+            ),
+        );
+
+        $_POST = array(
+            'my_articles_meta_box_nonce' => 'valid-nonce',
+            '_my_articles_settings'      => array(
+                'post_type'    => 'post',
+                'taxonomy'     => 'category',
+                'term'         => 'news',
+                'tax_filters'  => array('category:news', 'post_tag:featured', 'unknown:term'),
+            ),
+        );
+
+        $metaboxes = My_Articles_Metaboxes::get_instance();
+        $metaboxes->save_meta_data(777);
+
+        $saved = $mon_articles_test_saved_meta[777]['_my_articles_settings'] ?? null;
+
+        self::assertIsArray($saved, 'Expected sanitized settings to be stored.');
+        self::assertArrayHasKey('tax_filters', $saved);
+        self::assertSame(
+            array(
+                array('taxonomy' => 'category', 'slug' => 'news'),
+                array('taxonomy' => 'post_tag', 'slug' => 'featured'),
+            ),
+            $saved['tax_filters'],
+            'Unexpected sanitized taxonomy filters.'
+        );
+
+        $_POST = array();
+        $mon_articles_test_taxonomies = array();
+        $mon_articles_test_terms = array();
+    }
 }
 
 }

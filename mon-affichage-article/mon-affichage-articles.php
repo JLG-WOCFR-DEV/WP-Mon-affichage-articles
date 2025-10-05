@@ -238,6 +238,7 @@ final class Mon_Affichage_Articles {
 public function prepare_filter_articles_response( array $args ) {
         $instance_id   = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $category_slug = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
+        $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
         $raw_http_referer = isset( $args['http_referer'] ) ? (string) $args['http_referer'] : '';
         $search_term   = '';
@@ -340,6 +341,10 @@ public function prepare_filter_articles_response( array $args ) {
             $normalize_context['requested_sort'] = $requested_sort;
         }
 
+        if ( ! empty( $requested_filters ) ) {
+            $normalize_context['requested_filters'] = $requested_filters;
+        }
+
         if ( '' !== $requested_sort ) {
             $normalize_context['requested_sort'] = $requested_sort;
         }
@@ -373,6 +378,9 @@ public function prepare_filter_articles_response( array $args ) {
         $resolved_taxonomy = $options['resolved_taxonomy'];
         $default_term      = $options['default_term'];
         $active_category   = $options['term'];
+        $active_filters    = isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
+            ? $options['active_tax_filters']
+            : array();
 
         $cache_extra_parts = array();
 
@@ -382,6 +390,10 @@ public function prepare_filter_articles_response( array $args ) {
 
         if ( ! empty( $options['sort'] ) ) {
             $cache_extra_parts[] = 'sort:' . $options['sort'];
+        }
+
+        if ( ! empty( $options['active_tax_filter_keys'] ) ) {
+            $cache_extra_parts[] = 'filters:' . implode( ',', $options['active_tax_filter_keys'] );
         }
 
         $cache_key = $this->generate_response_cache_key(
@@ -429,15 +441,12 @@ public function prepare_filter_articles_response( array $args ) {
                 $count_query_args['s'] = $options['search_query'];
             }
 
-            if ( '' !== $resolved_taxonomy && '' !== $active_category && 'all' !== $active_category ) {
-                $count_query_args['tax_query'] = array(
-                    array(
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $active_category,
-                    ),
-                );
-            }
+            $count_query_args = My_Articles_Shortcode::append_active_tax_query(
+                $count_query_args,
+                $resolved_taxonomy,
+                $active_category,
+                $active_filters
+            );
 
             $count_query        = new WP_Query( $count_query_args );
             $total_regular_posts = (int) $count_query->found_posts;
@@ -514,6 +523,7 @@ public function prepare_filter_articles_response( array $args ) {
             'pagination_html' => $pagination_html,
             'search_query'    => $options['search_query'],
             'sort'            => $options['sort'],
+            'filters'         => $active_filters,
         );
 
         $this->set_cached_response(
@@ -574,6 +584,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $instance_id = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
+        $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
         $search_term = '';
 
         if ( isset( $args['search'] ) ) {
@@ -618,6 +629,10 @@ public function prepare_load_more_articles_response( array $args ) {
             $normalize_context['requested_search'] = $search_term;
         }
 
+        if ( ! empty( $requested_filters ) ) {
+            $normalize_context['requested_filters'] = $requested_filters;
+        }
+
         $options = My_Articles_Shortcode::normalize_instance_options(
             $options_meta,
             $normalize_context
@@ -658,6 +673,9 @@ public function prepare_load_more_articles_response( array $args ) {
         }
 
         $active_category = isset( $options['term'] ) ? $options['term'] : '';
+        $active_filters  = isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
+            ? $options['active_tax_filters']
+            : array();
 
         $cache_extra_parts = array();
 
@@ -671,6 +689,10 @@ public function prepare_load_more_articles_response( array $args ) {
 
         if ( ! empty( $seen_pinned_ids ) ) {
             $cache_extra_parts[] = implode( ',', array_map( 'absint', $seen_pinned_ids ) );
+        }
+
+        if ( ! empty( $options['active_tax_filter_keys'] ) ) {
+            $cache_extra_parts[] = 'filters:' . implode( ',', $options['active_tax_filter_keys'] );
         }
 
         $cache_extra = implode( '|', $cache_extra_parts );
@@ -741,6 +763,7 @@ public function prepare_load_more_articles_response( array $args ) {
             'next_page'    => $next_page,
             'search_query' => $options['search_query'],
             'sort'         => $options['sort'],
+            'filters'      => $active_filters,
         );
 
         $this->set_cached_response(
