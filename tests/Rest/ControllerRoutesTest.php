@@ -189,6 +189,160 @@ final class ControllerRoutesTest extends TestCase
         );
     }
 
+    public function test_load_more_route_sorts_articles_by_requested_sort(): void
+    {
+        global $mon_articles_test_post_type_map, $mon_articles_test_post_status_map, $mon_articles_test_post_meta_map;
+        global $mon_articles_test_wp_query_factory, $mon_articles_test_wp_cache, $mon_articles_test_transients, $mon_articles_test_transients_store;
+
+        $instanceId = 105;
+
+        $previousPostTypeMap      = $mon_articles_test_post_type_map ?? null;
+        $previousPostStatusMap    = $mon_articles_test_post_status_map ?? null;
+        $previousPostMetaMap      = $mon_articles_test_post_meta_map ?? null;
+        $previousFactory          = $mon_articles_test_wp_query_factory ?? null;
+        $previousCache            = $mon_articles_test_wp_cache ?? null;
+        $previousTransients       = $mon_articles_test_transients ?? null;
+        $previousTransientsStore  = $mon_articles_test_transients_store ?? null;
+
+        $shortcodeReflection = new \ReflectionClass(\My_Articles_Shortcode::class);
+        $normalizedProperty  = $shortcodeReflection->getProperty('normalized_options_cache');
+        $normalizedProperty->setAccessible(true);
+        $previousNormalizedCache = $normalizedProperty->getValue();
+        $normalizedProperty->setValue(null, array());
+
+        $matchingProperty = $shortcodeReflection->getProperty('matching_pinned_ids_cache');
+        $matchingProperty->setAccessible(true);
+        $previousMatchingCache = $matchingProperty->getValue();
+        $matchingProperty->setValue(null, array());
+
+        $mon_articles_test_post_type_map = array($instanceId => 'mon_affichage');
+        $mon_articles_test_post_status_map = array($instanceId => 'publish');
+        $mon_articles_test_post_meta_map = array(
+            $instanceId => array(
+                '_my_articles_settings' => array(
+                    'post_type'            => 'post',
+                    'display_mode'         => 'grid',
+                    'pagination_mode'      => 'load_more',
+                    'posts_per_page'       => 2,
+                    'orderby'              => 'date',
+                    'order'                => 'DESC',
+                    'show_category'        => 0,
+                    'show_author'          => 0,
+                    'show_date'            => 0,
+                    'show_excerpt'         => 0,
+                    'enable_keyword_search'=> 0,
+                ),
+            ),
+        );
+
+        $mon_articles_test_wp_cache = array();
+        $mon_articles_test_transients = array();
+        $mon_articles_test_transients_store = array();
+
+        $fixtures = array(
+            array('ID' => 201, 'post_title' => 'Alpha',   'post_date' => '2024-01-01 00:00:00'),
+            array('ID' => 202, 'post_title' => 'Bravo',   'post_date' => '2024-01-03 00:00:00'),
+            array('ID' => 203, 'post_title' => 'Charlie', 'post_date' => '2024-01-02 00:00:00'),
+        );
+
+        $recordedIds      = array();
+        $capturedOrderby  = null;
+
+        $mon_articles_test_wp_query_factory = function (array $query_args) use ($fixtures, &$recordedIds, &$capturedOrderby) {
+            if (isset($query_args['orderby']) && 'post__in' === $query_args['orderby']) {
+                $posts = array();
+
+                if (!empty($query_args['post__in']) && is_array($query_args['post__in'])) {
+                    foreach ($query_args['post__in'] as $requestedId) {
+                        foreach ($fixtures as $fixture) {
+                            if ($fixture['ID'] === $requestedId) {
+                                $posts[] = $fixture;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                return array(
+                    'posts'       => $posts,
+                    'found_posts' => count($posts),
+                );
+            }
+
+            $posts   = $fixtures;
+            $orderby = $query_args['orderby'] ?? 'date';
+            $order   = strtoupper($query_args['order'] ?? 'DESC');
+
+            if ('title' === $orderby) {
+                usort($posts, static function (array $a, array $b) use ($order) {
+                    $comparison = strcasecmp($a['post_title'], $b['post_title']);
+
+                    if (0 === $comparison) {
+                        return 0;
+                    }
+
+                    return 'ASC' === $order ? $comparison : -$comparison;
+                });
+            } elseif ('date' === $orderby) {
+                usort($posts, static function (array $a, array $b) use ($order) {
+                    $comparison = strcmp($a['post_date'], $b['post_date']);
+
+                    return 'ASC' === $order ? $comparison : -$comparison;
+                });
+            }
+
+            $limit = isset($query_args['posts_per_page']) ? (int) $query_args['posts_per_page'] : count($posts);
+            if ($limit >= 0) {
+                $limited_posts = array_slice($posts, 0, $limit);
+            } else {
+                $limited_posts = $posts;
+            }
+
+            $capturedOrderby = $orderby;
+            $recordedIds = array_map(static function (array $post): int {
+                return $post['ID'];
+            }, $limited_posts);
+
+            return array(
+                'posts'       => $limited_posts,
+                'found_posts' => count($posts),
+            );
+        };
+
+        $plugin     = \Mon_Affichage_Articles::get_instance();
+        $controller = new My_Articles_Controller($plugin);
+
+        $request = new WP_REST_Request('POST', '/my-articles/v1/load-more');
+        $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
+        $request->set_param('instance_id', $instanceId);
+        $request->set_param('paged', 1);
+        $request->set_param('sort', ' TITLE ');
+
+        try {
+            $response = $controller->load_more_articles($request);
+
+            $this->assertInstanceOf(WP_REST_Response::class, $response);
+            $this->assertSame(200, $response->get_status());
+
+            $payload = $response->get_data();
+            $this->assertIsArray($payload);
+            $this->assertArrayHasKey('sort', $payload);
+            $this->assertSame('title', $payload['sort']);
+            $this->assertSame(array(203, 202), $recordedIds);
+            $this->assertSame('title', $capturedOrderby);
+        } finally {
+            $mon_articles_test_post_type_map     = $previousPostTypeMap;
+            $mon_articles_test_post_status_map   = $previousPostStatusMap;
+            $mon_articles_test_post_meta_map     = $previousPostMetaMap;
+            $mon_articles_test_wp_query_factory  = $previousFactory;
+            $mon_articles_test_wp_cache          = $previousCache;
+            $mon_articles_test_transients        = $previousTransients;
+            $mon_articles_test_transients_store  = $previousTransientsStore;
+            $normalizedProperty->setValue(null, $previousNormalizedCache);
+            $matchingProperty->setValue(null, $previousMatchingCache);
+        }
+    }
+
     public function test_load_more_route_returns_error_from_plugin(): void
     {
         $controller = $this->createControllerWithHandlers(

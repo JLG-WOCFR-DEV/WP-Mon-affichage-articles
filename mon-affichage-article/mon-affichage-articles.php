@@ -600,8 +600,8 @@ public function prepare_load_more_articles_response( array $args ) {
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
-        $search_term    = '';
-        $requested_sort = '';
+        $search_term       = '';
+        $requested_sort    = '';
 
         if ( isset( $args['search'] ) ) {
             $raw_search = $args['search'];
