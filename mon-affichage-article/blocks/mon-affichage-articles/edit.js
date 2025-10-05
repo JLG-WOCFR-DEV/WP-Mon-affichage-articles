@@ -3,6 +3,10 @@
     var sprintf = wp.i18n.sprintf;
     var registerBlockType = wp.blocks.registerBlockType;
     var InspectorControls = wp.blockEditor ? wp.blockEditor.InspectorControls : wp.editor.InspectorControls;
+    var BlockControls =
+        wp.blockEditor && wp.blockEditor.BlockControls
+            ? wp.blockEditor.BlockControls
+            : wp.editor && wp.editor.BlockControls;
     var useBlockProps = wp.blockEditor ? wp.blockEditor.useBlockProps : function () {
         return {};
     };
@@ -16,6 +20,8 @@
         ? wp.blockEditor.useSetting || wp.blockEditor.__experimentalUseSetting
         : wp.editor && (wp.editor.useSetting || wp.editor.__experimentalUseSetting);
     var PanelBody = wp.components.PanelBody;
+    var ToolbarGroup = wp.components.ToolbarGroup;
+    var ToolbarButton = wp.components.ToolbarButton;
     var ComboboxControl = wp.components.ComboboxControl;
     var Button = wp.components.Button;
     var SelectControl = wp.components.SelectControl;
@@ -33,6 +39,12 @@
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
     var useCallback = wp.element.useCallback;
+    var useViewportMatch =
+        wp.compose && wp.compose.useViewportMatch
+            ? wp.compose.useViewportMatch
+            : function () {
+                  return false;
+              };
     var useAsyncDebounce =
         wp.compose && (wp.compose.useAsyncDebounce || wp.compose.useDebounce)
             ? wp.compose.useAsyncDebounce || wp.compose.useDebounce
@@ -88,7 +100,6 @@
         edit: function (props) {
             var attributes = props.attributes;
             var setAttributes = props.setAttributes;
-            var blockProps = useBlockProps({ className: 'my-articles-block' });
 
             var _useState = useState('');
             var searchValue = _useState[0];
@@ -105,6 +116,26 @@
             var _useState4 = useState(true);
             var hasMoreResults = _useState4[0];
             var setHasMoreResults = _useState4[1];
+
+            var _useState5 = useState(null);
+            var previewViewport = _useState5[0];
+            var setPreviewViewport = _useState5[1];
+
+            var viewportLessThanMedium = typeof useViewportMatch === 'function' ? useViewportMatch('medium', '<') : false;
+            var viewportLessThanLarge = typeof useViewportMatch === 'function' ? useViewportMatch('large', '<') : false;
+            var autoPreviewViewport = 'desktop';
+            if (viewportLessThanMedium) {
+                autoPreviewViewport = 'mobile';
+            } else if (viewportLessThanLarge) {
+                autoPreviewViewport = 'tablet';
+            }
+            var effectivePreviewViewport = previewViewport || autoPreviewViewport;
+
+            var blockClassName = 'my-articles-block';
+            if (effectivePreviewViewport) {
+                blockClassName += ' is-preview-' + effectivePreviewViewport;
+            }
+            var blockProps = useBlockProps({ className: blockClassName });
 
             var thumbnailAspectRatio = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
 
@@ -339,6 +370,71 @@
             var displayMode = attributes.display_mode || 'grid';
             var isListMode = displayMode === 'list';
             var isSlideshowMode = displayMode === 'slideshow';
+
+            var toolbarControls = null;
+            if (BlockControls && ToolbarGroup && ToolbarButton) {
+                var toolbarChildren = [];
+
+                var displayModeOptions = [
+                    { value: 'grid', label: __('Grille', 'mon-articles'), icon: 'grid-view' },
+                    { value: 'list', label: __('Liste', 'mon-articles'), icon: 'list-view' },
+                    { value: 'slideshow', label: __('Diaporama', 'mon-articles'), icon: 'images-alt2' },
+                ];
+
+                toolbarChildren.push(
+                    el(
+                        ToolbarGroup,
+                        { key: 'display-mode', label: __('Mode d’affichage', 'mon-articles') },
+                        displayModeOptions.map(function (option) {
+                            return el(ToolbarButton, {
+                                key: option.value,
+                                icon: option.icon,
+                                label: option.label,
+                                showTooltip: true,
+                                isPressed: displayMode === option.value,
+                                onClick: function () {
+                                    if (displayMode !== option.value && !isAttributeLocked('display_mode')) {
+                                        setAttributes({ display_mode: option.value });
+                                    }
+                                },
+                                disabled: isAttributeLocked('display_mode'),
+                            });
+                        })
+                    )
+                );
+
+                var previewOptions = [
+                    { key: 'auto', stateValue: null, label: __('Auto', 'mon-articles'), icon: 'controls-repeat' },
+                    { key: 'mobile', stateValue: 'mobile', label: __('Mobile', 'mon-articles'), icon: 'smartphone' },
+                    { key: 'tablet', stateValue: 'tablet', label: __('Tablette', 'mon-articles'), icon: 'tablet' },
+                    { key: 'desktop', stateValue: 'desktop', label: __('Ordinateur', 'mon-articles'), icon: 'desktop' },
+                ];
+
+                toolbarChildren.push(
+                    el(
+                        ToolbarGroup,
+                        { key: 'preview-mode', label: __('Prévisualisation', 'mon-articles') },
+                        previewOptions.map(function (option) {
+                            return el(ToolbarButton, {
+                                key: option.key,
+                                icon: option.icon,
+                                label: option.label,
+                                showTooltip: true,
+                                isPressed:
+                                    previewViewport === option.stateValue ||
+                                    (!previewViewport && option.stateValue === null),
+                                onClick: function () {
+                                    if (previewViewport !== option.stateValue) {
+                                        setPreviewViewport(option.stateValue);
+                                    }
+                                },
+                            });
+                        })
+                    )
+                );
+
+                toolbarControls = el(BlockControls, {}, toolbarChildren);
+            }
 
             var ensureNumber = function (value, fallback) {
                 return typeof value === 'number' ? value : fallback;
@@ -607,7 +703,15 @@
                         }),
                         isDesignPresetLocked
                             ? el(Notice, { status: 'info', isDismissible: false }, __('Ce modèle verrouille certains réglages de design.', 'mon-articles'))
-                            : null
+                            : null,
+                        el(
+                            'p',
+                            { className: 'components-base-control__help my-articles-block__toolbar-help' },
+                            __(
+                                'Astuce : la barre d’outils du bloc permet de changer le mode (Grille/Liste/Diaporama) et de simuler les colonnes mobile/tablette/desktop.',
+                                'mon-articles'
+                            )
+                        )
                     )
                 ),
                 el(
@@ -1232,6 +1336,7 @@
             return el(
                 Fragment,
                 null,
+                toolbarControls,
                 inspectorControls,
                 el('div', blockProps, previewContent)
             );
