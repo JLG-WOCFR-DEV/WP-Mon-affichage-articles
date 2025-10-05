@@ -247,6 +247,30 @@
         return requestData;
     }
 
+    function getSearchQueryParamKey(wrapper, instanceId, form) {
+        var key = '';
+
+        if (form && form.length) {
+            key = form.attr('data-search-param') || '';
+            if (key) {
+                return String(key);
+            }
+        }
+
+        if (wrapper && wrapper.length) {
+            key = wrapper.attr('data-search-param') || '';
+            if (key) {
+                return String(key);
+            }
+        }
+
+        if (instanceId) {
+            return 'my_articles_search_' + instanceId;
+        }
+
+        return '';
+    }
+
     function getFeedbackElement(wrapper) {
         var feedback = wrapper.find('.my-articles-feedback');
 
@@ -573,7 +597,10 @@
         if (instanceId) {
             var queryParams = {};
             queryParams['my_articles_cat_' + instanceId] = categorySlug || null;
-            queryParams['my_articles_search_' + instanceId] = sanitizedSearch || null;
+            var searchParamKey = getSearchQueryParamKey(wrapper, instanceId, searchForm);
+            if (searchParamKey) {
+                queryParams[searchParamKey] = sanitizedSearch || null;
+            }
             queryParams['paged_' + instanceId] = '1';
             updateInstanceQueryParams(instanceId, queryParams);
         }
