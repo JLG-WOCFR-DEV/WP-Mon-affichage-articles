@@ -354,6 +354,81 @@
         return normalized.replace(/[^a-z0-9_\-]+/gi, '').toLowerCase();
     }
 
+    function parseFiltersAttribute(value) {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (typeof value !== 'string') {
+            return [];
+        }
+
+        if (!value) {
+            return [];
+        }
+
+        try {
+            var decoded = JSON.parse(value);
+
+            if (Array.isArray(decoded)) {
+                return decoded;
+            }
+        } catch (error) {}
+
+        return [];
+    }
+
+    function serializeFilters(filters) {
+        var serialized = '[]';
+
+        try {
+            serialized = JSON.stringify(Array.isArray(filters) ? filters : []);
+        } catch (error) {
+            serialized = '[]';
+        }
+
+        return serialized;
+    }
+
+    function getButtonFilters(button) {
+        if (!button || !button.length) {
+            return [];
+        }
+
+        var dataValue = button.data('filters');
+
+        if (Array.isArray(dataValue)) {
+            return dataValue;
+        }
+
+        if (typeof dataValue === 'string') {
+            return parseFiltersAttribute(dataValue);
+        }
+
+        var attrValue = button.attr('data-filters');
+
+        return parseFiltersAttribute(attrValue);
+    }
+
+    function setButtonFilters(button, filters) {
+        if (!button || !button.length) {
+            return;
+        }
+
+        var serialized = serializeFilters(filters);
+        button.attr('data-filters', serialized);
+        button.data('filters', serialized);
+    }
+
+    function updateWrapperFilters(wrapper, filters) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var serialized = serializeFilters(filters);
+        wrapper.attr('data-filters', serialized);
+    }
+
     function updateInstanceQueryParams(instanceId, params) {
         if (typeof window === 'undefined' || !window.history) {
             return;
@@ -884,6 +959,7 @@
         var category = button.data('category');
         var searchValue = sanitizeSearchValue(button.data('search'));
         var sortValue = sanitizeSortValue(button.data('sort'));
+        var filters = getButtonFilters(button);
         var requestedPage = paged;
 
         if (!paged || paged <= 0) {
@@ -1077,6 +1153,12 @@
                 }
             }
 
+            if (typeof responseData.filters !== 'undefined') {
+                var updatedFilters = Array.isArray(responseData.filters) ? responseData.filters : [];
+                setButtonFilters(button, updatedFilters);
+                updateWrapperFilters(wrapper, updatedFilters);
+            }
+
             if (typeof responseData.total_pages !== 'undefined') {
                 var serverTotalPages = parseInt(responseData.total_pages, 10);
                 if (!isNaN(serverTotalPages)) {
@@ -1150,7 +1232,8 @@
                     pinned_ids: pinnedIds,
                     category: category,
                     search: searchValue,
-                    sort: sortValue
+                    sort: sortValue,
+                    filters: filters
                 },
                 beforeSend: function () {
                     var loadingText = loadMoreSettings.loadingText || originalButtonText;

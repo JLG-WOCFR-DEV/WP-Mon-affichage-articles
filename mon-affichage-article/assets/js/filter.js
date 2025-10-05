@@ -348,6 +348,82 @@
         return String(value);
     }
 
+    function parseFiltersAttribute(value) {
+        if (Array.isArray(value)) {
+            return value;
+        }
+
+        if (typeof value !== 'string') {
+            return [];
+        }
+
+        if (!value) {
+            return [];
+        }
+
+        try {
+            var decoded = JSON.parse(value);
+            if (Array.isArray(decoded)) {
+                return decoded;
+            }
+        } catch (error) {}
+
+        return [];
+    }
+
+    function getWrapperFilters(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return [];
+        }
+
+        var attr = wrapper.attr('data-filters');
+
+        if (typeof attr === 'undefined') {
+            return [];
+        }
+
+        return parseFiltersAttribute(attr);
+    }
+
+    function setWrapperFilters(wrapper, filters) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var serialized = '[]';
+
+        try {
+            serialized = JSON.stringify(Array.isArray(filters) ? filters : []);
+        } catch (error) {
+            serialized = '[]';
+        }
+
+        wrapper.attr('data-filters', serialized);
+    }
+
+    function syncLoadMoreFilters(wrapper, filters) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var loadMoreBtn = wrapper.find('.my-articles-load-more-btn').first();
+
+        if (!loadMoreBtn.length) {
+            return;
+        }
+
+        var serialized = '[]';
+
+        try {
+            serialized = JSON.stringify(Array.isArray(filters) ? filters : []);
+        } catch (error) {
+            serialized = '[]';
+        }
+
+        loadMoreBtn.data('filters', serialized);
+        loadMoreBtn.attr('data-filters', serialized);
+    }
+
     function prepareSearchValue(value) {
         var normalized = normalizeSearchValue(value);
 
@@ -415,6 +491,12 @@
         }
 
         requestData.sort = currentSort;
+
+        var activeFilters = getWrapperFilters(wrapper);
+
+        if (Array.isArray(activeFilters) && activeFilters.length > 0) {
+            requestData.filters = activeFilters;
+        }
 
         if (typeof searchQuery === 'string') {
             requestData.search = searchQuery;
@@ -715,6 +797,10 @@
             pinnedIds = responseData.pinned_ids;
         }
 
+        var responseFilters = Array.isArray(responseData.filters) ? responseData.filters : [];
+
+        setWrapperFilters(wrapper, responseFilters);
+
         var loadMoreBtn = wrapper.find('.my-articles-load-more-btn').first();
 
         if (!loadMoreBtn.length && totalPages > 1) {
@@ -723,6 +809,14 @@
                 : 'Charger plus';
             var loadMoreContainer = $('<div class="my-articles-load-more-container"></div>');
             var initialNextPage = nextPage > 0 ? nextPage : 2;
+            var serializedFilters = '[]';
+
+            try {
+                serializedFilters = JSON.stringify(responseFilters);
+            } catch (error) {
+                serializedFilters = '[]';
+            }
+
             var newLoadMoreBtn = $('<button class="my-articles-load-more-btn"></button>')
                 .attr('data-instance-id', instanceId)
                 .attr('data-paged', initialNextPage)
@@ -731,6 +825,8 @@
                 .attr('data-category', categorySlug)
                 .attr('data-search', sanitizedSearch)
                 .attr('data-sort', sanitizedSort)
+                .attr('data-filters', serializedFilters)
+                .data('filters', serializedFilters)
                 .data('sort', sanitizedSort)
                 .text(loadMoreText);
 
@@ -760,6 +856,8 @@
 
             loadMoreBtn.data('sort', sanitizedSort);
             loadMoreBtn.attr('data-sort', sanitizedSort);
+
+            syncLoadMoreFilters(wrapper, responseFilters);
 
             if (totalPages > 1) {
                 if (nextPage < 2) {

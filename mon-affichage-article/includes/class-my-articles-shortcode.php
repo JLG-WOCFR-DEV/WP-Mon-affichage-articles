@@ -191,28 +191,205 @@ class My_Articles_Shortcode {
             'term'                      => $options['term'] ?? '',
             'exclude_post_ids'          => $options['exclude_post_ids'] ?? array(),
             'search_query'              => $options['search_query'] ?? '',
+            'active_tax_filters'        => array_map( array( __CLASS__, 'build_filter_key' ), $options['active_tax_filters'] ?? array() ),
         );
 
         return md5( maybe_serialize( $relevant ) );
     }
 
-    private static function append_active_tax_query( array $args, $resolved_taxonomy, $active_category ) {
-        if ( '' === $resolved_taxonomy || '' === $active_category || 'all' === $active_category ) {
+    private static function build_filter_key( $filter ) {
+        if ( ! is_array( $filter ) ) {
+            return '';
+        }
+
+        $taxonomy = isset( $filter['taxonomy'] ) ? sanitize_key( (string) $filter['taxonomy'] ) : '';
+        $slug     = isset( $filter['slug'] ) ? sanitize_title( (string) $filter['slug'] ) : '';
+
+        if ( '' === $taxonomy || '' === $slug ) {
+            return '';
+        }
+
+        return $taxonomy . '|' . $slug;
+    }
+
+    public static function sanitize_filter_pairs( $raw_filters, $post_type = '' ) {
+        if ( is_string( $raw_filters ) ) {
+            $decoded = json_decode( $raw_filters, true );
+
+            if ( is_array( $decoded ) ) {
+                $raw_filters = $decoded;
+            }
+        }
+
+        if ( ! is_array( $raw_filters ) ) {
+            return array();
+        }
+
+        $post_type = my_articles_normalize_post_type( $post_type );
+        $is_valid_taxonomy_for_post_type = static function( $taxonomy ) use ( $post_type ) {
+            if ( '' === $taxonomy ) {
+                return false;
+            }
+
+            if ( ! taxonomy_exists( $taxonomy ) ) {
+                return false;
+            }
+
+            if ( '' === $post_type ) {
+                return true;
+            }
+
+            return is_object_in_taxonomy( $post_type, $taxonomy );
+        };
+
+        $sanitized = array();
+
+        foreach ( $raw_filters as $filter ) {
+            if ( is_string( $filter ) ) {
+                $parts = explode( ':', $filter, 2 );
+
+                if ( 2 !== count( $parts ) ) {
+                    $parts = explode( '|', $filter, 2 );
+                }
+
+                if ( 2 === count( $parts ) ) {
+                    $filter = array(
+                        'taxonomy' => $parts[0],
+                        'slug'     => $parts[1],
+                    );
+                } else {
+                    $filter = array();
+                }
+            }
+
+            if ( ! is_array( $filter ) ) {
+                continue;
+            }
+
+            $taxonomy = isset( $filter['taxonomy'] ) ? sanitize_key( (string) $filter['taxonomy'] ) : '';
+
+            $slugs = array();
+
+            if ( isset( $filter['slug'] ) ) {
+                $slugs[] = sanitize_title( (string) $filter['slug'] );
+            }
+
+            if ( isset( $filter['slugs'] ) && is_array( $filter['slugs'] ) ) {
+                foreach ( $filter['slugs'] as $candidate_slug ) {
+                    if ( is_scalar( $candidate_slug ) ) {
+                        $slugs[] = sanitize_title( (string) $candidate_slug );
+                    }
+                }
+            }
+
+            if ( isset( $filter['terms'] ) && is_array( $filter['terms'] ) ) {
+                foreach ( $filter['terms'] as $candidate_slug ) {
+                    if ( is_scalar( $candidate_slug ) ) {
+                        $slugs[] = sanitize_title( (string) $candidate_slug );
+                    }
+                }
+            }
+
+            $slugs = array_values( array_filter( array_unique( $slugs ) ) );
+
+            if ( '' === $taxonomy || empty( $slugs ) ) {
+                continue;
+            }
+
+            if ( ! $is_valid_taxonomy_for_post_type( $taxonomy ) ) {
+                continue;
+            }
+
+            foreach ( $slugs as $slug ) {
+                if ( '' === $slug || 'all' === $slug ) {
+                    continue;
+                }
+
+                $key = $taxonomy . '|' . $slug;
+
+                $sanitized[ $key ] = array(
+                    'taxonomy' => $taxonomy,
+                    'slug'     => $slug,
+                );
+            }
+        }
+
+        return array_values( $sanitized );
+    }
+
+    public static function append_active_tax_query( array $args, $resolved_taxonomy, $active_category, array $active_filters = array() ) {
+        $clauses = array();
+
+        if ( '' !== $resolved_taxonomy && '' !== $active_category && 'all' !== $active_category ) {
+            $clauses[] = array(
+                'taxonomy' => $resolved_taxonomy,
+                'field'    => 'slug',
+                'terms'    => $active_category,
+            );
+        }
+
+        if ( ! empty( $active_filters ) ) {
+            $seen_keys = array();
+
+            foreach ( $active_filters as $filter ) {
+                if ( ! is_array( $filter ) ) {
+                    continue;
+                }
+
+                $taxonomy = isset( $filter['taxonomy'] ) ? sanitize_key( (string) $filter['taxonomy'] ) : '';
+                $slug     = isset( $filter['slug'] ) ? sanitize_title( (string) $filter['slug'] ) : '';
+
+                if ( '' === $taxonomy || '' === $slug ) {
+                    continue;
+                }
+
+                $filter_key = $taxonomy . '|' . $slug;
+
+                if ( isset( $seen_keys[ $filter_key ] ) ) {
+                    continue;
+                }
+
+                $seen_keys[ $filter_key ] = true;
+
+                if ( $taxonomy === $resolved_taxonomy && $slug === $active_category ) {
+                    continue;
+                }
+
+                $clauses[] = array(
+                    'taxonomy' => $taxonomy,
+                    'field'    => 'slug',
+                    'terms'    => $slug,
+                );
+            }
+        }
+
+        $existing_tax_query = array();
+        $relation           = 'AND';
+
+        if ( isset( $args['tax_query'] ) && is_array( $args['tax_query'] ) ) {
+            foreach ( $args['tax_query'] as $key => $clause ) {
+                if ( 'relation' === $key && is_string( $clause ) ) {
+                    $relation = $clause;
+                    continue;
+                }
+
+                if ( is_array( $clause ) ) {
+                    $existing_tax_query[] = $clause;
+                }
+            }
+        }
+
+        $all_clauses = array_merge( $existing_tax_query, $clauses );
+
+        if ( empty( $all_clauses ) ) {
+            unset( $args['tax_query'] );
             return $args;
         }
 
-        $tax_query   = array();
-        $tax_query[] = array(
-            'taxonomy' => $resolved_taxonomy,
-            'field'    => 'slug',
-            'terms'    => $active_category,
+        $args['tax_query'] = array_merge(
+            array( 'relation' => $relation ),
+            $all_clauses
         );
-
-        if ( isset( $args['tax_query'] ) && is_array( $args['tax_query'] ) ) {
-            $tax_query = array_merge( $args['tax_query'], $tax_query );
-        }
-
-        $args['tax_query'] = $tax_query;
 
         return $args;
     }
@@ -254,7 +431,11 @@ class My_Articles_Shortcode {
         $resolved_taxonomy = $options['resolved_taxonomy'] ?? '';
         $active_category   = null === $active_category ? ( $options['term'] ?? '' ) : $active_category;
 
-        $query_args = self::append_active_tax_query( $query_args, $resolved_taxonomy, $active_category );
+        $active_filters = isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
+            ? $options['active_tax_filters']
+            : array();
+
+        $query_args = self::append_active_tax_query( $query_args, $resolved_taxonomy, $active_category, $active_filters );
 
         return new WP_Query( $query_args );
     }
@@ -294,7 +475,10 @@ class My_Articles_Shortcode {
             $query_args = self::append_active_tax_query(
                 $query_args,
                 $options['resolved_taxonomy'] ?? '',
-                $options['term'] ?? ''
+                $options['term'] ?? '',
+                isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
+                    ? $options['active_tax_filters']
+                    : array()
             );
         }
 
@@ -573,6 +757,7 @@ class My_Articles_Shortcode {
             'post_type' => 'post',
             'taxonomy' => '',
             'term' => '',
+            'tax_filters' => array(),
             'counting_behavior' => 'exact',
             'posts_per_page' => 10,
             'orderby' => 'date',
@@ -931,6 +1116,51 @@ class My_Articles_Shortcode {
             $filter_categories = array_values( array_filter( array_map( 'absint', $filter_categories ) ) );
         }
         $options['filter_categories'] = $filter_categories;
+
+        $available_tax_filters = self::sanitize_filter_pairs( $options['tax_filters'] ?? array(), $options['post_type'] );
+        $options['tax_filters']      = $available_tax_filters;
+
+        $requested_tax_filters = array();
+
+        if ( array_key_exists( 'requested_filters', $context ) ) {
+            $requested_tax_filters = self::sanitize_filter_pairs( $context['requested_filters'], $options['post_type'] );
+        }
+
+        $active_tax_filters = array();
+
+        if ( ! empty( $available_tax_filters ) ) {
+            $allowed_map = array();
+            foreach ( $available_tax_filters as $filter ) {
+                $key = self::build_filter_key( $filter );
+
+                if ( '' !== $key ) {
+                    $allowed_map[ $key ] = $filter;
+                }
+            }
+
+            if ( empty( $requested_tax_filters ) ) {
+                $active_tax_filters = $available_tax_filters;
+            } else {
+                foreach ( $requested_tax_filters as $filter ) {
+                    $key = self::build_filter_key( $filter );
+
+                    if ( '' !== $key && isset( $allowed_map[ $key ] ) ) {
+                        $active_tax_filters[ $key ] = $allowed_map[ $key ];
+                    }
+                }
+
+                if ( empty( $active_tax_filters ) ) {
+                    $active_tax_filters = $available_tax_filters;
+                } else {
+                    $active_tax_filters = array_values( $active_tax_filters );
+                }
+            }
+        } else {
+            $active_tax_filters = $requested_tax_filters;
+        }
+
+        $options['active_tax_filters']      = $active_tax_filters;
+        $options['active_tax_filter_keys']  = array_values( array_filter( array_map( array( __CLASS__, 'build_filter_key' ), $active_tax_filters ) ) );
 
         $pinned_ids = array();
         if ( ! empty( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
@@ -1376,6 +1606,11 @@ class My_Articles_Shortcode {
         $columns_ultrawide = max( 1, (int) $options['columns_ultrawide'] );
         $min_card_width    = max( 1, (int) $options['min_card_width'] );
 
+        $active_filters_json = wp_json_encode( $options['active_tax_filters'] ?? array() );
+        if ( false === $active_filters_json ) {
+            $active_filters_json = '[]';
+        }
+
         $wrapper_attributes = array(
             'id'                   => 'my-articles-wrapper-' . $id,
             'class'                => $wrapper_class,
@@ -1390,6 +1625,7 @@ class My_Articles_Shortcode {
             'data-search-param'    => $search_query_var,
             'data-sort'            => $options['sort'],
             'data-sort-param'      => $sort_query_var,
+            'data-filters'         => $active_filters_json,
             'role'                 => 'region',
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
@@ -1528,7 +1764,7 @@ class My_Articles_Shortcode {
                 if ( $total_pages > 1 && $paged < $total_pages) {
                     $next_page = min( $paged + 1, $total_pages );
                     $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-sort="' . esc_attr( $options['sort'] ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-sort="' . esc_attr( $options['sort'] ) . '" data-filters="' . esc_attr( $active_filters_json ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $pagination_query_args = array();

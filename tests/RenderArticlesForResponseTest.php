@@ -174,4 +174,31 @@ class RenderArticlesForResponseTest extends TestCase
 
         $mon_articles_test_filters = array();
     }
+
+    public function test_append_active_tax_query_merges_filters(): void
+    {
+        $args = array();
+        $filters = array(
+            array('taxonomy' => 'post_tag', 'slug' => 'featured'),
+            array('taxonomy' => 'category', 'slug' => 'news'),
+        );
+
+        $result = My_Articles_Shortcode::append_active_tax_query($args, 'category', 'news', $filters);
+
+        $this->assertArrayHasKey('tax_query', $result);
+        $this->assertIsArray($result['tax_query']);
+        $this->assertSame('AND', $result['tax_query']['relation']);
+
+        $clauses = $result['tax_query'];
+        unset($clauses['relation']);
+
+        $this->assertCount(2, $clauses);
+
+        $expected = array(
+            array('taxonomy' => 'category', 'field' => 'slug', 'terms' => 'news'),
+            array('taxonomy' => 'post_tag', 'field' => 'slug', 'terms' => 'featured'),
+        );
+
+        $this->assertSame($expected, array_values($clauses));
+    }
 }
