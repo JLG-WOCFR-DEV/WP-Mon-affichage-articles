@@ -576,6 +576,7 @@ class My_Articles_Shortcode {
             'counting_behavior' => 'exact',
             'posts_per_page' => 10,
             'orderby' => 'date',
+            'sort' => 'date',
             'order' => 'DESC',
             'meta_key' => '',
             'pagination_mode' => 'none',
@@ -657,6 +658,12 @@ class My_Articles_Shortcode {
         $saved_options = array_intersect_key( $saved_options, $defaults );
 
         $cached_defaults = wp_parse_args( $saved_options, $defaults );
+
+        $allowed_sort_defaults = array( 'date', 'title', 'menu_order', 'meta_value', 'comment_count', 'post__in' );
+
+        if ( empty( $cached_defaults['sort'] ) || ! in_array( $cached_defaults['sort'], $allowed_sort_defaults, true ) ) {
+            $cached_defaults['sort'] = $cached_defaults['orderby'];
+        }
 
         return $cached_defaults;
     }
@@ -823,10 +830,33 @@ class My_Articles_Shortcode {
 
         $options['term'] = sanitize_title( $options['term'] ?? '' );
 
-        $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value' );
+        $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value', 'comment_count', 'post__in' );
         $requested_orderby = isset( $options['orderby'] ) ? (string) $options['orderby'] : $defaults['orderby'];
         if ( ! in_array( $requested_orderby, $allowed_orderby, true ) ) {
             $requested_orderby = $defaults['orderby'];
+        }
+
+        $allowed_sort_values = $allowed_orderby;
+        $requested_sort      = $requested_orderby;
+
+        if ( isset( $options['sort'] ) && is_scalar( $options['sort'] ) ) {
+            $candidate_sort = (string) $options['sort'];
+
+            if ( in_array( $candidate_sort, $allowed_sort_values, true ) ) {
+                $requested_sort = $candidate_sort;
+            }
+        }
+
+        if ( array_key_exists( 'requested_sort', $context ) ) {
+            $context_sort = $context['requested_sort'];
+
+            if ( is_scalar( $context_sort ) ) {
+                $context_sort = (string) $context_sort;
+
+                if ( in_array( $context_sort, $allowed_sort_values, true ) ) {
+                    $requested_sort = $context_sort;
+                }
+            }
         }
 
         $meta_key = '';
@@ -834,15 +864,21 @@ class My_Articles_Shortcode {
             $meta_key = trim( sanitize_text_field( (string) $options['meta_key'] ) );
         }
 
-        if ( 'meta_value' === $requested_orderby ) {
+        if ( 'meta_value' === $requested_sort ) {
             if ( '' === $meta_key ) {
                 $requested_orderby = $defaults['orderby'];
+                $requested_sort    = $defaults['sort'];
             }
         } else {
             $meta_key = '';
         }
 
+        if ( in_array( $requested_sort, $allowed_orderby, true ) ) {
+            $requested_orderby = $requested_sort;
+        }
+
         $options['orderby']  = $requested_orderby;
+        $options['sort']      = $requested_sort;
         $options['meta_key'] = $meta_key;
 
         $order = isset( $options['order'] ) ? strtoupper( (string) $options['order'] ) : $defaults['order'];
@@ -1151,8 +1187,10 @@ class My_Articles_Shortcode {
 
         $category_query_var   = 'my_articles_cat_' . $id;
         $search_query_var     = 'my_articles_search_' . $id;
+        $sort_query_var       = 'my_articles_sort_' . $id;
         $requested_category   = '';
         $requested_search     = '';
+        $requested_sort       = '';
 
         if ( $allows_requested_category && isset( $_GET[ $category_query_var ] ) ) {
             $raw_requested_category = wp_unslash( $_GET[ $category_query_var ] );
@@ -1184,6 +1222,21 @@ class My_Articles_Shortcode {
             }
         }
 
+        if ( isset( $_GET[ $sort_query_var ] ) ) {
+            $raw_requested_sort = wp_unslash( $_GET[ $sort_query_var ] );
+
+            if ( is_scalar( $raw_requested_sort ) ) {
+                $requested_sort = sanitize_key( (string) $raw_requested_sort );
+            } elseif ( is_array( $raw_requested_sort ) ) {
+                foreach ( $raw_requested_sort as $raw_requested_sort_value ) {
+                    if ( is_scalar( $raw_requested_sort_value ) ) {
+                        $requested_sort = sanitize_key( (string) $raw_requested_sort_value );
+                        break;
+                    }
+                }
+            }
+        }
+
         $normalize_context = array(
             'allow_external_requested_category' => $allows_requested_category,
         );
@@ -1194,6 +1247,10 @@ class My_Articles_Shortcode {
 
         if ( '' !== $requested_search ) {
             $normalize_context['requested_search'] = $requested_search;
+        }
+
+        if ( '' !== $requested_sort ) {
+            $normalize_context['requested_sort'] = $requested_sort;
         }
 
         $options = self::normalize_instance_options(
@@ -1322,6 +1379,8 @@ class My_Articles_Shortcode {
             'data-search-enabled'  => ! empty( $options['enable_keyword_search'] ) ? 'true' : 'false',
             'data-search-query'    => $options['search_query'],
             'data-search-param'    => $search_query_var,
+            'data-sort'            => $options['sort'],
+            'data-sort-param'      => $sort_query_var,
             'role'                 => 'region',
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
@@ -1460,7 +1519,7 @@ class My_Articles_Shortcode {
                 if ( $total_pages > 1 && $paged < $total_pages) {
                     $next_page = min( $paged + 1, $total_pages );
                     $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-sort="' . esc_attr( $options['sort'] ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $pagination_query_args = array();

@@ -110,6 +110,11 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
             ),
+            'sort'        => array(
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_key',
+            ),
         );
     }
 
@@ -145,6 +150,11 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'type'              => 'string',
                 'required'          => false,
                 'sanitize_callback' => 'sanitize_text_field',
+            ),
+            'sort'        => array(
+                'type'              => 'string',
+                'required'          => false,
+                'sanitize_callback' => 'sanitize_key',
             ),
         );
     }
@@ -239,6 +249,7 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'current_url'  => $request->get_param( 'current_url' ),
                 'http_referer' => $request->get_header( 'referer' ),
                 'search'       => $request->get_param( 'search' ),
+                'sort'         => $request->get_param( 'sort' ),
             )
         );
 
@@ -270,6 +281,7 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'pinned_ids'  => $request->get_param( 'pinned_ids' ),
                 'category'    => $request->get_param( 'category' ),
                 'search'      => $request->get_param( 'search' ),
+                'sort'        => $request->get_param( 'sort' ),
             )
         );
 

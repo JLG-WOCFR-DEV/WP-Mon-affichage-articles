@@ -1124,15 +1124,17 @@
                     { title: __('Tri & ordre', 'mon-articles'), initialOpen: false },
                     el(SelectControl, {
                         label: __('Ordre de tri', 'mon-articles'),
-                        value: attributes.orderby || 'date',
+                        value: attributes.sort || attributes.orderby || 'date',
                         options: [
                             { label: __('Date de publication', 'mon-articles'), value: 'date' },
                             { label: __('Titre', 'mon-articles'), value: 'title' },
                             { label: __('Ordre du menu', 'mon-articles'), value: 'menu_order' },
                             { label: __('Méta personnalisée', 'mon-articles'), value: 'meta_value' },
+                            { label: __('Nombre de commentaires', 'mon-articles'), value: 'comment_count' },
+                            { label: __('Ordre personnalisé (post__in)', 'mon-articles'), value: 'post__in' },
                         ],
                         onChange: function (value) {
-                            setAttributes({ orderby: value });
+                            setAttributes({ sort: value, orderby: value });
                         },
                     }),
                     el(SelectControl, {
@@ -1146,7 +1148,7 @@
                             setAttributes({ order: value });
                         },
                     }),
-                    'meta_value' === (attributes.orderby || 'date')
+                    'meta_value' === (attributes.sort || attributes.orderby || 'date')
                         ? el(TextControl, {
                               label: __('Clé de méta personnalisée', 'mon-articles'),
                               value: attributes.meta_key || '',

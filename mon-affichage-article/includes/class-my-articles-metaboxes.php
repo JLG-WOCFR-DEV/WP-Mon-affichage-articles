@@ -117,6 +117,10 @@ class My_Articles_Metaboxes {
         wp_nonce_field( 'my_articles_save_meta_box_data', 'my_articles_meta_box_nonce' );
         $opts = (array) get_post_meta( $post->ID, $this->option_key, true );
 
+        if ( ! isset( $opts['sort'] ) && isset( $opts['orderby'] ) ) {
+            $opts['sort'] = $opts['orderby'];
+        }
+
         $helper_message = wp_kses_post(
             __('<strong>Tutoriel :</strong> copier / coller le shortcode dans une balise HTML de WordPress.', 'mon-articles')
         );
@@ -144,17 +148,19 @@ class My_Articles_Metaboxes {
             ]
         );
         $this->render_field(
-            'orderby',
+            'sort',
             esc_html__( 'Ordre de tri', 'mon-articles' ),
             'select',
             $opts,
             [
                 'default'     => 'date',
                 'options'     => [
-                    'date'       => __( 'Date de publication', 'mon-articles' ),
-                    'title'      => __( 'Titre', 'mon-articles' ),
-                    'menu_order' => __( 'Ordre du menu', 'mon-articles' ),
-                    'meta_value' => __( 'Méta personnalisée', 'mon-articles' ),
+                    'date'          => __( 'Date de publication', 'mon-articles' ),
+                    'title'         => __( 'Titre', 'mon-articles' ),
+                    'menu_order'    => __( 'Ordre du menu', 'mon-articles' ),
+                    'meta_value'    => __( 'Méta personnalisée', 'mon-articles' ),
+                    'comment_count' => __( 'Nombre de commentaires', 'mon-articles' ),
+                    'post__in'      => __( 'Ordre personnalisé (post__in)', 'mon-articles' ),
                 ],
                 'description' => __( 'Choisissez le champ principal utilisé pour trier les contenus.', 'mon-articles' ),
             ]
@@ -583,8 +589,17 @@ class My_Articles_Metaboxes {
             : 10;
         $sanitized['pagination_mode'] = isset($input['pagination_mode']) && in_array($input['pagination_mode'], ['none', 'load_more', 'numbered']) ? $input['pagination_mode'] : 'none';
         $sanitized['load_more_auto'] = isset( $input['load_more_auto'] ) ? 1 : 0;
-        $allowed_orderby = array( 'date', 'title', 'menu_order', 'meta_value' );
-        $sanitized['orderby'] = isset( $input['orderby'] ) && in_array( $input['orderby'], $allowed_orderby, true ) ? $input['orderby'] : 'date';
+        $allowed_sort = array( 'date', 'title', 'menu_order', 'meta_value', 'comment_count', 'post__in' );
+        $resolved_sort = 'date';
+
+        if ( isset( $input['sort'] ) && in_array( $input['sort'], $allowed_sort, true ) ) {
+            $resolved_sort = $input['sort'];
+        } elseif ( isset( $input['orderby'] ) && in_array( $input['orderby'], $allowed_sort, true ) ) {
+            $resolved_sort = $input['orderby'];
+        }
+
+        $sanitized['sort']    = $resolved_sort;
+        $sanitized['orderby'] = $resolved_sort;
         $order = isset( $input['order'] ) ? strtoupper( (string) $input['order'] ) : 'DESC';
         $sanitized['order'] = in_array( $order, array( 'ASC', 'DESC' ), true ) ? $order : 'DESC';
         $meta_key = '';

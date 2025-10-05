@@ -187,6 +187,26 @@
         return normalized.replace(/\s+/g, ' ').trim();
     }
 
+    function sanitizeSortValue(value) {
+        var normalized = '';
+
+        if (typeof value === 'string') {
+            normalized = value;
+        } else if (value === null || typeof value === 'undefined') {
+            normalized = '';
+        } else {
+            normalized = String(value);
+        }
+
+        normalized = normalized.trim();
+
+        if (!normalized) {
+            return '';
+        }
+
+        return normalized.replace(/[^a-z0-9_\-]+/gi, '').toLowerCase();
+    }
+
     function updateInstanceQueryParams(instanceId, params) {
         if (typeof window === 'undefined' || !window.history) {
             return;
@@ -716,6 +736,7 @@
         var pinnedIds = button.data('pinned-ids');
         var category = button.data('category');
         var searchValue = sanitizeSearchValue(button.data('search'));
+        var sortValue = sanitizeSortValue(button.data('sort'));
         var requestedPage = paged;
 
         if (!paged || paged <= 0) {
@@ -838,6 +859,16 @@
                 button.attr('data-search', updatedSearchValue);
             }
 
+            if (typeof responseData.sort !== 'undefined') {
+                var updatedSortValue = sanitizeSortValue(responseData.sort);
+                button.data('sort', updatedSortValue);
+                button.attr('data-sort', updatedSortValue);
+
+                if (wrapper && wrapper.length) {
+                    wrapper.attr('data-sort', updatedSortValue);
+                }
+            }
+
             if (typeof responseData.total_pages !== 'undefined') {
                 var serverTotalPages = parseInt(responseData.total_pages, 10);
                 if (!isNaN(serverTotalPages)) {
@@ -910,7 +941,8 @@
                     paged: paged,
                     pinned_ids: pinnedIds,
                     category: category,
-                    search: searchValue
+                    search: searchValue,
+                    sort: sortValue
                 },
                 beforeSend: function () {
                     var loadingText = loadMoreSettings.loadingText || originalButtonText;
