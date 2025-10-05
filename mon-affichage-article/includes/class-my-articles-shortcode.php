@@ -573,6 +573,7 @@ class My_Articles_Shortcode {
             'order' => 'DESC',
             'meta_key' => '',
             'pagination_mode' => 'none',
+            'load_more_auto' => 0,
             'design_preset' => 'custom',
             'design_preset_locked' => 0,
             'enable_keyword_search' => 0,
@@ -705,6 +706,12 @@ class My_Articles_Shortcode {
         }
 
         $options = wp_parse_args( $raw_options, $defaults );
+
+        $options['load_more_auto'] = ! empty( $options['load_more_auto'] ) ? 1 : 0;
+
+        if ( $options['pagination_mode'] !== 'load_more' ) {
+            $options['load_more_auto'] = 0;
+        }
 
         $options['enable_keyword_search'] = ! empty( $options['enable_keyword_search'] ) ? 1 : 0;
 
@@ -1439,7 +1446,7 @@ class My_Articles_Shortcode {
                 if ( $total_pages > 1 && $paged < $total_pages) {
                     $next_page = min( $paged + 1, $total_pages );
                     $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
+                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
                 }
             } elseif ($options['pagination_mode'] === 'numbered') {
                 $pagination_query_args = array();
