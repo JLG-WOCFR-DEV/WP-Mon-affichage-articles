@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace MonAffichageArticles\Tests\Rest;
 
+use Mon_Affichage_Articles;
 use My_Articles_Controller;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use WP_Error;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -208,6 +210,159 @@ final class ControllerRoutesTest extends TestCase
         $this->assertInstanceOf(WP_Error::class, $response);
         $this->assertSame('my_articles_load_more_disabled', $response->get_error_code());
         $this->assertSame(400, $response->get_error_data()['status']);
+    }
+
+    public function test_load_more_route_sorts_articles_with_requested_sort(): void
+    {
+        global $mon_articles_test_post_meta_map, $mon_articles_test_post_status_map, $mon_articles_test_post_type_map;
+
+        $instanceId = 314;
+
+        $previousPostTypeMap   = $mon_articles_test_post_type_map ?? null;
+        $previousPostStatusMap = $mon_articles_test_post_status_map ?? null;
+        $previousPostMetaMap   = $mon_articles_test_post_meta_map ?? null;
+
+        $mon_articles_test_post_type_map = array($instanceId => 'mon_affichage');
+        $mon_articles_test_post_status_map = array($instanceId => 'publish');
+        $mon_articles_test_post_meta_map = array(
+            $instanceId => array(
+                '_my_articles_settings' => array(
+                    'post_type'        => 'post',
+                    'display_mode'     => 'grid',
+                    'pagination_mode'  => 'load_more',
+                    'posts_per_page'   => 3,
+                    'show_category'    => 0,
+                    'show_author'      => 0,
+                    'show_date'        => 0,
+                    'show_excerpt'     => 0,
+                    'enable_lazy_load' => 0,
+                ),
+            ),
+        );
+
+        $posts = array(
+            array('ID' => 501, 'post_title' => 'Gamma', 'post_date' => '2024-03-01'),
+            array('ID' => 502, 'post_title' => 'Alpha', 'post_date' => '2024-01-15'),
+            array('ID' => 503, 'post_title' => 'Beta', 'post_date' => '2024-02-10'),
+        );
+
+        $capturedSort = null;
+
+        $shortcodeStub = new class($posts, $capturedSort) {
+            /** @var array<int, array<string, mixed>> */
+            private array $posts;
+
+            /** @var string|null */
+            private $capturedSort;
+
+            /**
+             * @param array<int, array<string, mixed>> $posts
+             * @param string|null                      $capturedSort
+             */
+            public function __construct(array $posts, ?string &$capturedSort)
+            {
+                $this->posts        = $posts;
+                $this->capturedSort =& $capturedSort;
+            }
+
+            public function build_display_state(array $options, array $args = array()): array
+            {
+                $this->capturedSort = $options['sort'] ?? '';
+
+                $orderedPosts = $this->posts;
+
+                if ('title' === $this->capturedSort) {
+                    usort(
+                        $orderedPosts,
+                        static function (array $left, array $right): int {
+                            return strcmp($left['post_title'], $right['post_title']);
+                        }
+                    );
+                } elseif ('date' === $this->capturedSort) {
+                    usort(
+                        $orderedPosts,
+                        static function (array $left, array $right): int {
+                            return strcmp($right['post_date'], $left['post_date']);
+                        }
+                    );
+                }
+
+                return array(
+                    'pinned_query'             => new \WP_Query(array()),
+                    'regular_query'            => new \WP_Query($orderedPosts),
+                    'updated_seen_pinned_ids'  => array(),
+                    'total_pinned_posts'       => 0,
+                    'total_regular_posts'      => count($orderedPosts),
+                    'effective_posts_per_page' => max(1, count($orderedPosts)),
+                );
+            }
+
+            public function render_article_item(array $options, bool $is_pinned): void
+            {
+                echo '<div class="post-item" data-id="' . get_the_ID() . '"></div>';
+            }
+
+            public function get_skeleton_placeholder_markup(string $container_class, array $options, int $render_limit): string
+            {
+                return '';
+            }
+
+            public function get_empty_state_html(): string
+            {
+                return '<div class="empty"></div>';
+            }
+
+            public function get_empty_state_slide_html(): string
+            {
+                return '<div class="empty"></div>';
+            }
+        };
+
+        $reflection      = new ReflectionClass(\My_Articles_Shortcode::class);
+        $instanceProperty = $reflection->getProperty('instance');
+        $instanceProperty->setAccessible(true);
+        $previousInstance = $instanceProperty->getValue();
+        $instanceProperty->setValue(null, $shortcodeStub);
+
+        $cacheProperty = $reflection->getProperty('normalized_options_cache');
+        $cacheProperty->setAccessible(true);
+        $previousCache = $cacheProperty->getValue();
+        $cacheProperty->setValue(null, array());
+
+        try {
+            $controller = new My_Articles_Controller(new Mon_Affichage_Articles());
+
+            $request = new WP_REST_Request('POST', '/my-articles/v1/load-more');
+            $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
+            $request->set_param('instance_id', $instanceId);
+            $request->set_param('sort', ' Title ');
+
+            $response = $controller->load_more_articles($request);
+
+            $this->assertInstanceOf(WP_REST_Response::class, $response);
+
+            $payload = $response->get_data();
+
+            $this->assertIsArray($payload);
+            $this->assertArrayHasKey('html', $payload);
+            $this->assertArrayHasKey('sort', $payload);
+            $this->assertSame('title', $payload['sort']);
+            $this->assertSame('title', $capturedSort);
+
+            $this->assertIsString($payload['html']);
+            $this->assertNotSame('', $payload['html']);
+
+            $this->assertMatchesRegularExpression('/data-id="\d+"/', $payload['html']);
+
+            preg_match_all('/data-id="(\d+)"/', $payload['html'], $matches);
+            $this->assertSame(array('502', '503', '501'), $matches[1]);
+        } finally {
+            $instanceProperty->setValue(null, $previousInstance);
+            $cacheProperty->setValue(null, $previousCache);
+            $mon_articles_test_post_type_map   = $previousPostTypeMap;
+            $mon_articles_test_post_status_map = $previousPostStatusMap;
+            $mon_articles_test_post_meta_map   = $previousPostMetaMap;
+        }
     }
 
     public function test_search_route_returns_results_payload(): void
