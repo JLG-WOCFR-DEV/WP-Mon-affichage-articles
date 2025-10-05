@@ -317,3 +317,41 @@ if ( ! function_exists( 'my_articles_calculate_total_pages' ) ) {
         ];
     }
 }
+
+if ( ! function_exists( 'my_articles_get_instrumentation_settings' ) ) {
+    /**
+     * Retrieve instrumentation settings saved in the plugin options.
+     *
+     * @return array{enabled:bool,channel:string} Normalized instrumentation configuration.
+     */
+    function my_articles_get_instrumentation_settings() {
+        $options = (array) get_option( 'my_articles_options', array() );
+
+        $enabled = ! empty( $options['instrumentation_enabled'] );
+        $allowed_channels = array( 'console', 'dataLayer', 'fetch' );
+
+        $channel = isset( $options['instrumentation_channel'] ) ? (string) $options['instrumentation_channel'] : 'console';
+
+        if ( ! in_array( $channel, $allowed_channels, true ) ) {
+            $channel = 'console';
+        }
+
+        return array(
+            'enabled' => $enabled,
+            'channel' => $channel,
+        );
+    }
+}
+
+if ( ! function_exists( 'my_articles_is_instrumentation_enabled' ) ) {
+    /**
+     * Determine whether instrumentation is enabled globally for the plugin.
+     *
+     * @return bool
+     */
+    function my_articles_is_instrumentation_enabled() {
+        $settings = my_articles_get_instrumentation_settings();
+
+        return ! empty( $settings['enabled'] );
+    }
+}

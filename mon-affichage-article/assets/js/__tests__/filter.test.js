@@ -116,6 +116,51 @@ describe('filter endpoint interactions', () => {
         expect(wrapper.getAttribute('data-sort')).toBe('comment_count');
     });
 
+    it('emits custom events during the filter lifecycle', () => {
+        const receivedEvents = [];
+        const handler = (event) => receivedEvents.push(event);
+
+        window.addEventListener('my-articles:filter', handler);
+
+        $.ajax = jest.fn((options) => {
+            if (options.beforeSend) {
+                options.beforeSend();
+            }
+
+            if (options.success) {
+                options.success({
+                    success: true,
+                    data: {
+                        html: '<article class="my-article-item">Résultat</article>',
+                        total_pages: 3,
+                        next_page: 2,
+                        pinned_ids: '1',
+                        sort: 'date',
+                    },
+                });
+            }
+
+            if (options.complete) {
+                options.complete();
+            }
+        });
+
+        try {
+            require('../filter');
+
+            const secondFilter = $('.my-articles-filter-nav li').eq(1).find('button');
+            secondFilter.trigger('click');
+
+            expect(receivedEvents.length).toBe(2);
+            expect(receivedEvents[0].detail.phase).toBe('request');
+            expect(receivedEvents[0].detail.instanceId).toBe(42);
+            expect(receivedEvents[1].detail.phase).toBe('success');
+            expect(receivedEvents[1].detail.totalPages).toBe(3);
+        } finally {
+            window.removeEventListener('my-articles:filter', handler);
+        }
+    });
+
     it('shows API error messages when the request fails', () => {
         window.myArticlesFilter.errorText = 'Impossible de filtrer.';
 

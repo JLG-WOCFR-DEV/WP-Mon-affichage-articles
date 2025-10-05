@@ -90,6 +90,10 @@ class My_Articles_Settings {
         add_settings_field( 'meta_color', __( 'Couleur du texte (méta)', 'mon-articles' ), array( $this, 'meta_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'meta_color_hover', __( 'Couleur du texte (méta, survol)', 'mon-articles' ), array( $this, 'meta_color_hover_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'pagination_color', __( 'Couleur de la pagination (Diaporama)', 'mon-articles' ), array( $this, 'pagination_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
+
+        add_settings_section( 'setting_section_instrumentation', __( 'Instrumentation', 'mon-articles' ), null, 'my-articles-admin' );
+        add_settings_field( 'instrumentation_enabled', __( 'Activer l\'instrumentation', 'mon-articles' ), array( $this, 'instrumentation_enabled_callback' ), 'my-articles-admin', 'setting_section_instrumentation' );
+        add_settings_field( 'instrumentation_channel', __( 'Canal de sortie', 'mon-articles' ), array( $this, 'instrumentation_channel_callback' ), 'my-articles-admin', 'setting_section_instrumentation' );
     }
 
     public function sanitize( $input ) {
@@ -149,6 +153,17 @@ class My_Articles_Settings {
             ? min( 200, max( 0, intval( $input['module_margin_right'] ) ) )
             : 0;
         $sanitized_input['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
+
+        $sanitized_input['instrumentation_enabled'] = ! empty( $input['instrumentation_enabled'] ) ? 1 : 0;
+
+        $allowed_instrumentation_channels = array( 'console', 'dataLayer', 'fetch' );
+        $requested_instrumentation_channel = isset( $input['instrumentation_channel'] ) ? (string) $input['instrumentation_channel'] : 'console';
+
+        if ( ! in_array( $requested_instrumentation_channel, $allowed_instrumentation_channels, true ) ) {
+            $requested_instrumentation_channel = 'console';
+        }
+
+        $sanitized_input['instrumentation_channel'] = $requested_instrumentation_channel;
 
         return $sanitized_input;
     }
@@ -212,6 +227,35 @@ class My_Articles_Settings {
     public function module_margin_bottom_callback() { $this->render_number_input('module_margin_bottom', 0, 0, 200); }
     public function module_margin_left_callback() { $this->render_number_input('module_margin_left', 0, 0, 200); }
     public function module_margin_right_callback() { $this->render_number_input('module_margin_right', 0, 0, 200); }
+
+    public function instrumentation_enabled_callback() {
+        $this->render_checkbox('instrumentation_enabled');
+        echo '<p class="description">' . esc_html__( 'Active l\'émission d\'événements JavaScript et leur routage via le canal sélectionné.', 'mon-articles' ) . '</p>';
+    }
+
+    public function instrumentation_channel_callback() {
+        $options = get_option($this->option_name);
+        $current_channel = isset($options['instrumentation_channel']) ? $options['instrumentation_channel'] : 'console';
+        $channels = array(
+            'console'   => __( 'Console du navigateur', 'mon-articles' ),
+            'dataLayer' => __( 'dataLayer (Google Tag Manager)', 'mon-articles' ),
+            'fetch'     => __( 'Requête Fetch (API REST)', 'mon-articles' ),
+        );
+
+        echo '<select id="instrumentation_channel" name="' . esc_attr($this->option_name) . '[instrumentation_channel]">';
+
+        foreach ($channels as $value => $label) {
+            printf(
+                '<option value="%1$s" %2$s>%3$s</option>',
+                esc_attr($value),
+                selected($current_channel, $value, false),
+                esc_html($label)
+            );
+        }
+
+        echo '</select>';
+        echo '<p class="description">' . esc_html__( 'Choisissez où transmettre les événements front-end (console, dataLayer ou API REST).', 'mon-articles' ) . '</p>';
+    }
 
     // Helpers
     private function render_text_input($id, $description = '') {

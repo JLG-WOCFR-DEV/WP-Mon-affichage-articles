@@ -164,6 +164,52 @@ describe('load-more endpoint interactions', () => {
         expect(feedback.textContent).toBe('Erreur serveur');
     });
 
+    it('emits custom events during the load-more lifecycle', () => {
+        const receivedEvents = [];
+        const handler = (event) => receivedEvents.push(event);
+
+        window.addEventListener('my-articles:load-more', handler);
+
+        $.ajax = jest.fn((options) => {
+            if (options.beforeSend) {
+                options.beforeSend();
+            }
+
+            if (options.success) {
+                options.success({
+                    success: true,
+                    data: {
+                        html: '<article class="my-article-item">Ajout</article>',
+                        total_pages: 4,
+                        next_page: 3,
+                        pinned_ids: '5',
+                        sort: 'date',
+                    },
+                });
+            }
+
+            if (options.complete) {
+                options.complete();
+            }
+        });
+
+        try {
+            require('../load-more');
+
+            const button = $('.my-articles-load-more-btn');
+            button.trigger('click');
+
+            expect(receivedEvents.length).toBe(2);
+            expect(receivedEvents[0].detail.phase).toBe('request');
+            expect(receivedEvents[0].detail.requestedPage).toBe(2);
+            expect(receivedEvents[1].detail.phase).toBe('success');
+            expect(receivedEvents[1].detail.addedCount).toBe(1);
+            expect(receivedEvents[1].detail.totalPages).toBe(4);
+        } finally {
+            window.removeEventListener('my-articles:load-more', handler);
+        }
+    });
+
     it('installs an observer and triggers automatic loading when enabled', () => {
         document.body.innerHTML = `
             <div class="my-articles-wrapper" data-instance-id="21" data-sort="date">

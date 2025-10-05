@@ -6,6 +6,153 @@
     var pendingNonceDeferred = null;
     var SEARCH_DEBOUNCE_DELAY = 400;
 
+    var INSTRUMENTATION_DEFAULTS = {
+        enabled: false,
+        channel: 'console',
+        fetchUrl: ''
+    };
+
+    function getInstrumentationSettings() {
+        var config = filterSettings && typeof filterSettings.instrumentation === 'object'
+            ? filterSettings.instrumentation
+            : null;
+
+        if (!config) {
+            return INSTRUMENTATION_DEFAULTS;
+        }
+
+        var channel = typeof config.channel === 'string' ? config.channel : INSTRUMENTATION_DEFAULTS.channel;
+        var enabled = !!config.enabled;
+        var fetchUrl = typeof config.fetchUrl === 'string' ? config.fetchUrl : '';
+
+        if (!fetchUrl && filterSettings && typeof filterSettings.restRoot === 'string') {
+            fetchUrl = filterSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/track';
+        }
+
+        return {
+            enabled: enabled,
+            channel: channel,
+            fetchUrl: fetchUrl,
+            callback: typeof config.callback === 'function' ? config.callback : null
+        };
+    }
+
+    function dispatchCustomEvent(eventName, detail) {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        var eventDetail = detail || {};
+        var customEvent;
+
+        try {
+            if (typeof window.CustomEvent === 'function') {
+                customEvent = new CustomEvent(eventName, { detail: eventDetail });
+            } else if (typeof document !== 'undefined' && document && typeof document.createEvent === 'function') {
+                customEvent = document.createEvent('CustomEvent');
+                customEvent.initCustomEvent(eventName, false, false, eventDetail);
+            }
+
+            if (customEvent && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(customEvent);
+            }
+        } catch (error) {
+            if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                console.error(error);
+            }
+        }
+    }
+
+    function runEventCallbacks(eventName, detail) {
+        if (filterSettings && typeof filterSettings.onEvent === 'function') {
+            try {
+                filterSettings.onEvent(eventName, detail);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+
+        var instrumentation = getInstrumentationSettings();
+        if (instrumentation.callback) {
+            try {
+                instrumentation.callback(eventName, detail);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+    }
+
+    function routeInstrumentation(eventName, detail) {
+        var instrumentation = getInstrumentationSettings();
+
+        if (!instrumentation.enabled) {
+            return;
+        }
+
+        var payload = {
+            event: eventName,
+            detail: detail
+        };
+
+        if (instrumentation.channel === 'dataLayer') {
+            if (typeof window !== 'undefined') {
+                window.dataLayer = window.dataLayer || [];
+                try {
+                    window.dataLayer.push(payload);
+                } catch (error) {
+                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                        console.error(error);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        if (instrumentation.channel === 'fetch') {
+            if (typeof window !== 'undefined' && typeof window.fetch === 'function' && instrumentation.fetchUrl) {
+                var headers = { 'Content-Type': 'application/json' };
+                if (filterSettings && typeof filterSettings.restNonce === 'string' && filterSettings.restNonce.length) {
+                    headers['X-WP-Nonce'] = filterSettings.restNonce;
+                }
+
+                try {
+                    window.fetch(instrumentation.fetchUrl, {
+                        method: 'POST',
+                        headers: headers,
+                        credentials: 'same-origin',
+                        body: JSON.stringify(payload)
+                    }).catch(function () {
+                        return null;
+                    });
+                } catch (error) {
+                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                        console.error(error);
+                    }
+                }
+            }
+
+            return;
+        }
+
+        if (typeof console !== 'undefined' && typeof console.log === 'function') {
+            console.log('[my-articles]', eventName, detail);
+        }
+    }
+
+    function emitFilterInteraction(phase, detail) {
+        var payload = $.extend({ phase: phase }, detail || {});
+        var eventName = 'my-articles:filter';
+
+        dispatchCustomEvent(eventName, payload);
+        runEventCallbacks(eventName, payload);
+        routeInstrumentation(eventName, payload);
+    }
+
     function getNonceEndpoint(settings) {
         if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
             return settings.nonceEndpoint;
@@ -689,14 +836,98 @@
     }
 
     function sendFilterRequest(wrapper, requestData, callbacks) {
+        callbacks = callbacks || {};
+
         var requestUrl = getFilterEndpoint(filterSettings);
         var hasRetried = false;
 
+        var instanceId = typeof requestData.instance_id !== 'undefined' ? parseInt(requestData.instance_id, 10) : null;
+        if (isNaN(instanceId)) {
+            instanceId = null;
+        }
+
+        var requestDetail = {
+            instanceId: instanceId,
+            category: typeof requestData.category === 'string' ? requestData.category : '',
+            search: typeof requestData.search === 'string' ? requestData.search : '',
+            sort: typeof requestData.sort === 'string' ? requestData.sort : '',
+            requestUrl: requestUrl
+        };
+
         if (!requestUrl) {
-            if (callbacks && typeof callbacks.onError === 'function') {
+            emitFilterInteraction('error', $.extend({}, requestDetail, {
+                errorMessage: 'missing-endpoint'
+            }));
+
+            if (typeof callbacks.onError === 'function') {
                 callbacks.onError(null, null);
             }
             return;
+        }
+
+        function extractErrorMessage(jqXHR, response) {
+            if (response && response.data && response.data.message) {
+                return response.data.message;
+            }
+
+            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
+                return jqXHR.responseJSON.data.message;
+            }
+
+            if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
+                return jqXHR.statusText;
+            }
+
+            return '';
+        }
+
+        function extractStatus(jqXHR, response) {
+            if (jqXHR && typeof jqXHR.status === 'number') {
+                return jqXHR.status;
+            }
+
+            if (response && response.data && typeof response.data.status === 'number') {
+                return response.data.status;
+            }
+
+            if (response && typeof response.status === 'number') {
+                return response.status;
+            }
+
+            return 0;
+        }
+
+        var defaultErrorMessage = (filterSettings && typeof filterSettings.errorText === 'string')
+            ? filterSettings.errorText
+            : 'Une erreur est survenue.';
+
+        function emitError(jqXHR, response) {
+            emitFilterInteraction('error', $.extend({}, requestDetail, {
+                errorMessage: extractErrorMessage(jqXHR, response) || defaultErrorMessage,
+                status: extractStatus(jqXHR, response),
+                hadNonceRefresh: hasRetried
+            }));
+        }
+
+        function emitSuccess(responseData) {
+            var totalPages = parseInt(responseData.total_pages, 10);
+            if (isNaN(totalPages)) {
+                totalPages = 0;
+            }
+
+            var nextPage = parseInt(responseData.next_page, 10);
+            if (isNaN(nextPage)) {
+                nextPage = 0;
+            }
+
+            emitFilterInteraction('success', $.extend({}, requestDetail, {
+                totalPages: totalPages,
+                nextPage: nextPage,
+                pinnedIds: typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '',
+                searchQuery: typeof responseData.search_query === 'string' ? responseData.search_query : requestDetail.search,
+                sort: typeof responseData.sort === 'string' ? responseData.sort : requestDetail.sort,
+                hadNonceRefresh: hasRetried
+            }));
         }
 
         function performRequest() {
@@ -710,14 +941,19 @@
                 },
                 data: requestData,
                 beforeSend: function () {
-                    if (callbacks && typeof callbacks.beforeSend === 'function') {
+                    emitFilterInteraction('request', requestDetail);
+
+                    if (typeof callbacks.beforeSend === 'function') {
                         callbacks.beforeSend();
                     }
                 },
                 success: function (response) {
                     if (response && response.success) {
-                        if (callbacks && typeof callbacks.onSuccess === 'function') {
-                            callbacks.onSuccess(response.data, response);
+                        var responseData = response.data || {};
+                        emitSuccess(responseData);
+
+                        if (typeof callbacks.onSuccess === 'function') {
+                            callbacks.onSuccess(responseData, response);
                         }
 
                         return;
@@ -730,7 +966,9 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                if (callbacks && typeof callbacks.onError === 'function') {
+                                emitError(null, response);
+
+                                if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(null, response);
                                 }
                             });
@@ -738,7 +976,9 @@
                         return;
                     }
 
-                    if (callbacks && typeof callbacks.onError === 'function') {
+                    emitError(null, response);
+
+                    if (typeof callbacks.onError === 'function') {
                         callbacks.onError(null, response);
                     }
                 },
@@ -750,7 +990,9 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                if (callbacks && typeof callbacks.onError === 'function') {
+                                emitError(jqXHR);
+
+                                if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(jqXHR);
                                 }
                             });
@@ -758,12 +1000,14 @@
                         return;
                     }
 
-                    if (callbacks && typeof callbacks.onError === 'function') {
+                    emitError(jqXHR);
+
+                    if (typeof callbacks.onError === 'function') {
                         callbacks.onError(jqXHR);
                     }
                 },
                 complete: function () {
-                    if (callbacks && typeof callbacks.onComplete === 'function') {
+                    if (typeof callbacks.onComplete === 'function') {
                         callbacks.onComplete();
                     }
                 }
