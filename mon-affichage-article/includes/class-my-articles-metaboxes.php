@@ -131,9 +131,33 @@ class My_Articles_Metaboxes {
         );
 
         echo '<h3>' . esc_html__('Contenu & Filtres', 'mon-articles') . '</h3>';
-        $this->render_field('post_type', esc_html__('Source du contenu', 'mon-articles'), 'post_type_select', $opts);
-        $this->render_field('taxonomy', esc_html__('Filtrer par taxonomie', 'mon-articles'), 'taxonomy_select', $opts);
-        $this->render_field('term', esc_html__('Filtrer par catégorie/terme', 'mon-articles'), 'term_select', $opts);
+        $this->render_field(
+            'post_type',
+            esc_html__( 'Source du contenu', 'mon-articles' ),
+            'post_type_select',
+            $opts,
+            [
+                'input_id' => 'post_type_selector',
+            ]
+        );
+        $this->render_field(
+            'taxonomy',
+            esc_html__( 'Filtrer par taxonomie', 'mon-articles' ),
+            'taxonomy_select',
+            $opts,
+            [
+                'input_id' => 'taxonomy_selector',
+            ]
+        );
+        $this->render_field(
+            'term',
+            esc_html__( 'Filtrer par catégorie/terme', 'mon-articles' ),
+            'term_select',
+            $opts,
+            [
+                'input_id' => 'term_selector',
+            ]
+        );
         $this->render_field(
             'tax_filters',
             esc_html__( 'Filtres additionnels', 'mon-articles' ),
@@ -233,10 +257,14 @@ class My_Articles_Metaboxes {
         ]);
         $this->render_field(
             'filter_categories',
-            esc_html__('Catégories à inclure dans le filtre', 'mon-articles'),
+            esc_html__( 'Catégories à inclure dans le filtre', 'mon-articles' ),
             'category_checklist',
             $opts,
-            [ 'taxonomy' => $opts['taxonomy'] ?? '' ]
+            [
+                'taxonomy'  => $opts['taxonomy'] ?? '',
+                'input_id'  => 'filter_categories',
+                'label_for' => '',
+            ]
         );
         
         echo '<hr><h3>' . esc_html__('Articles Épinglés', 'mon-articles') . '</h3>';
@@ -473,10 +501,14 @@ class My_Articles_Metaboxes {
     }
 
     private function render_field($id, $label, $type, $opts, $args = []) {
-        $name = esc_attr($this->option_key . '[' . $id . ']');
-        $value = $opts[$id] ?? ($args['default'] ?? '');
-        $wrapper_class = isset($args['wrapper_class']) ? ' class="' . esc_attr($args['wrapper_class']) . '"' : '';
-        echo '<table' . $wrapper_class . '><tr style="vertical-align: top;"><th style="width:250px; text-align: left; padding-left: 0;"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label></th><td>';
+        $name          = esc_attr( $this->option_key . '[' . $id . ']' );
+        $value         = $opts[ $id ] ?? ( $args['default'] ?? '' );
+        $wrapper_class = isset( $args['wrapper_class'] ) ? ' class="' . esc_attr( $args['wrapper_class'] ) . '"' : '';
+        $input_id      = isset( $args['input_id'] ) ? (string) $args['input_id'] : (string) $id;
+        $label_for     = array_key_exists( 'label_for', $args ) ? (string) $args['label_for'] : $input_id;
+        $label_attr    = '' !== $label_for ? ' for="' . esc_attr( $label_for ) . '"' : '';
+
+        echo '<table' . $wrapper_class . '><tr style="vertical-align: top;"><th style="width:250px; text-align: left; padding-left: 0;"><label' . $label_attr . '>' . esc_html( $label ) . '</label></th><td>';
 
         switch ($type) {
             case 'text':
@@ -484,14 +516,14 @@ class My_Articles_Metaboxes {
                 if ( isset( $args['placeholder'] ) && '' !== $args['placeholder'] ) {
                     $placeholder_attr = ' placeholder="' . esc_attr( $args['placeholder'] ) . '"';
                 }
-                printf('<input type="text" id="%s" name="%s" value="%s" class="regular-text"%s />', esc_attr($id), $name, esc_attr($value), $placeholder_attr);
+                printf( '<input type="text" id="%s" name="%s" value="%s" class="regular-text"%s />', esc_attr( $input_id ), $name, esc_attr( $value ), $placeholder_attr );
                 if (isset($args['description'])) {
                     echo '<p class="description">' . esc_html($args['description']) . '</p>';
                 }
                 break;
             case 'select2_ajax':
                 $saved_ids = is_array($value) ? $value : array();
-                echo '<select name="' . $name . '[]" class="my-articles-post-selector" multiple="multiple" style="width: 100%;">';
+                echo '<select id="' . esc_attr( $input_id ) . '" name="' . $name . '[]" class="my-articles-post-selector" multiple="multiple" style="width: 100%;">';
                 if (!empty($saved_ids)) {
                     foreach ($saved_ids as $post_id) {
                         echo '<option value="' . esc_attr($post_id) . '" selected="selected">' . esc_html(get_the_title($post_id)) . '</option>';
@@ -500,17 +532,17 @@ class My_Articles_Metaboxes {
                 echo '</select>';
                 break;
             case 'number':
-                printf('<input type="number" id="%s" name="%s" value="%s" min="%d" max="%d" />', esc_attr($id), $name, esc_attr($value), $args['min'] ?? 0, $args['max'] ?? 100);
+                printf( '<input type="number" id="%s" name="%s" value="%s" min="%d" max="%d" />', esc_attr( $input_id ), $name, esc_attr( $value ), $args['min'] ?? 0, $args['max'] ?? 100 );
                  if (isset($args['description'])) {
                     echo '<p class="description" style="margin-left: 0; font-style: italic;">' . esc_html($args['description']) . '</p>';
                 }
                 break;
             case 'color':
                 $alpha = ! empty( $args['alpha'] ) ? 'data-alpha-enabled="true"' : '';
-                printf('<input type="text" id="%s" name="%s" value="%s" class="my-color-picker" %s />', esc_attr($id), $name, esc_attr($value), $alpha);
+                printf( '<input type="text" id="%s" name="%s" value="%s" class="my-color-picker" %s />', esc_attr( $input_id ), $name, esc_attr( $value ), $alpha );
                 break;
             case 'select':
-                echo '<select id="' . esc_attr($id) . '" name="' . $name . '">';
+                echo '<select id="' . esc_attr( $input_id ) . '" name="' . $name . '">';
                 foreach ($args['options'] as $val => $text) {
                     echo '<option value="' . esc_attr($val) . '" ' . selected($value, $val, false) . '>' . esc_html($text) . '</option>';
                 }
@@ -520,7 +552,7 @@ class My_Articles_Metaboxes {
                 }
                 break;
             case 'checkbox':
-                printf('<input type="checkbox" id="%s" name="%s" value="1" %s />', esc_attr($id), $name, checked($value, 1, false));
+                printf( '<input type="checkbox" id="%s" name="%s" value="1" %s />', esc_attr( $input_id ), $name, checked( $value, 1, false ) );
                 if (isset($args['description'])) {
                     echo '<p class="description" style="margin-left: 0; font-style: italic;">' . esc_html($args['description']) . '</p>';
                 }
@@ -542,7 +574,8 @@ class My_Articles_Metaboxes {
                         echo '<div style="max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #fff;">';
                         foreach ($terms as $term) {
                             $checked = in_array($term->term_id, $saved_cats, true) ? 'checked' : '';
-                            echo '<label style="display: block;"><input type="checkbox" name="' . $name . '[]" value="' . esc_attr($term->term_id) . '" ' . $checked . '> ' . esc_html($term->name) . '</label>';
+                            $checkbox_id = $input_id ? $input_id . '-' . $term->term_id : $id . '-' . $term->term_id;
+                            echo '<div style="margin-bottom: 4px;"><input type="checkbox" id="' . esc_attr( $checkbox_id ) . '" name="' . $name . '[]" value="' . esc_attr($term->term_id) . '" ' . $checked . '> <label for="' . esc_attr( $checkbox_id ) . '" style="display: inline;">' . esc_html($term->name) . '</label></div>';
                         }
                         echo '</div>';
                     } else {
@@ -566,17 +599,17 @@ class My_Articles_Metaboxes {
 
                 $value = my_articles_normalize_post_type( $value );
 
-                echo '<select id="post_type_selector" name="' . $name . '">';
+                echo '<select id="' . esc_attr( $input_id ) . '" name="' . $name . '">';
                 foreach ( $post_types as $post_type ) {
                     echo '<option value="' . esc_attr( $post_type->name ) . '" ' . selected( $value, $post_type->name, false ) . '>' . esc_html( $post_type->labels->singular_name ) . '</option>';
                 }
                 echo '</select>';
                 break;
             case 'taxonomy_select':
-                echo '<div id="taxonomy_selector_wrapper" style="display:none;"><select id="taxonomy_selector" name="' . $name . '" data-current="' . esc_attr($value) . '"></select></div>';
+                echo '<div id="taxonomy_selector_wrapper" style="display:none;"><select id="' . esc_attr( $input_id ) . '" name="' . $name . '" data-current="' . esc_attr($value) . '"></select></div>';
                 break;
             case 'term_select':
-                echo '<div id="term_selector_wrapper" style="display:none;"><select id="term_selector" name="' . $name . '" data-current="' . esc_attr($value) . '"></select></div>';
+                echo '<div id="term_selector_wrapper" style="display:none;"><select id="' . esc_attr( $input_id ) . '" name="' . $name . '" data-current="' . esc_attr($value) . '"></select></div>';
                 break;
             case 'taxonomy_filter_select':
                 $normalized_filters = array();
@@ -633,7 +666,7 @@ class My_Articles_Metaboxes {
                     break;
                 }
 
-                echo '<select id="' . esc_attr( $id ) . '" name="' . $name . '[]" multiple="multiple" size="8" style="width: 100%;">';
+                echo '<select id="' . esc_attr( $input_id ) . '" name="' . $name . '[]" multiple="multiple" size="8" style="width: 100%;">';
 
                 foreach ( $taxonomy_objects as $taxonomy ) {
                     if ( ! $taxonomy instanceof WP_Taxonomy ) {
