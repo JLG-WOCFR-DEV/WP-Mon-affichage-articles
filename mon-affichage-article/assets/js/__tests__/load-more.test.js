@@ -94,6 +94,13 @@ describe('load-more endpoint interactions', () => {
                         next_page: 3,
                         pinned_ids: '10,11',
                         sort: 'comment_count',
+                        displayed_count: 1,
+                        added_count: 1,
+                        total_results: 6,
+                        rendered_regular_count: 1,
+                        rendered_pinned_count: 0,
+                        total_regular: 5,
+                        total_pinned: 1,
                     },
                 });
             }
@@ -132,6 +139,7 @@ describe('load-more endpoint interactions', () => {
 
         const wrapper = document.querySelector('.my-articles-wrapper');
         expect(wrapper.getAttribute('data-sort')).toBe('comment_count');
+        expect(wrapper.getAttribute('data-total-results')).toBe('6');
     });
 
     it('displays server error messages when the request fails', () => {
@@ -184,6 +192,13 @@ describe('load-more endpoint interactions', () => {
                         next_page: 3,
                         pinned_ids: '5',
                         sort: 'date',
+                        displayed_count: 1,
+                        added_count: 1,
+                        total_results: 5,
+                        rendered_regular_count: 1,
+                        rendered_pinned_count: 0,
+                        total_regular: 4,
+                        total_pinned: 1,
                     },
                 });
             }
@@ -205,6 +220,8 @@ describe('load-more endpoint interactions', () => {
             expect(receivedEvents[1].detail.phase).toBe('success');
             expect(receivedEvents[1].detail.addedCount).toBe(1);
             expect(receivedEvents[1].detail.totalPages).toBe(4);
+            expect(receivedEvents[1].detail.totalResults).toBe(5);
+            expect(receivedEvents[1].detail.renderedRegularCount).toBe(1);
         } finally {
             window.removeEventListener('my-articles:load-more', handler);
         }
@@ -252,6 +269,13 @@ describe('load-more endpoint interactions', () => {
                         next_page: 3,
                         pinned_ids: '',
                         sort: 'date',
+                        displayed_count: 1,
+                        added_count: 1,
+                        total_results: 2,
+                        rendered_regular_count: 1,
+                        rendered_pinned_count: 0,
+                        total_regular: 2,
+                        total_pinned: 0,
                     },
                 });
             }
@@ -333,6 +357,13 @@ describe('load-more endpoint interactions', () => {
                                 total_pages: 4,
                                 next_page: 3,
                                 pinned_ids: '21,22',
+                                displayed_count: 1,
+                                added_count: 1,
+                                total_results: 4,
+                                rendered_regular_count: 1,
+                                rendered_pinned_count: 0,
+                                total_regular: 3,
+                                total_pinned: 1,
                             },
                         });
                     }

@@ -1092,6 +1092,21 @@
                 addedCount = 0;
             }
 
+            var responseBatchCount = parseInt(responseData.added_count, 10);
+            if (!isNaN(responseBatchCount)) {
+                addedCount = responseBatchCount;
+            }
+
+            var responseDisplayedCount = parseInt(responseData.displayed_count, 10);
+            if (!isNaN(responseDisplayedCount)) {
+                addedCount = responseDisplayedCount;
+            }
+
+            var responseTotalResults = parseInt(responseData.total_results, 10);
+            if (isNaN(responseTotalResults)) {
+                responseTotalResults = Math.max(totalArticles, previousArticleCount + addedCount);
+            }
+
             var focusArticle = null;
             if (addedCount > 0) {
                 focusArticle = contentArea.find('.my-article-item').eq(previousArticleCount);
@@ -1107,6 +1122,8 @@
                 .text(feedbackMessage)
                 .show();
 
+            wrapper.attr('data-total-results', responseTotalResults);
+
             var totalPagesResponse = parseInt(responseData.total_pages, 10);
             if (isNaN(totalPagesResponse)) {
                 totalPagesResponse = totalPages;
@@ -1120,7 +1137,13 @@
             instrumentationDetail.totalPages = totalPagesResponse;
             instrumentationDetail.nextPage = nextPageResponse;
             instrumentationDetail.addedCount = addedCount;
+            instrumentationDetail.batchDisplayedCount = addedCount;
             instrumentationDetail.totalArticles = totalArticles;
+            instrumentationDetail.totalResults = responseTotalResults;
+            instrumentationDetail.renderedRegularCount = parseInt(responseData.rendered_regular_count, 10) || 0;
+            instrumentationDetail.renderedPinnedCount = parseInt(responseData.rendered_pinned_count, 10) || 0;
+            instrumentationDetail.totalRegular = parseInt(responseData.total_regular, 10) || 0;
+            instrumentationDetail.totalPinned = parseInt(responseData.total_pinned, 10) || 0;
             instrumentationDetail.pinnedIds = typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '';
             instrumentationDetail.hadNonceRefresh = hasRetried;
             instrumentationDetail.errorMessage = '';
