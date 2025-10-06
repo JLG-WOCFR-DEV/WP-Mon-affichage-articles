@@ -9,6 +9,7 @@ class My_Articles_Shortcode {
 
     private static $instance;
     private static $lazysizes_enqueued = false;
+    private static $lazyload_fallback_added = false;
     private static $normalized_options_cache = array();
     private static $matching_pinned_ids_cache = array();
     private static $design_presets = null;
@@ -49,6 +50,85 @@ class My_Articles_Shortcode {
         }
 
         return self::$design_presets;
+    }
+
+    private static function ensure_lazyload_fallback_script() {
+        if ( self::$lazyload_fallback_added ) {
+            return;
+        }
+
+        if ( ! function_exists( 'wp_add_inline_script' ) ) {
+            return;
+        }
+
+        if ( function_exists( 'wp_script_is' ) && ! wp_script_is( 'lazysizes', 'registered' ) && ! wp_script_is( 'lazysizes', 'enqueued' ) ) {
+            return;
+        }
+
+        $fallback_script = <<<'JS'
+(function(){
+    function applyFallback(img){
+        if(!img || img.classList.contains('lazyloaded')){
+            return;
+        }
+
+        var dataSrc = img.getAttribute('data-src');
+        var dataSrcset = img.getAttribute('data-srcset');
+
+        if(dataSrc){
+            img.setAttribute('src', dataSrc);
+        }
+
+        if(dataSrcset){
+            img.setAttribute('srcset', dataSrcset);
+        }
+
+        var dataSizes = img.getAttribute('data-sizes');
+
+        if(dataSizes && !img.getAttribute('sizes')){
+            img.setAttribute('sizes', dataSizes);
+        }
+
+        img.classList.remove('lazyload');
+        img.classList.add('lazyloaded');
+
+        img.removeAttribute('data-src');
+        img.removeAttribute('data-srcset');
+        img.removeAttribute('data-sizes');
+    }
+
+    function runFallback(){
+        if(window.lazySizes){
+            return;
+        }
+
+        var images = document.querySelectorAll('img.lazyload[data-src]');
+
+        if(!images.length){
+            return;
+        }
+
+        if(typeof images.forEach === 'function'){
+            images.forEach(applyFallback);
+        }else{
+            Array.prototype.forEach.call(images, applyFallback);
+        }
+    }
+
+    function scheduleFallback(){
+        window.setTimeout(runFallback, 400);
+    }
+
+    if(document.readyState === 'complete'){
+        scheduleFallback();
+    }else{
+        window.addEventListener('load', scheduleFallback);
+    }
+})();
+JS;
+
+        wp_add_inline_script( 'lazysizes', $fallback_script, 'after' );
+        self::$lazyload_fallback_added = true;
     }
 
     private static function load_design_presets_from_manifest() {
@@ -1656,9 +1736,13 @@ class My_Articles_Shortcode {
             wp_enqueue_script('my-articles-scroll-fix', MY_ARTICLES_PLUGIN_URL . 'assets/js/scroll-fix.js', ['jquery'], MY_ARTICLES_VERSION, true);
         }
 
-        if ( !empty($options['enable_lazy_load']) && !self::$lazysizes_enqueued ) {
-            wp_enqueue_script('lazysizes');
-            self::$lazysizes_enqueued = true;
+        if ( ! empty( $options['enable_lazy_load'] ) ) {
+            if ( ! self::$lazysizes_enqueued ) {
+                wp_enqueue_script( 'lazysizes' );
+                self::$lazysizes_enqueued = true;
+            }
+
+            self::ensure_lazyload_fallback_script();
         }
 
         $paged_var = 'paged_' . $id;
