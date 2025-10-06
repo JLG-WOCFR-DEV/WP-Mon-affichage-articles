@@ -2,6 +2,48 @@
 
 Affiche les articles d'une catégorie spécifique via un shortcode, avec un design personnalisable.
 
+## Fonctionnalités principales
+
+### Gestion du contenu
+
+- Type de contenu personnalisé `mon_affichage` pour stocker les configurations d'affichage, exposé dans l'administration WordPress et accessible en REST pour les intégrations.
+- Metabox par instance pour choisir la source de contenus (type, taxonomie, terme), appliquer des filtres permanents, exclure des IDs et piloter les articles épinglés.
+- Gestion avancée des articles mis en avant : badge personnalisable, couleurs dédiées, contournement optionnel des filtres et dépriorisation des sticky natifs de WordPress.
+- Paramètres globaux (catégorie par défaut, tri, colonnes, couleurs, instrumentation, etc.) avec bouton de réinitialisation disponibles dans le menu « Tuiles – LCV ».
+
+### Affichage et interactions
+
+- Shortcode `[mon_affichage_articles id="123"]` et bloc Gutenberg du même nom, tous deux capables d'appliquer des overrides depuis l'éditeur.
+- Trois modes de rendu (grille, liste, diaporama) avec colonnes responsive (mobile → ultra-large) et ratios d'image contraints (1, 4/3, 3/2, 16/9).
+- Pagination configurable : aucune, bouton « Charger plus » (déclenchement auto via IntersectionObserver) ou pagination numérotée. En mode diaporama : boucle infinie, autoplay, pause à l'interaction/survol, flèches et pagination Swiper.
+- Filtres frontaux : recherche plein texte, filtre de catégories alignable, filtres taxonomiques supplémentaires et tris personnalisés (date, titre, ordre du menu, méta, etc.).
+- Lazy-load des images, états squelettes et enregistrement conditionnel des assets Swiper/Lazysizes pour optimiser le chargement.
+- Calcul spécifique du nombre de pages quand des articles épinglés se mêlent aux contenus réguliers, avec mode de comptage « auto fill » pour compléter les grilles.
+
+### Personnalisation visuelle
+
+- Quatre préréglages de design intégrés (« Personnalisé », « Classique LCV », « Projecteur sombre », « Focus éditorial ») synchronisés avec l'éditeur Gutenberg.
+- Contrôles fins des espacements, marges internes, arrondis, couleurs (module, vignettes, badges, métadonnées, pagination), typographies et longueur des extraits, y compris des réglages spécifiques au mode liste.
+- Mode de débogage front pouvant afficher les informations techniques sous le module pour investiguer les requêtes et options appliquées.
+
+### Accessibilité et expérience utilisateur
+
+- Module annoncé comme région dynamique (`role="region"`, `aria-live="polite"`, état `aria-busy`) avec étiquettes ARIA personnalisables pour le module et le filtre de catégories.
+- Carrousel conforme aux recommandations ARIA (navigation clavier, pagination descriptive) et filtres administrables via Select2, utilisables au clavier.
+- Préservation des performances grâce au lazy-load, au mode de comptage automatique et à l'invalidation fine du cache lors des mises à jour de contenus ou taxonomies.
+
+### Instrumentation et supervision
+
+- Page « Instrumentation » qui documente les usages et permet d'activer la télémétrie avec choix du canal (console, `dataLayer`, `fetch`).
+- Événements front (`my-articles:filter`, `my-articles:load-more`) riches en métadonnées (phase, filtres, pagination) et callbacks personnalisables pour brancher des outils d'analytics.
+- Action serveur `my_articles_track_interaction` déclenchée sur chaque interaction réussie (y compris en mode `fetch`) pour relayer les données vers des services externes.
+
+### Intégrations développeurs
+
+- API REST complète (`/filter`, `/load-more`, `/search`, `/render-preview`, `/nonce`, `/track`) avec validations dédiées, prévisualisation sécurisée et recherche incrémentale pour l'admin.
+- Système de cache combinant object cache et transients, namespace rafraîchi automatiquement et hooks pour personnaliser l'expiration ou les post types suivis.
+- Hooks et filtres pour ajuster les préréglages, la liste des post types suivis, le calcul des pages, la validation des instances, ainsi que des traductions chargées dynamiquement depuis les fichiers `.mo` encodés en base64.
+
 ## Installation
 
 1. Copier le dossier `mon-affichage-article` dans le répertoire `wp-content/plugins/` de votre installation WordPress.
@@ -72,8 +114,8 @@ Options principales :
 
 Le menu **Tuiles – LCV** comporte désormais une section « Instrumentation » :
 
-- **Activer l’instrumentation** : cochez cette case pour exposer des événements front-end lors des interactions (filtre, chargement progressif).
-- **Canal de sortie** : choisissez le mode de collecte associé (`console`, `dataLayer` ou `fetch`). Lorsque « fetch » est sélectionné, un POST JSON est envoyé vers l’endpoint REST `my-articles/v1/track`.
+- **Activer l’instrumentation** : cochez cette case pour exposer des événements front-end lors des interactions (filtre, chargement progressif). Vous pouvez également activer le mode de débogage pour afficher les informations techniques sous le module côté public.
+- **Canal de sortie** : choisissez le mode de collecte associé (`console`, `dataLayer` ou `fetch`). Lorsque « fetch » est sélectionné, un POST JSON est envoyé vers l’endpoint REST `my-articles/v1/track` et l’action serveur `my_articles_track_interaction` est déclenchée pour chaque succès.
 
 Les scripts front-end reçoivent automatiquement la configuration via `window.myArticlesFilter.instrumentation` et `window.myArticlesLoadMore.instrumentation`.
 
@@ -121,7 +163,7 @@ add_action( 'my_articles_track_interaction', function( $event, $context ) {
 } );
 ```
 
-Si le canal « fetch » est sélectionné, les requêtes envoyées par le front à `wp-json/my-articles/v1/track` déclenchent la même action avec un troisième argument (`WP_REST_Request`) permettant de valider/adapter le flux.
+Si le canal « fetch » est sélectionné, les requêtes envoyées par le front à `wp-json/my-articles/v1/track` déclenchent la même action avec un troisième argument (`WP_REST_Request`) permettant de valider/adapter le flux ou de le rediriger vers un service externe (analytics, observabilité, etc.).
 
 ## Structure du projet
 
