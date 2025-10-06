@@ -900,6 +900,14 @@ public function prepare_load_more_articles_response( array $args ) {
         $post_type   = isset( $args['post_type'] ) ? sanitize_key( $args['post_type'] ) : '';
 
         if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
+            $normalized_post_type = my_articles_normalize_post_type( $post_type );
+
+            if ( '' !== $normalized_post_type ) {
+                $post_type = $normalized_post_type;
+            }
+        }
+
+        if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
             return new WP_Error(
                 'my_articles_invalid_post_type',
                 __( 'Type de contenu invalide.', 'mon-articles' ),
