@@ -245,6 +245,14 @@ Pour valider la gestion d'un identifiant d'instance invalide lors des appels AJA
 1. Déclenchez les actions `filter_articles` et `load_more_articles` avec un identifiant qui ne correspond pas à un contenu de type `mon_affichage`.
 2. Vérifiez que la réponse est une erreur JSON comportant un code HTTP `400` et le message « Type de contenu invalide pour cette instance. ».
 
+## Pistes d'amélioration
+
+- **Prévisualisation côté admin** : proposer une zone de prévisualisation instantanée dans la metabox afin de visualiser les changements avant publication, même hors éditeur de blocs.
+- **Synchronisation des préréglages** : ajouter une commande WP-CLI pour exporter/importer les modèles de design entre environnements (recette ↔ production) et assurer une cohérence éditoriale.
+- **Extension des sources de contenu** : permettre de sélectionner plusieurs termes/taxonomies simultanément et d'agréger des requêtes externes (WP_Query personnalisée ou API tierces) via un système d'adaptateurs.
+- **Tableau de bord des performances** : exposer des métriques (temps de réponse des endpoints, taux d'erreur, usages des modes d'affichage) directement dans la page « Instrumentation » pour faciliter le suivi.
+- **Accessibilité renforcée** : intégrer des scénarios de tests automatisés (axe-core, pa11y) dans la CI pour garantir la conformité des évolutions futures.
+
 ## Crédits
 
 Développé par LCV.
