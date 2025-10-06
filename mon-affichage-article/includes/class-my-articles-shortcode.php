@@ -40,11 +40,118 @@ class My_Articles_Shortcode {
             return self::$design_presets;
         }
 
-        $presets = array(
+        $presets = self::load_design_presets_from_manifest();
+
+        self::$design_presets = apply_filters( 'my_articles_design_presets', $presets );
+
+        if ( ! is_array( self::$design_presets ) ) {
+            self::$design_presets = $presets;
+        }
+
+        return self::$design_presets;
+    }
+
+    private static function load_design_presets_from_manifest() {
+        $fallback = self::get_fallback_design_presets();
+
+        $base_dir = defined( 'MY_ARTICLES_PLUGIN_DIR' ) ? MY_ARTICLES_PLUGIN_DIR : dirname( __FILE__, 2 ) . '/';
+
+        if ( function_exists( 'trailingslashit' ) ) {
+            $manifest_path = trailingslashit( $base_dir ) . 'config/design-presets.json';
+        } else {
+            $manifest_path = rtrim( $base_dir, '/\\' ) . '/config/design-presets.json';
+        }
+
+        if ( ! file_exists( $manifest_path ) || ! is_readable( $manifest_path ) ) {
+            return $fallback;
+        }
+
+        $decoded = null;
+
+        if ( function_exists( 'wp_json_file_decode' ) ) {
+            $decoded = wp_json_file_decode( $manifest_path, array( 'associative' => true ) );
+        } else {
+            $contents = file_get_contents( $manifest_path );
+
+            if ( false !== $contents ) {
+                $decoded = json_decode( $contents, true );
+            }
+        }
+
+        if ( ! is_array( $decoded ) ) {
+            return $fallback;
+        }
+
+        $normalized = array();
+
+        foreach ( $decoded as $preset_id => $definition ) {
+            if ( ! is_string( $preset_id ) || '' === $preset_id || ! is_array( $definition ) ) {
+                continue;
+            }
+
+            $label = '';
+            if ( isset( $definition['label'] ) && is_string( $definition['label'] ) ) {
+                $label = __( $definition['label'], 'mon-articles' );
+            }
+
+            if ( '' === $label ) {
+                $label = $preset_id;
+            }
+
+            $description = '';
+            if ( isset( $definition['description'] ) && is_string( $definition['description'] ) ) {
+                $description = __( $definition['description'], 'mon-articles' );
+            }
+
+            $values = array();
+            if ( isset( $definition['values'] ) && is_array( $definition['values'] ) ) {
+                foreach ( $definition['values'] as $key => $value ) {
+                    if ( is_string( $key ) && ( is_scalar( $value ) || is_null( $value ) ) ) {
+                        $values[ $key ] = $value;
+                    }
+                }
+            }
+
+            $normalized[ $preset_id ] = array(
+                'label'       => $label,
+                'description' => $description,
+                'locked'      => ! empty( $definition['locked'] ),
+                'values'      => $values,
+            );
+        }
+
+        if ( empty( $normalized ) ) {
+            return $fallback;
+        }
+
+        $presets = $fallback;
+
+        foreach ( $normalized as $preset_id => $definition ) {
+            if ( isset( $presets[ $preset_id ] ) ) {
+                $merged_values = isset( $presets[ $preset_id ]['values'] ) && is_array( $presets[ $preset_id ]['values'] )
+                    ? $presets[ $preset_id ]['values']
+                    : array();
+
+                if ( isset( $definition['values'] ) && is_array( $definition['values'] ) ) {
+                    $merged_values = array_merge( $merged_values, $definition['values'] );
+                }
+
+                $presets[ $preset_id ] = array_merge( $presets[ $preset_id ], $definition );
+                $presets[ $preset_id ]['values'] = $merged_values;
+            } else {
+                $presets[ $preset_id ] = $definition;
+            }
+        }
+
+        return $presets;
+    }
+
+    private static function get_fallback_design_presets() {
+        return array(
             'custom' => array(
-                'label'   => __( 'Personnalisé', 'mon-articles' ),
-                'locked'  => false,
-                'values'  => array(),
+                'label'       => __( 'Personnalisé', 'mon-articles' ),
+                'locked'      => false,
+                'values'      => array(),
                 'description' => __( 'Conservez vos propres réglages de couleurs et d’espacements.', 'mon-articles' ),
             ),
             'lcv-classique' => array(
@@ -144,14 +251,6 @@ class My_Articles_Shortcode {
                 ),
             ),
         );
-
-        self::$design_presets = apply_filters( 'my_articles_design_presets', $presets );
-
-        if ( ! is_array( self::$design_presets ) ) {
-            self::$design_presets = $presets;
-        }
-
-        return self::$design_presets;
     }
 
     public static function get_design_preset( $preset_id ) {
@@ -2215,7 +2314,7 @@ class My_Articles_Shortcode {
     private function enqueue_swiper_scripts($options, $instance_id) {
         wp_enqueue_style('swiper-css');
         wp_enqueue_script('swiper-js');
-        wp_enqueue_script('my-articles-swiper-init', MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js', ['swiper-js', 'my-articles-responsive-layout'], MY_ARTICLES_VERSION, true);
+        wp_enqueue_script('my-articles-swiper-init');
         $autoplay_settings = array(
             'enabled'              => ! empty( $options['slideshow_autoplay'] ),
             'delay'                => (int) $options['slideshow_delay'],

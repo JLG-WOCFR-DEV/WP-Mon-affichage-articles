@@ -182,6 +182,12 @@ final class MyArticlesEnqueueTest extends TestCase
         $this->assertArrayHasKey('lazysizes', $mon_articles_test_registered_scripts);
         $this->assertTrue($mon_articles_test_registered_scripts['lazysizes']['in_footer']);
         $this->assertArrayHasKey('my-articles-responsive-layout', $mon_articles_test_registered_scripts);
+        $this->assertArrayHasKey('my-articles-swiper-init', $mon_articles_test_registered_scripts);
+        $this->assertContains(
+            'swiper-js',
+            $mon_articles_test_registered_scripts['my-articles-swiper-init']['deps'],
+            'Swiper init script should depend on Swiper core.'
+        );
         $this->assertArrayHasKey('my-articles-debug-helper', $mon_articles_test_registered_scripts);
 
         $this->assertArrayHasKey('lazysizes', $mon_articles_test_script_data);
@@ -214,12 +220,37 @@ final class MyArticlesEnqueueTest extends TestCase
         );
 
         $this->assertContains('my-articles-styles', $enqueued_style_handles);
-        $this->assertContains('swiper-css', $enqueued_style_handles);
+        $this->assertNotContains('swiper-css', $enqueued_style_handles, 'Swiper styles should not be enqueued by default in the editor.');
 
-        $this->assertContains('swiper-js', $enqueued_script_handles);
-        $this->assertContains('lazysizes', $enqueued_script_handles);
         $this->assertContains('my-articles-responsive-layout', $enqueued_script_handles);
         $this->assertContains('my-articles-debug-helper', $enqueued_script_handles);
+        $this->assertNotContains('swiper-js', $enqueued_script_handles, 'Swiper script should load on demand in the editor.');
+        $this->assertNotContains('lazysizes', $enqueued_script_handles, 'LazySizes should load on demand in the editor.');
+
+        global $mon_articles_test_inline_scripts;
+        $this->assertIsArray($mon_articles_test_inline_scripts);
+
+        $preview_snippets = array_filter(
+            $mon_articles_test_inline_scripts,
+            static function (array $entry): bool {
+                return $entry['handle'] === 'mon-affichage-articles-preview';
+            }
+        );
+
+        $editor_snippets = array_filter(
+            $mon_articles_test_inline_scripts,
+            static function (array $entry): bool {
+                return $entry['handle'] === 'mon-affichage-articles-editor-script';
+            }
+        );
+
+        $this->assertNotEmpty($preview_snippets, 'Dynamic asset manifest should be exposed to the preview script.');
+        $this->assertNotEmpty($editor_snippets, 'Dynamic asset manifest should be exposed to the editor script.');
+
+        foreach (array_merge($preview_snippets, $editor_snippets) as $snippet) {
+            $this->assertStringContainsString('myArticlesAssets', $snippet['data']);
+            $this->assertStringContainsString('"swiper"', $snippet['data']);
+        }
     }
 
     public function test_block_editor_translations_use_plugin_directory(): void
