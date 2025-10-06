@@ -152,6 +152,73 @@
         routeInstrumentation(eventName, payload);
     }
 
+    function resolveSearchLabel(key, fallback) {
+        if (typeof window !== 'undefined' && window.myArticlesFilter && Object.prototype.hasOwnProperty.call(window.myArticlesFilter, key)) {
+            var value = window.myArticlesFilter[key];
+            if (typeof value === 'string' && value.length > 0) {
+                return value;
+            }
+        }
+
+        return fallback;
+    }
+
+    function buildSearchCountLabel(totalAvailable) {
+        var fallbackNone = 'Aucun résultat';
+        var fallbackSingle = '%s résultat';
+        var fallbackPlural = '%s résultats';
+        var fallbackLabel = 'Résultats : %s';
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        if (resolvedTotal === 0) {
+            return resolveSearchLabel('searchCountNone', fallbackNone) || fallbackNone;
+        }
+
+        var template = resolvedTotal === 1
+            ? resolveSearchLabel('searchCountSingle', fallbackSingle)
+            : resolveSearchLabel('searchCountPlural', fallbackPlural);
+
+        var formatted = template.replace('%s', String(resolvedTotal));
+
+        if (/%\d?\$?s/.test(template)) {
+            formatted = template.replace(/%(?:\d+\$)?s/g, String(resolvedTotal));
+        }
+
+        var wrapperTemplate = resolveSearchLabel('searchCountLabel', fallbackLabel);
+        if (/%\d?\$?s/.test(wrapperTemplate)) {
+            return wrapperTemplate.replace(/%(?:\d+\$)?s/g, formatted);
+        }
+
+        return formatted;
+    }
+
+    function updateSearchCount(wrapper, totalAvailable) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var output = wrapper.find('.my-articles-search-count').first();
+        if (!output.length) {
+            return;
+        }
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        var label = buildSearchCountLabel(resolvedTotal);
+        if (label) {
+            output.text(label);
+        }
+
+        output.attr('data-count', resolvedTotal);
+    }
+
     function getNonceEndpoint(settings) {
         if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
             return settings.nonceEndpoint;
@@ -1123,6 +1190,7 @@
                 .show();
 
             wrapper.attr('data-total-results', responseTotalResults);
+            updateSearchCount(wrapper, responseTotalResults);
 
             var totalPagesResponse = parseInt(responseData.total_pages, 10);
             if (isNaN(totalPagesResponse)) {

@@ -1520,6 +1520,10 @@ class My_Articles_Shortcode {
                     'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
                     'countPartialSingle' => __( 'Affichage de %1$s article sur %2$s.', 'mon-articles' ),
                     'countPartialPlural' => __( 'Affichage de %1$s articles sur %2$s.', 'mon-articles' ),
+                    'searchCountLabel'   => __( 'Résultats : %s', 'mon-articles' ),
+                    'searchCountSingle'  => __( '%s résultat', 'mon-articles' ),
+                    'searchCountPlural'  => __( '%s résultats', 'mon-articles' ),
+                    'searchCountNone'    => __( 'Aucun résultat', 'mon-articles' ),
                     'instrumentation' => $instrumentation_payload,
                 ]
             );
@@ -1572,9 +1576,13 @@ class My_Articles_Shortcode {
             )
         );
 
-        $pinned_query        = $state['pinned_query'];
-        $articles_query      = $state['regular_query'];
-        $total_matching_pinned = $state['total_pinned_posts'];
+        $pinned_query           = $state['pinned_query'];
+        $articles_query         = $state['regular_query'];
+        $total_matching_pinned  = $state['total_pinned_posts'];
+        $total_regular_posts    = (int) $state['total_regular_posts'];
+        $initial_total_results  = max( 0, (int) $total_matching_pinned ) + max( 0, $total_regular_posts );
+        $search_suggestions     = $this->build_search_suggestions( $options, $available_categories, $pinned_query, $articles_query );
+        $result_count_label     = $this->format_result_count_label( $initial_total_results );
         $first_page_projected_pinned = $total_matching_pinned;
         $should_limit_display = $state['should_limit_display'];
         $render_limit         = $state['render_limit'];
@@ -1628,6 +1636,7 @@ class My_Articles_Shortcode {
             'data-sort'            => $options['sort'],
             'data-sort-param'      => $sort_query_var,
             'data-filters'         => $active_filters_json,
+            'data-total-results'   => $initial_total_results,
             'role'                 => 'region',
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
@@ -1653,14 +1662,45 @@ class My_Articles_Shortcode {
             $search_submit_text  = __( 'Rechercher', 'mon-articles' );
             $search_clear_label  = __( 'Effacer la recherche', 'mon-articles' );
             $search_input_id     = 'my-articles-search-input-' . $id;
+            $search_form_id     = 'my-articles-search-form-' . $id;
+            $search_count_id    = 'my-articles-search-count-' . $id;
+            $search_datalist_id = '';
 
-            echo '<form class="' . esc_attr( $search_form_classes ) . '" role="search" aria-label="' . esc_attr( $search_label ) . '" data-instance-id="' . esc_attr( $id ) . '" data-search-param="' . esc_attr( $search_query_var ) . '" data-current-search="' . esc_attr( $options['search_query'] ) . '">';
+            if ( ! empty( $search_suggestions ) ) {
+                $search_datalist_id = 'my-articles-search-suggestions-' . $id;
+            }
+
+            echo '<form id="' . esc_attr( $search_form_id ) . '" class="' . esc_attr( $search_form_classes ) . '" role="search" aria-label="' . esc_attr( $search_label ) . '" data-instance-id="' . esc_attr( $id ) . '" data-search-param="' . esc_attr( $search_query_var ) . '" data-current-search="' . esc_attr( $options['search_query'] ) . '">';
+            echo '<div class="my-articles-search-inner">';
             echo '<label class="my-articles-search-label screen-reader-text" for="' . esc_attr( $search_input_id ) . '">' . esc_html( $search_label ) . '</label>';
             echo '<div class="my-articles-search-controls">';
-            echo '<input type="search" id="' . esc_attr( $search_input_id ) . '" class="my-articles-search-input" name="my-articles-search" value="' . esc_attr( $options['search_query'] ) . '" placeholder="' . esc_attr( $search_placeholder ) . '" autocomplete="off" />';
-            echo '<button type="submit" class="my-articles-search-submit">' . esc_html( $search_submit_text ) . '</button>';
+            echo '<span class="my-articles-search-icon" aria-hidden="true">' . $this->get_search_icon_svg() . '</span>';
+            echo '<input type="search" id="' . esc_attr( $search_input_id ) . '" class="my-articles-search-input" name="my-articles-search" value="' . esc_attr( $options['search_query'] ) . '" placeholder="' . esc_attr( $search_placeholder ) . '" autocomplete="off"' . ( $search_datalist_id ? ' list="' . esc_attr( $search_datalist_id ) . '"' : '' ) . ' aria-describedby="' . esc_attr( $search_count_id ) . '" />';
+            echo '<button type="submit" class="my-articles-search-submit"><span class="my-articles-search-submit-label">' . esc_html( $search_submit_text ) . '</span><span class="my-articles-search-spinner" aria-hidden="true"></span></button>';
             echo '<button type="button" class="my-articles-search-clear" aria-label="' . esc_attr( $search_clear_label ) . '"><span aria-hidden="true">&times;</span><span class="screen-reader-text">' . esc_html( $search_clear_label ) . '</span></button>';
             echo '</div>';
+            echo '<div class="my-articles-search-meta">';
+            echo '<output id="' . esc_attr( $search_count_id ) . '" class="my-articles-search-count" role="status" aria-live="polite" aria-atomic="true" data-count="' . esc_attr( $initial_total_results ) . '" for="' . esc_attr( $search_input_id ) . '">' . esc_html( $result_count_label ) . '</output>';
+            echo '</div>';
+
+            if ( ! empty( $search_suggestions ) ) {
+                echo '<div class="my-articles-search-suggestions" role="list" aria-label="' . esc_attr__( 'Suggestions de recherche', 'mon-articles' ) . '">';
+                foreach ( $search_suggestions as $suggestion ) {
+                    echo '<button type="button" class="my-articles-search-suggestion" role="listitem" data-suggestion="' . esc_attr( $suggestion ) . '"><span>' . esc_html( $suggestion ) . '</span></button>';
+                }
+                echo '</div>';
+            }
+
+            echo '</div>';
+
+            if ( $search_datalist_id ) {
+                echo '<datalist id="' . esc_attr( $search_datalist_id ) . '">';
+                foreach ( $search_suggestions as $suggestion ) {
+                    echo '<option value="' . esc_attr( $suggestion ) . '"></option>';
+                }
+                echo '</datalist>';
+            }
+
             echo '</form>';
         }
 
@@ -2331,6 +2371,72 @@ class My_Articles_Shortcode {
         }
     }
 
+    private function build_search_suggestions( array $options, $available_categories, $pinned_query, $regular_query ) {
+        $suggestions = array();
+
+        if ( $pinned_query instanceof WP_Query && ! empty( $pinned_query->posts ) ) {
+            $suggestions = array_merge( $suggestions, wp_list_pluck( $pinned_query->posts, 'post_title' ) );
+        }
+
+        if ( $regular_query instanceof WP_Query && ! empty( $regular_query->posts ) ) {
+            $suggestions = array_merge( $suggestions, wp_list_pluck( $regular_query->posts, 'post_title' ) );
+        }
+
+        if ( is_array( $available_categories ) ) {
+            foreach ( $available_categories as $category ) {
+                if ( isset( $category->name ) ) {
+                    $suggestions[] = (string) $category->name;
+                }
+            }
+        }
+
+        $suggestions = array_map( 'wp_strip_all_tags', array_map( 'strval', $suggestions ) );
+        $suggestions = array_map( 'trim', $suggestions );
+        $suggestions = array_filter( $suggestions, 'strlen' );
+        $suggestions = array_values( array_unique( $suggestions ) );
+
+        /**
+         * Filters the search suggestions displayed inside the module search bar.
+         *
+         * @param array    $suggestions        Default suggestions built from current posts and categories.
+         * @param array    $options            Normalized module options.
+         * @param WP_Query $pinned_query       Query used to fetch pinned posts.
+         * @param WP_Query $regular_query      Query used to fetch regular posts.
+         * @param array    $available_categories Terms exposed in the category filter.
+         */
+        $filtered_suggestions = apply_filters( 'my_articles_search_suggestions', $suggestions, $options, $pinned_query, $regular_query, $available_categories );
+
+        if ( is_array( $filtered_suggestions ) ) {
+            $suggestions = $filtered_suggestions;
+        }
+
+        $suggestions = array_map( 'strval', $suggestions );
+        $suggestions = array_map( 'wp_strip_all_tags', $suggestions );
+        $suggestions = array_map( 'trim', $suggestions );
+        $suggestions = array_values( array_filter( $suggestions, 'strlen' ) );
+
+        return array_slice( $suggestions, 0, 8 );
+    }
+
+    private function format_result_count_label( $total_results ) {
+        $total = max( 0, (int) $total_results );
+
+        if ( 0 === $total ) {
+            return __( 'Aucun résultat', 'mon-articles' );
+        }
+
+        $formatted_total = number_format_i18n( $total );
+
+        return sprintf(
+            _n( '%s résultat', '%s résultats', $total, 'mon-articles' ),
+            $formatted_total
+        );
+    }
+
+    private function get_search_icon_svg() {
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" role="presentation" aria-hidden="true"><path d="M10.5 3a7.5 7.5 0 0 1 5.96 12.052l4.246 4.245a1 1 0 0 1-1.414 1.415l-4.246-4.246A7.5 7.5 0 1 1 10.5 3zm0 2a5.5 5.5 0 1 0 3.889 9.389A5.5 5.5 0 0 0 10.5 5Z"/></svg>';
+    }
+
     private function render_inline_styles( $options, $id ) {
         $defaults = self::get_default_options();
 
@@ -2414,16 +2520,10 @@ class My_Articles_Shortcode {
             --my-articles-module-padding-right: {$module_padding_right}px;
             --my-articles-module-padding-bottom: {$module_padding_bottom}px;
             --my-articles-module-padding-left: {$module_padding_left}px;
-            background-color: {$module_bg_color};
-            padding-top: {$module_padding_top}px;
-            padding-right: {$module_padding_right}px;
-            padding-bottom: {$module_padding_bottom}px;
-            padding-left: {$module_padding_left}px;
+            --my-articles-surface-color: {$module_bg_color};
+            --my-articles-card-surface-color: {$vignette_bg_color};
+            --my-articles-title-surface-color: {$title_wrapper_bg};
         }
-        #my-articles-wrapper-{$id} .my-article-item { background-color: {$vignette_bg_color}; }
-        #my-articles-wrapper-{$id}.my-articles-grid .my-article-item .article-title-wrapper,
-        #my-articles-wrapper-{$id}.my-articles-slideshow .my-article-item .article-title-wrapper,
-        #my-articles-wrapper-{$id}.my-articles-list .my-article-item .article-content-wrapper { background-color: {$title_wrapper_bg}; }
         ";
 
         wp_add_inline_style( 'my-articles-styles', $dynamic_css );
