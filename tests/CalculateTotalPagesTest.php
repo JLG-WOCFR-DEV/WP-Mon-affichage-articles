@@ -58,4 +58,31 @@ final class CalculateTotalPagesTest extends TestCase
         yield 'unlimited layout still reports single page' => array(2, 3, 0, 1, 0);
         yield 'pinned fill first page regular still pending' => array(4, 5, 4, 3, 2);
     }
+
+    public function test_calculate_total_pages_can_be_filtered(): void
+    {
+        global $mon_articles_test_filters;
+
+        $mon_articles_test_filters = array();
+
+        \add_filter(
+            'my_articles_calculate_total_pages',
+            static function (array $result, int $pinned, int $regular, int $perPage): array {
+                if (0 === $perPage) {
+                    $result['total_pages'] = $pinned + $regular;
+                }
+
+                return $result;
+            },
+            10,
+            4
+        );
+
+        $result = \my_articles_calculate_total_pages(2, 3, 0);
+
+        self::assertSame(5, $result['total_pages']);
+        self::assertSame(0, $result['next_page']);
+
+        $mon_articles_test_filters = array();
+    }
 }
