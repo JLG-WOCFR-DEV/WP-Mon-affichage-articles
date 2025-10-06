@@ -737,6 +737,64 @@
         return fallback;
     }
 
+    function buildSearchCountLabel(totalAvailable) {
+        var fallbackNone = 'Aucun résultat';
+        var fallbackSingle = '%s résultat';
+        var fallbackPlural = '%s résultats';
+        var fallbackLabel = 'Résultats : %s';
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        if (resolvedTotal === 0) {
+            return resolveFilterLabel('searchCountNone', fallbackNone) || fallbackNone;
+        }
+
+        var template = resolvedTotal === 1
+            ? resolveFilterLabel('searchCountSingle', fallbackSingle)
+            : resolveFilterLabel('searchCountPlural', fallbackPlural);
+
+        var formatted = formatCountMessage(template, resolvedTotal);
+
+        if (!formatted) {
+            formatted = formatCountMessage(resolvedTotal === 1 ? fallbackSingle : fallbackPlural, resolvedTotal);
+        }
+
+        var wrapperTemplate = resolveFilterLabel('searchCountLabel', fallbackLabel);
+        var wrapped = formatCountMessage(wrapperTemplate, formatted || resolvedTotal);
+
+        if (wrapped) {
+            return wrapped;
+        }
+
+        return formatted || String(resolvedTotal);
+    }
+
+    function updateSearchCount(wrapper, totalAvailable) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var output = wrapper.find('.my-articles-search-count').first();
+        if (!output.length) {
+            return;
+        }
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        var label = buildSearchCountLabel(resolvedTotal);
+        if (label) {
+            output.text(label);
+        }
+
+        output.attr('data-count', resolvedTotal);
+    }
+
     function focusElement($element) {
         if (!$element || !$element.length) {
             return false;
@@ -998,6 +1056,7 @@
             .show();
 
         wrapper.attr('data-total-results', responseTotalResults);
+        updateSearchCount(wrapper, responseTotalResults);
 
         var firstArticle = contentArea.find('.my-article-item').first();
         focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
@@ -1244,6 +1303,11 @@
                 if (input.length) {
                     input.attr('aria-busy', 'true');
                 }
+                var submitButton = form.find('.my-articles-search-submit').first();
+                if (submitButton.length) {
+                    submitButton.prop('disabled', true);
+                    submitButton.attr('aria-busy', 'true');
+                }
             },
             onSuccess: function (responseData) {
                 var success = handleFilterSuccess(wrapper, contentArea, instanceId, categorySlug, searchValue, responseData);
@@ -1275,6 +1339,12 @@
                 var input = form.find('.my-articles-search-input').first();
                 if (input.length) {
                     input.attr('aria-busy', 'false');
+                }
+
+                var submitButton = form.find('.my-articles-search-submit').first();
+                if (submitButton.length) {
+                    submitButton.prop('disabled', false);
+                    submitButton.attr('aria-busy', 'false');
                 }
 
                 form.data('pending-search', null);
@@ -1451,6 +1521,37 @@
 
         input.val('');
         updateSearchFormState(form, '');
+        queueSearchRequest(form, { immediate: true, force: true });
+        input.trigger('focus');
+    });
+
+    $(document).on('click', '.my-articles-search-suggestion', function (e) {
+        e.preventDefault();
+
+        var button = $(this);
+        var suggestion = button.data('suggestion');
+        if (typeof suggestion !== 'string') {
+            suggestion = button.text();
+        }
+
+        if (typeof suggestion !== 'string') {
+            return;
+        }
+
+        suggestion = suggestion.trim();
+
+        var form = button.closest('.my-articles-search-form');
+        if (!form.length) {
+            return;
+        }
+
+        var input = form.find('.my-articles-search-input').first();
+        if (!input.length) {
+            return;
+        }
+
+        input.val(suggestion);
+        updateSearchFormState(form, suggestion);
         queueSearchRequest(form, { immediate: true, force: true });
         input.trigger('focus');
     });
