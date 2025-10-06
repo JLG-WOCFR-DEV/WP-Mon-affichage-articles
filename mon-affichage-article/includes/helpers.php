@@ -290,17 +290,21 @@ if ( ! function_exists( 'my_articles_calculate_total_pages' ) ) {
         $total_items = $total_pinned_posts + $total_regular_posts;
 
         if ( 0 === $total_items ) {
-            return [
+            $result = array(
                 'total_pages' => 0,
                 'next_page'   => 0,
-            ];
+            );
+
+            return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
         }
 
         if ( 0 === $posts_per_page ) {
-            return [
+            $result = array(
                 'total_pages' => 1,
                 'next_page'   => 0,
-            ];
+            );
+
+            return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
         }
 
         $pinned_on_first_page   = min( $total_pinned_posts, $posts_per_page );
@@ -315,10 +319,12 @@ if ( ! function_exists( 'my_articles_calculate_total_pages' ) ) {
 
         $total_pages = 1 + ( $remaining_items > 0 ? $additional_pages : 0 );
 
-        return [
+        $result = array(
             'total_pages' => $total_pages,
             'next_page'   => $total_pages > 1 ? 2 : 0,
-        ];
+        );
+
+        return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
     }
 }
 
