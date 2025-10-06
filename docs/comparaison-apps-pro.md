@@ -8,6 +8,16 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 - **Rendu front riche** : la couche shortcode gère les articles épinglés, la pagination et un fallback visuel (squelettes, placeholder, badge d'épingle) comparable aux solutions premium.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1972-L2075】
 - **Instrumentation déjà préparée** : l'onglet tutoriel documente l'émission d'événements JavaScript et la possibilité de pousser les interactions vers un endpoint REST, ce qui est rare dans les plugins gratuits.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】
 
+### Tableau comparatif synthétique
+
+| Dimension | Tuiles – LCV (actuel) | Extensions pro (Essential Grid, JetEngine, WP Grid Builder) | Opportunité d'évolution |
+| --- | --- | --- | --- |
+| **Sélection de templates** | Liste déroulante textuelle sans aperçu.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L806-L881】 | Bibliothèque visuelle filtrable, preview responsive et cas d'usage prédéfinis. | Créer un catalogue de presets versionnés avec vignettes et tags de contexte. |
+| **Composition des cartes** | Structure figée (image, titre, métadonnées, extrait).【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1972-L2075】 | Builder drag & drop avec champs dynamiques (ACF, WooCommerce, taxonomies). | Introduire des slots configurables et la prise en charge de champs personnalisés. |
+| **Moteur de requête** | Filtres basés sur taxonomies natives et ordre simple.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L397-L440】 | Meta queries avancées, relations complexes, sources externes. | Exposer une configuration pour meta queries, connecteurs API et hooks. |
+| **Analytics** | Émission d'événements sans interface de restitution.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】 | Dashboards intégrés avec indicateurs de performance et A/B testing. | Consolider un module analytics dans l'admin en exploitant les événements existants. |
+| **Performance** | Assets injectés systématiquement (Swiper, LazySizes, styles).【F:mon-affichage-article/includes/class-my-articles-enqueue.php†L44-L53】 | Chargement conditionnel et optimisation Lighthouse (code splitting). | Mettre en place un enqueuing conditionnel et une stratégie de bundles modulaires. |
+
 ## Écarts observés vs. extensions professionnelles
 
 1. **Expérience de conception**
@@ -44,6 +54,20 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 
 6. **Personnalisation des parcours**
    - Exploiter l'action `my_articles_track_interaction` pour introduire des règles de personnalisation (par exemple, remonter les contenus les plus cliqués, adapter l'ordre selon le profil utilisateur). Couplé à un cache segmenté, cela amènerait des capacités de « smart listing » recherchées dans les outils pro.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L397-L440】
+
+### Feuille de route recommandée
+
+1. **Court terme (1 à 2 versions)**
+   - Extraire les presets dans des manifestes JSON et intégrer un sélecteur visuel basique pour valider la démarche de templating.
+   - Conditionner l'enqueue des scripts lourds (Swiper, LazySizes) à l'activation des fonctionnalités correspondantes.【F:mon-affichage-article/includes/class-my-articles-enqueue.php†L44-L53】
+
+2. **Moyen terme (3 à 5 versions)**
+   - Lancer un MVP du builder de cartes : slots configurables, injection de champs personnalisés via `get_post_meta` et `wp.data` pour l'aperçu dans l'éditeur.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1972-L2075】【F:mon-affichage-article/blocks/mon-affichage-articles/preview.js†L64-L205】
+   - Exposer une interface de configuration des meta queries et documenter des hooks pour déléguer la récupération de contenus à un service externe.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L397-L440】
+
+3. **Long terme (feuille de route annuelle)**
+   - Développer un dashboard analytics dédié (tableau de bord React avec `wp.data`) exploitant les événements existants, incluant segmentation et export CSV.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】
+   - Proposer une couche de personnalisation comportementale (réordonnancement dynamique, recommandations) supportée par un cache segmenté et des tests A/B.
 
 ### Focus UX/UI détaillé
 
