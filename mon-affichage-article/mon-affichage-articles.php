@@ -152,6 +152,7 @@ final class Mon_Affichage_Articles {
 
         $displayed_posts_count = 0;
         $displayed_pinned_ids  = array();
+        $pinned_rendered       = 0;
 
         if ( $pinned_query instanceof WP_Query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() ) {
@@ -172,6 +173,7 @@ final class Mon_Affichage_Articles {
                 }
 
                 $displayed_posts_count++;
+                $pinned_rendered++;
 
                 if ( $track_pinned ) {
                     $displayed_pinned_ids[] = absint( get_the_ID() );
@@ -232,6 +234,8 @@ final class Mon_Affichage_Articles {
             'html'                   => $html,
             'displayed_posts_count'  => $displayed_posts_count,
             'displayed_pinned_ids'   => $displayed_pinned_ids,
+            'pinned_rendered_count'  => $pinned_rendered,
+            'regular_rendered_count' => $regular_rendered,
         );
     }
 
@@ -472,8 +476,11 @@ public function prepare_filter_articles_response( array $args ) {
             )
         );
 
-        $html                 = $render_results['html'];
-        $displayed_pinned_ids = $render_results['displayed_pinned_ids'];
+        $html                   = $render_results['html'];
+        $displayed_pinned_ids   = $render_results['displayed_pinned_ids'];
+        $displayed_count        = (int) $render_results['displayed_posts_count'];
+        $rendered_regular_count = (int) $render_results['regular_rendered_count'];
+        $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
 
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
@@ -482,6 +489,7 @@ public function prepare_filter_articles_response( array $args ) {
         );
         $total_pages = $pagination_totals['total_pages'];
         $next_page   = $pagination_totals['next_page'];
+        $total_results = (int) $total_regular_posts + (int) $total_pinned_posts;
         $pinned_ids_string = ! empty( $displayed_pinned_ids ) ? implode( ',', array_map( 'absint', $displayed_pinned_ids ) ) : '';
 
         $pagination_html = '';
@@ -516,14 +524,20 @@ public function prepare_filter_articles_response( array $args ) {
         }
 
         $response = array(
-            'html'            => $html,
-            'total_pages'     => $total_pages,
-            'next_page'       => $next_page,
-            'pinned_ids'      => $pinned_ids_string,
-            'pagination_html' => $pagination_html,
-            'search_query'    => $options['search_query'],
-            'sort'            => $options['sort'],
-            'filters'         => $active_filters,
+            'html'                    => $html,
+            'total_pages'             => $total_pages,
+            'next_page'               => $next_page,
+            'pinned_ids'              => $pinned_ids_string,
+            'pagination_html'         => $pagination_html,
+            'search_query'            => $options['search_query'],
+            'sort'                    => $options['sort'],
+            'filters'                 => $active_filters,
+            'displayed_count'         => $displayed_count,
+            'rendered_regular_count'  => $rendered_regular_count,
+            'rendered_pinned_count'   => $rendered_pinned_count,
+            'total_regular'           => (int) $total_regular_posts,
+            'total_pinned'            => (int) $total_pinned_posts,
+            'total_results'           => $total_results,
         );
 
         $this->set_cached_response(
@@ -551,6 +565,10 @@ public function prepare_filter_articles_response( array $args ) {
                     'sort'         => $options['sort'],
                     'total_pages'  => $total_pages,
                     'next_page'    => $next_page,
+                    'displayed'    => $displayed_count,
+                    'total_results' => $total_results,
+                    'rendered_regular' => $rendered_regular_count,
+                    'rendered_pinned'  => $rendered_pinned_count,
                 )
             );
         }
@@ -771,7 +789,10 @@ public function prepare_load_more_articles_response( array $args ) {
             )
         );
 
-        $html = $render_results['html'];
+        $html                   = $render_results['html'];
+        $displayed_count        = (int) $render_results['displayed_posts_count'];
+        $rendered_regular_count = (int) $render_results['regular_rendered_count'];
+        $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
 
         $pinned_ids_string = ! empty( $updated_seen_pinned ) ? implode( ',', array_map( 'absint', $updated_seen_pinned ) ) : '';
 
@@ -783,19 +804,27 @@ public function prepare_load_more_articles_response( array $args ) {
 
         $total_pages = $pagination_totals['total_pages'];
         $next_page   = 0;
+        $total_results = (int) $total_regular_posts + (int) $total_pinned_posts;
 
         if ( $total_pages > 0 && $paged < $total_pages ) {
             $next_page = $paged + 1;
         }
 
         $response = array(
-            'html'         => $html,
-            'pinned_ids'   => $pinned_ids_string,
-            'total_pages'  => $total_pages,
-            'next_page'    => $next_page,
-            'search_query' => $options['search_query'],
-            'sort'         => $options['sort'],
-            'filters'      => $active_filters,
+            'html'                    => $html,
+            'pinned_ids'              => $pinned_ids_string,
+            'total_pages'             => $total_pages,
+            'next_page'               => $next_page,
+            'search_query'            => $options['search_query'],
+            'sort'                    => $options['sort'],
+            'filters'                 => $active_filters,
+            'displayed_count'         => $displayed_count,
+            'rendered_regular_count'  => $rendered_regular_count,
+            'rendered_pinned_count'   => $rendered_pinned_count,
+            'total_regular'           => (int) $total_regular_posts,
+            'total_pinned'            => (int) $total_pinned_posts,
+            'total_results'           => $total_results,
+            'added_count'             => $displayed_count,
         );
 
         $this->set_cached_response(
@@ -824,6 +853,11 @@ public function prepare_load_more_articles_response( array $args ) {
                     'requested_page' => $paged,
                     'next_page'    => $response['next_page'],
                     'total_pages'  => $response['total_pages'],
+                    'displayed'    => $displayed_count,
+                    'total_results' => $total_results,
+                    'added_count'  => $displayed_count,
+                    'rendered_regular' => $rendered_regular_count,
+                    'rendered_pinned'  => $rendered_pinned_count,
                 )
             );
         }

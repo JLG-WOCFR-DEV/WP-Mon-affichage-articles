@@ -624,20 +624,42 @@
         }
     }
 
-    function formatCountMessage(template, count) {
+    function formatCountMessage(template, count, total) {
         if (typeof template !== 'string' || template.length === 0) {
             return '';
         }
 
-        if (template.indexOf('%d') !== -1) {
-            return template.replace(/%d/g, String(count));
-        }
+        var hasTotal = typeof total !== 'undefined';
+        var sequentialIndex = 0;
 
-        if (template.indexOf('%s') !== -1) {
-            return template.replace(/%s/g, String(count));
-        }
+        return template.replace(/%(?:(\d+)\$)?[sd]/g, function (match, position) {
+            if (position) {
+                var positionIndex = parseInt(position, 10);
 
-        return template;
+                if (positionIndex === 1) {
+                    return String(count);
+                }
+
+                if (positionIndex === 2 && hasTotal) {
+                    return String(total);
+                }
+
+                return match;
+            }
+
+            if (sequentialIndex === 0) {
+                sequentialIndex += 1;
+                return String(count);
+            }
+
+            if (hasTotal && sequentialIndex === 1) {
+                sequentialIndex += 1;
+                return String(total);
+            }
+
+            sequentialIndex += 1;
+            return String(count);
+        });
     }
 
     function resolveFilterLabel(key, fallback) {
@@ -651,30 +673,68 @@
         return fallback;
     }
 
-    function buildFilterFeedbackMessage(totalCount) {
+    function buildFilterFeedbackMessage(displayedCount, totalAvailable) {
         var fallbackSingle = '%s article affiché.';
         var fallbackPlural = '%s articles affichés.';
         var fallbackNone = 'Aucun article à afficher.';
+        var fallbackPartialSingle = 'Affichage de %1$s article sur %2$s.';
+        var fallbackPartialPlural = 'Affichage de %1$s articles sur %2$s.';
 
-        var singleLabel = resolveFilterLabel('countSingle', fallbackSingle);
-        var pluralLabel = resolveFilterLabel('countPlural', fallbackPlural);
-        var noneLabel = resolveFilterLabel('countNone', fallbackNone);
+        var resolvedDisplayed = parseInt(displayedCount, 10);
+        if (isNaN(resolvedDisplayed) || resolvedDisplayed < 0) {
+            resolvedDisplayed = 0;
+        }
 
-        if (totalCount > 0) {
-            if (totalCount === 1) {
-                var formattedSingle = formatCountMessage(singleLabel, totalCount) || formatCountMessage(fallbackSingle, totalCount);
-                return formattedSingle || fallbackSingle.replace('%s', String(totalCount));
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = resolvedDisplayed;
+        }
+
+        if (resolvedTotal === 0) {
+            var noneLabel = resolveFilterLabel('countNone', fallbackNone) || fallbackNone;
+            return noneLabel;
+        }
+
+        if (resolvedTotal > resolvedDisplayed) {
+            var partialTemplate = resolvedDisplayed === 1
+                ? resolveFilterLabel('countPartialSingle', fallbackPartialSingle)
+                : resolveFilterLabel('countPartialPlural', fallbackPartialPlural);
+
+            var formattedPartial = formatCountMessage(partialTemplate, resolvedDisplayed, resolvedTotal);
+
+            if (!formattedPartial) {
+                var fallbackTemplate = resolvedDisplayed === 1 ? fallbackPartialSingle : fallbackPartialPlural;
+                formattedPartial = formatCountMessage(fallbackTemplate, resolvedDisplayed, resolvedTotal);
             }
 
-            var formattedPlural = formatCountMessage(pluralLabel, totalCount) || formatCountMessage(fallbackPlural, totalCount);
+            if (formattedPartial) {
+                return formattedPartial;
+            }
+        }
+
+        if (resolvedDisplayed === 1) {
+            var singleLabel = resolveFilterLabel('countSingle', fallbackSingle);
+            var formattedSingle = formatCountMessage(singleLabel, resolvedDisplayed) || formatCountMessage(fallbackSingle, resolvedDisplayed);
+            if (formattedSingle) {
+                return formattedSingle;
+            }
+
+            return fallbackSingle.replace('%s', String(resolvedDisplayed));
+        }
+
+        if (resolvedDisplayed > 1) {
+            var pluralLabel = resolveFilterLabel('countPlural', fallbackPlural);
+            var formattedPlural = formatCountMessage(pluralLabel, resolvedDisplayed) || formatCountMessage(fallbackPlural, resolvedDisplayed);
+
             if (formattedPlural) {
                 return formattedPlural;
             }
 
-            return fallbackPlural.replace('%s', String(totalCount));
+            return fallbackPlural.replace('%s', String(resolvedDisplayed));
         }
 
-        return noneLabel || fallbackNone;
+        var fallback = resolveFilterLabel('countNone', fallbackNone) || fallbackNone;
+        return fallback;
     }
 
     function focusElement($element) {
@@ -919,13 +979,25 @@
         }
 
         var totalArticles = contentArea.find('.my-article-item').length;
-        var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
+        var responseDisplayedCount = parseInt(responseData.displayed_count, 10);
+        if (isNaN(responseDisplayedCount)) {
+            responseDisplayedCount = totalArticles;
+        }
+
+        var responseTotalResults = parseInt(responseData.total_results, 10);
+        if (isNaN(responseTotalResults)) {
+            responseTotalResults = Math.max(responseDisplayedCount, totalArticles);
+        }
+
+        var feedbackMessage = buildFilterFeedbackMessage(responseDisplayedCount, responseTotalResults);
         var feedbackElement = getFeedbackElement(wrapper);
         feedbackElement.removeClass('is-error')
             .removeAttr('role')
             .attr('aria-live', 'polite')
             .text(feedbackMessage)
             .show();
+
+        wrapper.attr('data-total-results', responseTotalResults);
 
         var firstArticle = contentArea.find('.my-article-item').first();
         focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
@@ -1018,13 +1090,39 @@
                 nextPage = 0;
             }
 
+            var displayedCount = parseInt(responseData.displayed_count, 10);
+            if (isNaN(displayedCount)) {
+                displayedCount = 0;
+            }
+
+            var totalResults = parseInt(responseData.total_results, 10);
+            if (isNaN(totalResults)) {
+                totalResults = displayedCount;
+            }
+
+            var renderedRegular = parseInt(responseData.rendered_regular_count, 10);
+            if (isNaN(renderedRegular)) {
+                renderedRegular = 0;
+            }
+
+            var renderedPinned = parseInt(responseData.rendered_pinned_count, 10);
+            if (isNaN(renderedPinned)) {
+                renderedPinned = 0;
+            }
+
             emitFilterInteraction('success', $.extend({}, requestDetail, {
                 totalPages: totalPages,
                 nextPage: nextPage,
                 pinnedIds: typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '',
                 searchQuery: typeof responseData.search_query === 'string' ? responseData.search_query : requestDetail.search,
                 sort: typeof responseData.sort === 'string' ? responseData.sort : requestDetail.sort,
-                hadNonceRefresh: hasRetried
+                hadNonceRefresh: hasRetried,
+                displayedCount: displayedCount,
+                totalResults: totalResults,
+                renderedRegularCount: renderedRegular,
+                renderedPinnedCount: renderedPinned,
+                totalRegular: parseInt(responseData.total_regular, 10) || 0,
+                totalPinned: parseInt(responseData.total_pinned, 10) || 0
             }));
         }
 

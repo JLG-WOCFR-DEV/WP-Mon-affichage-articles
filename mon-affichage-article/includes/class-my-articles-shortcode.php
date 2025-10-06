@@ -1518,6 +1518,8 @@ class My_Articles_Shortcode {
                     'countSingle' => __( '%s article affiché.', 'mon-articles' ),
                     'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
                     'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
+                    'countPartialSingle' => __( 'Affichage de %1$s article sur %2$s.', 'mon-articles' ),
+                    'countPartialPlural' => __( 'Affichage de %1$s articles sur %2$s.', 'mon-articles' ),
                     'instrumentation' => $instrumentation_payload,
                 ]
             );
