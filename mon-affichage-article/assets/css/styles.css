@@ -105,6 +105,20 @@
     pointer-events: none;
 }
 
+.my-articles-wrapper.is-loading.is-loading-more .my-articles-skeleton {
+    display: none;
+}
+
+.my-articles-wrapper.is-loading.is-loading-more .my-articles-grid-content,
+.my-articles-wrapper.is-loading.is-loading-more .my-articles-list-content {
+    opacity: 1;
+}
+
+.my-articles-wrapper.is-loading.is-loading-more .my-articles-grid-content .my-article-item,
+.my-articles-wrapper.is-loading.is-loading-more .my-articles-list-content .my-article-item {
+    pointer-events: auto;
+}
+
 .my-articles-skeleton--grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(var(--my-articles-min-card-width), 1fr));
