@@ -93,3 +93,38 @@ La feuille de style front assure les fondamentaux (squelettes animés, transitio
 - **Feedbacks interactifs** : intégrer des micro-effets (hover avec élévation, focus accentué, lottie ou icônes animées pour les badges) et des réglages d'accessibilité associés (contraste renforcé, annonce ARIA personnalisée) pour se rapprocher du niveau de finition des produits concurrents.
 
 En priorisant ces axes, Tuiles – LCV pourra rivaliser plus sereinement avec les extensions professionnelles, tant sur le confort d'utilisation que sur la richesse fonctionnelle attendue par les équipes marketing et éditoriales exigeantes.
+
+### Compléments UX/UI inspirés des suites professionnelles
+
+1. **Barre de filtres orientée usage**
+   - L'interface actuelle laisse l'éditeur définir uniquement l'alignement, l'intitulé ARIA et une liste brute de filtres, ce qui limite les expériences guidées par persona.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1251-L1338】【F:mon-affichage-article/assets/css/styles.css†L479-L596】 Les solutions pro affichent des barres multi-niveaux avec recherche par tag, segmentation par canal et favoris.
+   - **Objectif UX** : proposer un véritable assistant de segmentation éditoriale (personae, canaux, contextes de campagne) pour rapprocher le produit de l'expérience multi-critères des catalogues pro.
+   - **Approche fonctionnelle** : faire évoluer le panneau pour proposer des collections de filtres pré-définies (Actualités, Evergreen, Promotions) combinées à des chips dynamiques. Chaque chip pourrait exposer des compteurs en temps réel et une option « épingler » pour reproduire les comportements d'Essential Grid ou JetEngine. Prévoir un moteur de suggestion alimenté par les métadonnées des contenus les plus consultés.
+   - **Approche technique** : 
+     - stocker les configurations de collections dans un registre JSON (`filters-presets.json`) versionné côté plugin, chargeable via `wp.data` pour permettre l'édition collaborative ;
+     - exposer un composant React de type `TokenField` personnalisé avec recherche incrémentale et regroupement par taxonomie ;
+     - écouter les événements `my-articles:filter` pour afficher en direct les compteurs et proposer un raccourci « Enregistrer comme favoris » qui crée une entrée utilisateur (`user_meta`).
+   - **Livrables UI** : barre multi-niveaux avec étiquettes contextuelles, messages d'état (ex. aucun résultat → CTA « Modifier les filtres »), onboarding inline guidant sur l'usage des collections.
+   - **Indicateurs de succès** : réduction du temps moyen de configuration d'une barre, augmentation du recours aux favoris, meilleure conversion sur les filtres recommandés.
+
+2. **Canvas d'édition front « live »**
+   - La preview Gutenberg repose sur une réponse HTML figée injectée via `dangerouslySetInnerHTML`, sans interaction directe avec les composants internes.【F:mon-affichage-article/blocks/mon-affichage-articles/preview.js†L1-L206】 Les éditeurs haut de gamme autorisent un mode « live edit » où l'on ajuste directement titres, badges ou CTA depuis le canvas.
+   - **Objectif UX** : réduire le va-et-vient entre back-office et front-office et offrir un ressenti WYSIWYG professionnel.
+   - **Approche fonctionnelle** : introduire un rendu React déclaratif dans l'éditeur, capable de simuler les layouts grille/liste/slider avec les tokens du thème actif. Ajouter un mode « Inspect » affichant les espacements, les points de rupture et les états de focus, comme sur les constructeurs de pages pros. Prévoir des handles de drag & drop pour réordonner les cartes ou ajuster les colonnes au survol.
+   - **Approche technique** :
+     - remplacer l'iframe statique par un composant `PreviewCanvas` basé sur `@wordpress/block-editor` et `@wordpress/components`, alimenté par un store `wp.data` synchronisé avec les attributs du bloc ;
+     - charger dynamiquement les styles du thème actif via `wp_get_global_stylesheet()` et permettre à l'utilisateur de basculer entre « Palette thème » et « Palette bloc » ;
+     - implémenter un module d'historique utilisant `useUndo` pour offrir undo/redo contextualisé et un comparateur de variantes (A/B) exploitant deux snapshots d'attributs.
+   - **Livrables UI** : canvas plein écran avec toolbar flottante (toggle responsive, bascule mode sombre, info-bulles sur les marges), panneau d'inspection contextuel affichant typographie, assets et mesures Lighthouse simulées.
+   - **Indicateurs de succès** : baisse des aller-retours prévisualisation, augmentation du taux d'activation du mode live, meilleure satisfaction des designers internes (enquêtes NPS).
+
+3. **Overlays de pilotage et d'analytics in-situ**
+   - Le back-office détaille les canaux d'instrumentation mais ne restitue pas la donnée ni ne propose de retours visuels au moment du paramétrage.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L118】 Les outils professionnels affichent des overlays d'engagement (taux de clic, temps passé) directement au-dessus du listing.
+   - **Objectif UX** : rendre l'optimisation continue accessible aux équipes éditoriales sans quitter l'environnement de configuration.
+   - **Approche fonctionnelle** : ajouter, dans le panneau de réglages, une bascule « Mode pilotage » qui superpose aux cartes des badges d'indicateurs en s'appuyant sur les événements déjà émis (`my-articles:filter`, `my-articles:load-more`). Afficher des heatmaps simplifiées (zones de clic) et un résumé de performance par filtre directement dans la barre latérale.
+   - **Approche technique** :
+     - créer une table `wp_my_articles_metrics` alimentée par un cron quotidien agrégant les événements collectés, avec une API REST dédiée pour récupérer les données par instance de bloc ;
+     - développer un overlay React (`AnalyticsOverlay`) qui, en mode édition, consomme cette API et affiche badges, tendances (+/-) et temps de lecture estimé ;
+     - proposer des exports CSV/PNG via `wp_ajax` et intégrer un connecteur facultatif vers des outils internes (ex. Matomo) via webhooks.
+   - **Livrables UI** : boutons de bascule analytics, légende des indicateurs, heatmap progressive sur les cartes, panneau latéral « Insights » avec graph sparklines et recommandations automatiques.
+   - **Indicateurs de succès** : volume d'activations du mode pilotage, adoption des exports, amélioration du taux de clic moyen sur les filtres optimisés.
