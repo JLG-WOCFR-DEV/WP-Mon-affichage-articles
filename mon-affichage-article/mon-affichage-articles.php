@@ -41,6 +41,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-settings.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
@@ -69,6 +70,7 @@ final class Mon_Affichage_Articles {
         My_Articles_Shortcode::get_instance();
         My_Articles_Block::get_instance();
         My_Articles_Enqueue::get_instance();
+        My_Articles_Frontend_Data::get_instance();
     }
 
     /**
