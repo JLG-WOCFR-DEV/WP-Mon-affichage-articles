@@ -396,4 +396,37 @@ describe('load-more endpoint interactions', () => {
         expect(feedback).not.toBeNull();
         expect(feedback.classList.contains('is-error')).toBe(false);
     });
+
+    it('surfaces a clear error when no endpoint is configured', () => {
+        window.myArticlesLoadMore.endpoint = '';
+        window.myArticlesLoadMore.restRoot = '';
+        window.myArticlesLoadMore.errorText = 'Configuration manquante.';
+
+        const events = [];
+        const handler = (event) => events.push(event.detail);
+        window.addEventListener('my-articles:load-more', handler);
+
+        $.ajax = jest.fn();
+
+        require('../load-more');
+
+        const button = $('.my-articles-load-more-btn');
+
+        expect(() => {
+            button.trigger('click');
+        }).not.toThrow();
+
+        expect($.ajax).not.toHaveBeenCalled();
+
+        const feedback = document.querySelector('.my-articles-feedback');
+        expect(feedback).not.toBeNull();
+        expect(feedback.textContent).toBe('Configuration manquante.');
+
+        expect(events).toHaveLength(1);
+        expect(events[0].phase).toBe('error');
+        expect(events[0].errorMessage).toBe('missing-endpoint');
+        expect(events[0].displayMessage).toBe('Configuration manquante.');
+
+        window.removeEventListener('my-articles:load-more', handler);
+    });
 });

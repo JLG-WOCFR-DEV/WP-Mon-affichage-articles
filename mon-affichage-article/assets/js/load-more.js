@@ -4,6 +4,110 @@
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
     var pendingNonceDeferred = null;
+    var DEBUG_STORAGE_KEY = 'myArticlesDebug';
+
+    function getStoredDebugConfig() {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+
+        var globalConfig = window.myArticlesDebug;
+        if (typeof globalConfig !== 'undefined') {
+            return globalConfig;
+        }
+
+        try {
+            if (window.localStorage && typeof window.localStorage.getItem === 'function') {
+                var storedValue = window.localStorage.getItem(DEBUG_STORAGE_KEY);
+                if (!storedValue) {
+                    return null;
+                }
+
+                try {
+                    return JSON.parse(storedValue);
+                } catch (parseError) {
+                    return storedValue;
+                }
+            }
+        } catch (storageError) {
+            // Accessing localStorage can throw in some environments (Safari private mode, etc.).
+        }
+
+        return null;
+    }
+
+    function isDebugEnabled(featureKey) {
+        var config = getStoredDebugConfig();
+
+        if (!config) {
+            return false;
+        }
+
+        if (config === true) {
+            return true;
+        }
+
+        if (typeof config === 'string') {
+            var normalized = config.toLowerCase();
+            if (normalized === 'all' || normalized === featureKey) {
+                return true;
+            }
+
+            var fragments = normalized.split(',');
+            for (var i = 0; i < fragments.length; i++) {
+                if (fragments[i].trim() === featureKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (Array.isArray(config)) {
+            for (var index = 0; index < config.length; index++) {
+                if (String(config[index]).toLowerCase().trim() === featureKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (typeof config === 'object') {
+            if (config[featureKey]) {
+                return true;
+            }
+
+            if (config.enabled === true) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function debugLog(featureKey, label, detail) {
+        if (!isDebugEnabled(featureKey)) {
+            return;
+        }
+
+        if (typeof console !== 'undefined') {
+            var logArgs = ['[my-articles][debug][' + featureKey + ']'];
+            if (label) {
+                logArgs.push(label);
+            }
+
+            if (typeof detail !== 'undefined') {
+                logArgs.push(detail);
+            }
+
+            if (typeof console.debug === 'function') {
+                console.debug.apply(console, logArgs);
+            } else if (typeof console.log === 'function') {
+                console.log.apply(console, logArgs);
+            }
+        }
+    }
 
     var INSTRUMENTATION_DEFAULTS = {
         enabled: false,
@@ -150,6 +254,73 @@
         dispatchCustomEvent(eventName, payload);
         runEventCallbacks(eventName, payload);
         routeInstrumentation(eventName, payload);
+    }
+
+    function resolveSearchLabel(key, fallback) {
+        if (typeof window !== 'undefined' && window.myArticlesFilter && Object.prototype.hasOwnProperty.call(window.myArticlesFilter, key)) {
+            var value = window.myArticlesFilter[key];
+            if (typeof value === 'string' && value.length > 0) {
+                return value;
+            }
+        }
+
+        return fallback;
+    }
+
+    function buildSearchCountLabel(totalAvailable) {
+        var fallbackNone = 'Aucun résultat';
+        var fallbackSingle = '%s résultat';
+        var fallbackPlural = '%s résultats';
+        var fallbackLabel = 'Résultats : %s';
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        if (resolvedTotal === 0) {
+            return resolveSearchLabel('searchCountNone', fallbackNone) || fallbackNone;
+        }
+
+        var template = resolvedTotal === 1
+            ? resolveSearchLabel('searchCountSingle', fallbackSingle)
+            : resolveSearchLabel('searchCountPlural', fallbackPlural);
+
+        var formatted = template.replace('%s', String(resolvedTotal));
+
+        if (/%\d?\$?s/.test(template)) {
+            formatted = template.replace(/%(?:\d+\$)?s/g, String(resolvedTotal));
+        }
+
+        var wrapperTemplate = resolveSearchLabel('searchCountLabel', fallbackLabel);
+        if (/%\d?\$?s/.test(wrapperTemplate)) {
+            return wrapperTemplate.replace(/%(?:\d+\$)?s/g, formatted);
+        }
+
+        return formatted;
+    }
+
+    function updateSearchCount(wrapper, totalAvailable) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var output = wrapper.find('.my-articles-search-count').first();
+        if (!output.length) {
+            return;
+        }
+
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = 0;
+        }
+
+        var label = buildSearchCountLabel(resolvedTotal);
+        if (label) {
+            output.text(label);
+        }
+
+        output.attr('data-count', resolvedTotal);
     }
 
     function getNonceEndpoint(settings) {
@@ -310,6 +481,143 @@
             .attr('role', 'alert')
             .attr('aria-live', 'assertive')
             .show();
+    }
+
+    function toTrimmedString(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+
+        var trimmed = value.trim();
+
+        return trimmed.length ? trimmed : '';
+    }
+
+    function extractFromCandidate(candidate, keys) {
+        if (!candidate || 'object' !== typeof candidate) {
+            return '';
+        }
+
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+                var value = candidate[key];
+                var stringValue = toTrimmedString(value);
+
+                if (stringValue) {
+                    return stringValue;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorMessage(jqXHR, response) {
+        var messageKeys = ['message', 'error', 'detail'];
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var message = extractFromCandidate(candidates[i], messageKeys);
+
+            if (message) {
+                return message;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.responseText === 'string') {
+            try {
+                var parsed = JSON.parse(jqXHR.responseText);
+                var parsedMessage = extractFromCandidate(parsed, messageKeys) || extractFromCandidate(parsed && parsed.data, messageKeys);
+
+                if (parsedMessage) {
+                    return parsedMessage;
+                }
+            } catch (parseError) {
+                // responseText was not JSON; ignore parsing errors.
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
+            return jqXHR.statusText;
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorStatus(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+            if (!candidate || 'object' !== typeof candidate) {
+                continue;
+            }
+
+            var status = candidate.status;
+
+            if (typeof status === 'number' && status > 0) {
+                return status;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.status === 'number' && jqXHR.status > 0) {
+            return jqXHR.status;
+        }
+
+        return 0;
+    }
+
+    function extractAjaxErrorCode(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var code = extractFromCandidate(candidates[i], ['code', 'errorCode']);
+
+            if (code) {
+                return code;
+            }
+        }
+
+        return '';
+    }
+
+    function composeAjaxErrorMessage(jqXHR, response, fallbackMessage) {
+        var message = extractAjaxErrorMessage(jqXHR, response);
+        var status = extractAjaxErrorStatus(jqXHR, response);
+        var code = extractAjaxErrorCode(jqXHR, response);
+
+        if (!message) {
+            message = fallbackMessage;
+        }
+
+        var details = [];
+
+        if (code) {
+            details.push('code: ' + code);
+        }
+
+        if (status) {
+            details.push('HTTP ' + status);
+        }
+
+        if (details.length) {
+            message += ' (' + details.join(', ') + ')';
+        }
+
+        return message;
     }
 
     function normalizeSearchValue(value) {
@@ -971,17 +1279,13 @@
         var requestUrl = (loadMoreSettings && typeof loadMoreSettings.endpoint === 'string') ? loadMoreSettings.endpoint : '';
 
         if (!requestUrl && loadMoreSettings && typeof loadMoreSettings.restRoot === 'string') {
-            requestUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/load-more';
-        }
-
-        if (!requestUrl) {
-            instrumentationDetail.errorMessage = 'missing-endpoint';
-            emitLoadMoreInteraction('error', instrumentationDetail);
-            return;
+            var trimmedRoot = loadMoreSettings.restRoot.replace(/\/+$/, '');
+            if (trimmedRoot.length) {
+                requestUrl = trimmedRoot + '/my-articles/v1/load-more';
+            }
         }
 
         var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
-        var hasRetried = false;
 
         var instrumentationDetail = {
             instanceId: instanceId,
@@ -991,9 +1295,39 @@
             search: searchValue,
             sort: sortValue,
             autoTriggered: isAutoTrigger,
-            requestUrl: requestUrl,
+            requestUrl: requestUrl || '',
             hadNonceRefresh: false
         };
+
+        if (!requestUrl) {
+            if (state) {
+                state.isFetching = false;
+            }
+
+            if (wrapper && wrapper.length) {
+                clearFeedback(wrapper);
+                showError(wrapper, fallbackMessage);
+            }
+
+            if (isAutoTrigger) {
+                disableAutoLoad(button, 'error', true);
+            }
+
+            button.prop('disabled', false);
+
+            instrumentationDetail.errorMessage = 'missing-endpoint';
+            instrumentationDetail.status = 0;
+            instrumentationDetail.displayMessage = fallbackMessage;
+
+            emitLoadMoreInteraction('error', instrumentationDetail);
+            debugLog('load-more', 'request:error', instrumentationDetail);
+
+            return;
+        }
+
+        var hasRetried = false;
+
+        debugLog('load-more', 'request:init', instrumentationDetail);
 
         if (state) {
             state.isFetching = true;
@@ -1005,42 +1339,11 @@
             }
         }
 
-        function extractErrorMessage(jqXHR, response) {
-            if (response && response.data && response.data.message) {
-                return response.data.message;
-            }
-
-            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                return jqXHR.responseJSON.data.message;
-            }
-
-            if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
-                return jqXHR.statusText;
-            }
-
-            return '';
-        }
-
-        function extractStatus(jqXHR, response) {
-            if (jqXHR && typeof jqXHR.status === 'number') {
-                return jqXHR.status;
-            }
-
-            if (response && response.data && typeof response.data.status === 'number') {
-                return response.data.status;
-            }
-
-            if (response && typeof response.status === 'number') {
-                return response.status;
-            }
-
-            return 0;
-        }
-
         function handleErrorResponse(jqXHR, response) {
             finalizeRequest();
 
-            var errorMessage = extractErrorMessage(jqXHR, response) || fallbackMessage;
+            var parsedErrorMessage = extractAjaxErrorMessage(jqXHR, response);
+            var errorMessage = composeAjaxErrorMessage(jqXHR, response, fallbackMessage);
 
             var resetText = loadMoreSettings.loadMoreText || originalButtonText;
             button.text(resetText);
@@ -1051,10 +1354,15 @@
                 disableAutoLoad(button, 'error', true);
             }
 
-            instrumentationDetail.errorMessage = errorMessage;
-            instrumentationDetail.status = extractStatus(jqXHR, response);
+            instrumentationDetail.errorMessage = parsedErrorMessage || fallbackMessage;
+            instrumentationDetail.status = extractAjaxErrorStatus(jqXHR, response);
+            instrumentationDetail.errorCode = extractAjaxErrorCode(jqXHR, response) || '';
             instrumentationDetail.hadNonceRefresh = hasRetried;
+            instrumentationDetail.response = response && response.data ? response.data : response;
+            instrumentationDetail.jqXHR = jqXHR ? { status: jqXHR.status, statusText: jqXHR.statusText } : null;
             emitLoadMoreInteraction('error', instrumentationDetail);
+
+            debugLog('load-more', 'request:error', instrumentationDetail);
 
             if (typeof console !== 'undefined' && typeof console.error === 'function') {
                 console.error(errorMessage);
@@ -1145,10 +1453,15 @@
             instrumentationDetail.totalRegular = parseInt(responseData.total_regular, 10) || 0;
             instrumentationDetail.totalPinned = parseInt(responseData.total_pinned, 10) || 0;
             instrumentationDetail.pinnedIds = typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '';
+            if (responseData && typeof responseData.pagination_meta === 'object' && responseData.pagination_meta !== null) {
+                instrumentationDetail.pagination = responseData.pagination_meta;
+            }
             instrumentationDetail.hadNonceRefresh = hasRetried;
             instrumentationDetail.errorMessage = '';
             instrumentationDetail.status = 0;
             emitLoadMoreInteraction('success', instrumentationDetail);
+
+            debugLog('load-more', 'request:success', instrumentationDetail);
 
             if (!isAutoTrigger) {
                 focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
@@ -1263,11 +1576,15 @@
                     button.text(loadingText);
                     button.prop('disabled', true);
                     if (wrapper && wrapper.length) {
+                        if (previousArticleCount > 0) {
+                            wrapper.addClass('is-loading-more');
+                        }
                         wrapper.attr('aria-busy', 'true');
                         wrapper.addClass('is-loading');
                     }
                     clearFeedback(wrapper);
                     emitLoadMoreInteraction('request', instrumentationDetail);
+                    debugLog('load-more', 'request:send', instrumentationDetail);
                 },
                 success: function (response) {
                     if (response && response.success) {
@@ -1312,6 +1629,7 @@
                     if (wrapper && wrapper.length) {
                         wrapper.attr('aria-busy', 'false');
                         wrapper.removeClass('is-loading');
+                        wrapper.removeClass('is-loading-more');
                     }
                 }
             });

@@ -56,6 +56,68 @@ if (!function_exists('wp_enqueue_script')) {
     }
 }
 
+if (!function_exists('wp_script_is')) {
+    function wp_script_is($handle, $list = 'enqueued')
+    {
+        global $mon_articles_test_registered_scripts, $mon_articles_test_marked_scripts;
+
+        $handle = (string) $handle;
+        $list   = (string) $list;
+
+        if ('registered' === $list) {
+            if (is_array($mon_articles_test_registered_scripts) && isset($mon_articles_test_registered_scripts[$handle])) {
+                return true;
+            }
+
+            if (is_array($mon_articles_test_marked_scripts) && in_array($handle, $mon_articles_test_marked_scripts, true)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('wp_set_script_translations')) {
+    function wp_set_script_translations($handle, $domain, $path)
+    {
+        global $mon_articles_test_script_translations;
+
+        if (!is_array($mon_articles_test_script_translations)) {
+            $mon_articles_test_script_translations = array();
+        }
+
+        $mon_articles_test_script_translations[] = array(
+            'handle' => (string) $handle,
+            'domain' => (string) $domain,
+            'path'   => (string) $path,
+        );
+
+        return true;
+    }
+}
+
+if (!function_exists('wp_add_inline_script')) {
+    function wp_add_inline_script($handle, $data, $position = 'after')
+    {
+        global $mon_articles_test_inline_scripts;
+
+        if (!is_array($mon_articles_test_inline_scripts)) {
+            $mon_articles_test_inline_scripts = array();
+        }
+
+        $mon_articles_test_inline_scripts[] = array(
+            'handle'   => (string) $handle,
+            'data'     => (string) $data,
+            'position' => (string) $position,
+        );
+
+        return true;
+    }
+}
+
 }
 
 namespace MonAffichageArticles\Tests {
@@ -83,13 +145,19 @@ final class MyArticlesEnqueueTest extends TestCase
             $mon_articles_test_registered_scripts,
             $mon_articles_test_script_data,
             $mon_articles_test_enqueued_styles,
-            $mon_articles_test_enqueued_scripts;
+            $mon_articles_test_enqueued_scripts,
+            $mon_articles_test_script_translations,
+            $mon_articles_test_inline_scripts,
+            $mon_articles_test_marked_scripts;
 
         $mon_articles_test_registered_styles = array();
         $mon_articles_test_registered_scripts = array();
         $mon_articles_test_script_data       = array();
         $mon_articles_test_enqueued_styles   = array();
         $mon_articles_test_enqueued_scripts  = array();
+        $mon_articles_test_script_translations = array();
+        $mon_articles_test_inline_scripts      = array();
+        $mon_articles_test_marked_scripts      = array();
     }
 
     public function test_registers_assets_during_init(): void
@@ -114,6 +182,12 @@ final class MyArticlesEnqueueTest extends TestCase
         $this->assertArrayHasKey('lazysizes', $mon_articles_test_registered_scripts);
         $this->assertTrue($mon_articles_test_registered_scripts['lazysizes']['in_footer']);
         $this->assertArrayHasKey('my-articles-responsive-layout', $mon_articles_test_registered_scripts);
+        $this->assertArrayHasKey('my-articles-swiper-init', $mon_articles_test_registered_scripts);
+        $this->assertContains(
+            'swiper-js',
+            $mon_articles_test_registered_scripts['my-articles-swiper-init']['deps'],
+            'Swiper init script should depend on Swiper core.'
+        );
         $this->assertArrayHasKey('my-articles-debug-helper', $mon_articles_test_registered_scripts);
 
         $this->assertArrayHasKey('lazysizes', $mon_articles_test_script_data);
@@ -146,12 +220,80 @@ final class MyArticlesEnqueueTest extends TestCase
         );
 
         $this->assertContains('my-articles-styles', $enqueued_style_handles);
-        $this->assertContains('swiper-css', $enqueued_style_handles);
+        $this->assertNotContains('swiper-css', $enqueued_style_handles, 'Swiper styles should not be enqueued by default in the editor.');
 
-        $this->assertContains('swiper-js', $enqueued_script_handles);
-        $this->assertContains('lazysizes', $enqueued_script_handles);
         $this->assertContains('my-articles-responsive-layout', $enqueued_script_handles);
         $this->assertContains('my-articles-debug-helper', $enqueued_script_handles);
+        $this->assertNotContains('swiper-js', $enqueued_script_handles, 'Swiper script should load on demand in the editor.');
+        $this->assertNotContains('lazysizes', $enqueued_script_handles, 'LazySizes should load on demand in the editor.');
+
+        global $mon_articles_test_inline_scripts;
+        $this->assertIsArray($mon_articles_test_inline_scripts);
+
+        $preview_snippets = array_filter(
+            $mon_articles_test_inline_scripts,
+            static function (array $entry): bool {
+                return $entry['handle'] === 'mon-affichage-articles-preview';
+            }
+        );
+
+        $editor_snippets = array_filter(
+            $mon_articles_test_inline_scripts,
+            static function (array $entry): bool {
+                return $entry['handle'] === 'mon-affichage-articles-editor-script';
+            }
+        );
+
+        $this->assertNotEmpty($preview_snippets, 'Dynamic asset manifest should be exposed to the preview script.');
+        $this->assertNotEmpty($editor_snippets, 'Dynamic asset manifest should be exposed to the editor script.');
+
+        foreach (array_merge($preview_snippets, $editor_snippets) as $snippet) {
+            $this->assertStringContainsString('myArticlesAssets', $snippet['data']);
+            $this->assertStringContainsString('"swiper"', $snippet['data']);
+        }
+    }
+
+    public function test_block_editor_translations_use_plugin_directory(): void
+    {
+        global $mon_articles_test_registered_scripts, $mon_articles_test_script_translations;
+
+        $enqueue = My_Articles_Enqueue::get_instance();
+        $enqueue->register_plugin_styles_scripts();
+
+        $mon_articles_test_registered_scripts['mon-affichage-articles-preview'] = array(
+            'src'       => '',
+            'deps'      => array(),
+            'ver'       => '',
+            'in_footer' => false,
+        );
+
+        $mon_articles_test_registered_scripts['mon-affichage-articles-editor-script'] = array(
+            'src'       => '',
+            'deps'      => array(),
+            'ver'       => '',
+            'in_footer' => false,
+        );
+
+        $mon_articles_test_script_translations = array();
+
+        $enqueue->enqueue_block_editor_assets();
+
+        $expected_path = MY_ARTICLES_PLUGIN_DIR . 'languages';
+
+        $this->assertNotEmpty(
+            $mon_articles_test_script_translations,
+            'Translations should be registered for block editor scripts.'
+        );
+
+        $handles = array_column($mon_articles_test_script_translations, 'handle');
+
+        $this->assertContains('mon-affichage-articles-preview', $handles);
+        $this->assertContains('mon-affichage-articles-editor-script', $handles);
+
+        foreach ($mon_articles_test_script_translations as $translation) {
+            $this->assertSame('mon-articles', $translation['domain']);
+            $this->assertSame($expected_path, $translation['path']);
+        }
     }
 }
 }

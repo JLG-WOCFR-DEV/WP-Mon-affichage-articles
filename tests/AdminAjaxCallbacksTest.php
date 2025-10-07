@@ -186,6 +186,7 @@ final class AdminAjaxCallbacksTest extends TestCase
         parent::setUp();
 
         $_POST = array();
+        $_GET  = array();
 
         global $mon_articles_test_current_user_caps,
             $mon_articles_test_post_type_objects,
@@ -193,7 +194,9 @@ final class AdminAjaxCallbacksTest extends TestCase
             $mon_articles_test_taxonomies,
             $mon_articles_test_taxonomy_objects,
             $mon_articles_test_terms_result,
-            $mon_articles_test_last_get_terms_args;
+            $mon_articles_test_last_get_terms_args,
+            $mon_articles_test_wp_query_factory,
+            $mon_articles_test_last_wp_query_args;
 
         $mon_articles_test_current_user_caps = array();
         $mon_articles_test_post_type_objects = array();
@@ -202,6 +205,8 @@ final class AdminAjaxCallbacksTest extends TestCase
         $mon_articles_test_taxonomy_objects = array();
         $mon_articles_test_terms_result = array();
         $mon_articles_test_last_get_terms_args = null;
+        $mon_articles_test_wp_query_factory = null;
+        $mon_articles_test_last_wp_query_args = null;
     }
 
     protected function tearDown(): void
@@ -209,6 +214,7 @@ final class AdminAjaxCallbacksTest extends TestCase
         parent::tearDown();
 
         $_POST = array();
+        $_GET  = array();
 
         global $mon_articles_test_current_user_caps,
             $mon_articles_test_post_type_objects,
@@ -216,7 +222,9 @@ final class AdminAjaxCallbacksTest extends TestCase
             $mon_articles_test_taxonomies,
             $mon_articles_test_taxonomy_objects,
             $mon_articles_test_terms_result,
-            $mon_articles_test_last_get_terms_args;
+            $mon_articles_test_last_get_terms_args,
+            $mon_articles_test_wp_query_factory,
+            $mon_articles_test_last_wp_query_args;
 
         $mon_articles_test_current_user_caps = array();
         $mon_articles_test_post_type_objects = array();
@@ -225,6 +233,8 @@ final class AdminAjaxCallbacksTest extends TestCase
         $mon_articles_test_taxonomy_objects = array();
         $mon_articles_test_terms_result = array();
         $mon_articles_test_last_get_terms_args = null;
+        $mon_articles_test_wp_query_factory = null;
+        $mon_articles_test_last_wp_query_args = null;
     }
 
     public function test_get_post_type_taxonomies_callback_requires_valid_post_type(): void
@@ -509,6 +519,54 @@ final class AdminAjaxCallbacksTest extends TestCase
             $this->assertSame(500, $response->status_code);
             $this->assertSame(array('message' => 'Unable to fetch terms'), $response->data);
         }
+    }
+
+    public function test_search_posts_callback_falls_back_to_default_post_type(): void
+    {
+        $_GET['search'] = 'Breaking';
+
+        global $mon_articles_test_post_type_objects,
+            $mon_articles_test_current_user_caps,
+            $mon_articles_test_wp_query_factory,
+            $mon_articles_test_last_wp_query_args;
+
+        $mon_articles_test_post_type_objects = array(
+            'post' => (object) array(
+                'cap' => (object) array('edit_posts' => 'edit_posts'),
+            ),
+        );
+        $mon_articles_test_current_user_caps = array('edit_posts');
+        $mon_articles_test_wp_query_factory = function ($args) use (&$mon_articles_test_last_wp_query_args) {
+            $mon_articles_test_last_wp_query_args = $args;
+
+            return array(
+                'posts' => array(
+                    array('ID' => 21),
+                    array('ID' => 34),
+                ),
+            );
+        };
+
+        $plugin = new Mon_Affichage_Articles();
+
+        try {
+            $plugin->search_posts_callback();
+            $this->fail('Expected MyArticlesJsonResponse to be thrown.');
+        } catch (MyArticlesJsonResponse $response) {
+            $this->assertTrue($response->success);
+            $this->assertSame(200, $response->status_code);
+            $this->assertSame(
+                array(
+                    array('id' => 21, 'text' => 'Sample Title'),
+                    array('id' => 34, 'text' => 'Sample Title'),
+                ),
+                $response->data
+            );
+        }
+
+        $this->assertIsArray($mon_articles_test_last_wp_query_args);
+        $this->assertSame('Breaking', $mon_articles_test_last_wp_query_args['s']);
+        $this->assertSame('post', $mon_articles_test_last_wp_query_args['post_type']);
     }
 }
 

@@ -245,6 +245,24 @@ Pour valider la gestion d'un identifiant d'instance invalide lors des appels AJA
 1. Déclenchez les actions `filter_articles` et `load_more_articles` avec un identifiant qui ne correspond pas à un contenu de type `mon_affichage`.
 2. Vérifiez que la réponse est une erreur JSON comportant un code HTTP `400` et le message « Type de contenu invalide pour cette instance. ».
 
+## Pistes d'amélioration
+
+- **Prévisualisation côté admin** : proposer une zone de prévisualisation instantanée dans la metabox afin de visualiser les changements avant publication, même hors éditeur de blocs.
+- **Synchronisation des préréglages** : ajouter une commande WP-CLI pour exporter/importer les modèles de design entre environnements (recette ↔ production) et assurer une cohérence éditoriale.
+- **Extension des sources de contenu** : permettre de sélectionner plusieurs termes/taxonomies simultanément et d'agréger des requêtes externes (WP_Query personnalisée ou API tierces) via un système d'adaptateurs.
+- **Tableau de bord des performances** : exposer des métriques (temps de réponse des endpoints, taux d'erreur, usages des modes d'affichage) directement dans la page « Instrumentation » pour faciliter le suivi.
+- **Accessibilité renforcée** : intégrer des scénarios de tests automatisés (axe-core, pa11y) dans la CI pour garantir la conformité des évolutions futures.
+
+### Roadmap synthétique
+
+| Horizon | Objectifs clés | Leviers associés |
+| --- | --- | --- |
+| **0-3 mois** | Séparer la préparation des requêtes, introduire un cache dédié et fiabiliser les rendus côté bloc. | Refonte de `My_Articles_Shortcode::render_shortcode()`, découplage de `build_display_state()` et normalisation de `render_block()`. |
+| **3-6 mois** | Industrialiser l'expérience éditeur (préréglages enrichis, filtres avancés) et préparer l'observabilité. | Galerie de presets avec métadonnées, extension des filtres front office, instrumentation exportable. |
+| **6-12 mois** | Offrir des intégrations enterprise (sources externes, analytics enrichi) et un monitoring temps réel. | Adaptateurs de contenus multiples, tableau de bord de performances et connecteurs Segment/Adobe. |
+
+Consultez `docs/roadmap-technique.md` pour une version détaillée des chantiers, des dépendances et des prérequis.
+
 ## Crédits
 
 Développé par LCV.

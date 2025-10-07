@@ -41,6 +41,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-settings.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
@@ -69,6 +70,58 @@ final class Mon_Affichage_Articles {
         My_Articles_Shortcode::get_instance();
         My_Articles_Block::get_instance();
         My_Articles_Enqueue::get_instance();
+        My_Articles_Frontend_Data::get_instance();
+    }
+
+    /**
+     * Safely extracts and sanitizes a scalar value from an arguments array.
+     *
+     * Accepts strings, numbers or booleans and gracefully handles array values
+     * by reading their first scalar entry—mirroring what professional-grade
+     * applications do to guard against malformed requests.
+     *
+     * @param array    $args       Arguments array coming from user input.
+     * @param string   $key        Key to retrieve from the arguments array.
+     * @param callable $sanitizer  Sanitizing callback applied to the scalar value.
+     * @param string   $default    Optional. Default value when the key is missing or invalid.
+     *
+     * @return string Sanitized scalar value or the provided default fallback.
+     */
+    private function sanitize_scalar_argument( array $args, $key, callable $sanitizer, $default = '' ) {
+        if ( ! array_key_exists( $key, $args ) ) {
+            return $default;
+        }
+
+        $value = $args[ $key ];
+
+        if ( is_array( $value ) ) {
+            if ( empty( $value ) ) {
+                return $default;
+            }
+
+            $value = reset( $value );
+        }
+
+        if ( is_string( $value ) ) {
+            $value = wp_unslash( $value );
+        } elseif ( is_object( $value ) && method_exists( $value, '__toString' ) ) {
+            $value = (string) $value;
+        } elseif ( ! is_scalar( $value ) ) {
+            return $default;
+        }
+
+        if ( ! is_callable( $sanitizer ) ) {
+            return $default;
+        }
+
+        $value = (string) $value;
+        $sanitized = call_user_func( $sanitizer, $value );
+
+        if ( is_scalar( $sanitized ) ) {
+            return (string) $sanitized;
+        }
+
+        return $default;
     }
 
     public function validate_instance_for_request( $instance_id ) {
@@ -245,45 +298,8 @@ public function prepare_filter_articles_response( array $args ) {
         $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
         $raw_http_referer = isset( $args['http_referer'] ) ? (string) $args['http_referer'] : '';
-        $search_term   = '';
-        $requested_sort = '';
-        $requested_sort = '';
-
-        if ( isset( $args['search'] ) ) {
-            $raw_search = $args['search'];
-
-            if ( is_array( $raw_search ) ) {
-                $raw_search = reset( $raw_search );
-            }
-
-            if ( is_scalar( $raw_search ) ) {
-                $search_term = sanitize_text_field( (string) $raw_search );
-            }
-        }
-
-        if ( isset( $args['sort'] ) ) {
-            $raw_sort = $args['sort'];
-
-            if ( is_array( $raw_sort ) ) {
-                $raw_sort = reset( $raw_sort );
-            }
-
-            if ( is_scalar( $raw_sort ) ) {
-                $requested_sort = sanitize_key( (string) $raw_sort );
-            }
-        }
-
-        if ( isset( $args['sort'] ) ) {
-            $raw_sort = $args['sort'];
-
-            if ( is_array( $raw_sort ) ) {
-                $raw_sort = reset( $raw_sort );
-            }
-
-            if ( is_scalar( $raw_sort ) ) {
-                $requested_sort = sanitize_key( (string) $raw_sort );
-            }
-        }
+        $search_term      = $this->sanitize_scalar_argument( $args, 'search', 'sanitize_text_field' );
+        $requested_sort   = $this->sanitize_scalar_argument( $args, 'sort', 'sanitize_key' );
 
         $home_url    = home_url();
         $referer_url = my_articles_normalize_internal_url( $raw_current_url, $home_url );
@@ -341,16 +357,8 @@ public function prepare_filter_articles_response( array $args ) {
             $normalize_context['requested_search'] = $search_term;
         }
 
-        if ( '' !== $requested_sort ) {
-            $normalize_context['requested_sort'] = $requested_sort;
-        }
-
         if ( ! empty( $requested_filters ) ) {
             $normalize_context['requested_filters'] = $requested_filters;
-        }
-
-        if ( '' !== $requested_sort ) {
-            $normalize_context['requested_sort'] = $requested_sort;
         }
 
         $options = My_Articles_Shortcode::normalize_instance_options(
@@ -485,7 +493,8 @@ public function prepare_filter_articles_response( array $args ) {
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
             $total_regular_posts,
-            $effective_posts_per_page
+            $effective_posts_per_page,
+            $pagination_context
         );
         $total_pages = $pagination_totals['total_pages'];
         $next_page   = $pagination_totals['next_page'];
@@ -618,32 +627,8 @@ public function prepare_load_more_articles_response( array $args ) {
         $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
         $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
         $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
-        $search_term       = '';
-        $requested_sort    = '';
-
-        if ( isset( $args['search'] ) ) {
-            $raw_search = $args['search'];
-
-            if ( is_array( $raw_search ) ) {
-                $raw_search = reset( $raw_search );
-            }
-
-            if ( is_scalar( $raw_search ) ) {
-                $search_term = sanitize_text_field( (string) $raw_search );
-            }
-        }
-
-        if ( isset( $args['sort'] ) ) {
-            $raw_sort = $args['sort'];
-
-            if ( is_array( $raw_sort ) ) {
-                $raw_sort = reset( $raw_sort );
-            }
-
-            if ( is_scalar( $raw_sort ) ) {
-                $requested_sort = sanitize_key( (string) $raw_sort );
-            }
-        }
+        $search_term       = $this->sanitize_scalar_argument( $args, 'search', 'sanitize_text_field' );
+        $requested_sort    = $this->sanitize_scalar_argument( $args, 'sort', 'sanitize_key' );
 
         $pinned_ids_param = $args['pinned_ids'] ?? '';
         if ( is_array( $pinned_ids_param ) ) {
@@ -777,6 +762,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $total_pinned_posts       = $state['total_pinned_posts'];
         $total_regular_posts      = $state['total_regular_posts'];
         $effective_posts_per_page = $state['effective_posts_per_page'];
+        $is_unlimited             = ! empty( $state['is_unlimited'] );
 
         $render_results = $this->render_articles_for_response(
             $shortcode_instance,
@@ -796,10 +782,20 @@ public function prepare_load_more_articles_response( array $args ) {
 
         $pinned_ids_string = ! empty( $updated_seen_pinned ) ? implode( ',', array_map( 'absint', $updated_seen_pinned ) ) : '';
 
+        $pagination_context = array(
+            'current_page' => $paged,
+        );
+
+        if ( $is_unlimited ) {
+            $pagination_context['unlimited_page_size'] = $state['unlimited_batch_size'];
+            $pagination_context['analytics_page_size'] = $state['unlimited_batch_size'];
+        }
+
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
             $total_regular_posts,
-            $effective_posts_per_page
+            $effective_posts_per_page,
+            $pagination_context
         );
 
         $total_pages = $pagination_totals['total_pages'];
@@ -898,6 +894,14 @@ public function prepare_load_more_articles_response( array $args ) {
     public function prepare_search_posts_response( array $args ) {
         $search_term = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
         $post_type   = isset( $args['post_type'] ) ? sanitize_key( $args['post_type'] ) : '';
+
+        if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
+            $normalized_post_type = my_articles_normalize_post_type( $post_type );
+
+            if ( '' !== $normalized_post_type ) {
+                $post_type = $normalized_post_type;
+            }
+        }
 
         if ( '' === $post_type || ! post_type_exists( $post_type ) ) {
             return new WP_Error(
