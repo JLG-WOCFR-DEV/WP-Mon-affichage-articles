@@ -108,6 +108,10 @@ final class Mon_Affichage_Articles {
             return $default;
         }
 
+        if ( ! is_callable( $sanitizer ) ) {
+            return $default;
+        }
+
         $value = (string) $value;
         $sanitized = call_user_func( $sanitizer, $value );
 

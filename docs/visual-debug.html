@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug visuel - Mon Affichage Articles</title>
+    <link rel="stylesheet" href="../mon-affichage-article/assets/css/styles.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f3f4f6;
+            padding: 2rem;
+        }
+        .demo-section {
+            margin-bottom: 3rem;
+        }
+        .demo-section h1 {
+            margin-bottom: 1rem;
+        }
+        .demo-wrapper {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-wrapper">
+        <section class="demo-section">
+            <h1>Grille</h1>
+            <div class="my-articles-wrapper my-articles-grid" data-cols-mobile="1" data-cols-tablet="2" data-cols-desktop="3" data-cols-ultrawide="4" data-min-card-width="280">
+                <div class="my-articles-grid-content">
+                    <article class="my-article-item">
+                        <a href="#" class="my-article-link">
+                            <div class="article-thumbnail-wrapper">
+                                <img src="https://picsum.photos/seed/1/640/360" alt="Article 1">
+                            </div>
+                            <div class="article-title-wrapper">
+                                <h2 class="article-title">Titre d'article en grille avec deux lignes maximum</h2>
+                                <div class="article-meta">
+                                    <span class="article-category">Actualités</span>
+                                    <span class="article-author">par Rédaction</span>
+                                    <span class="article-date">12 mars 2024</span>
+                                </div>
+                                <div class="my-article-excerpt">
+                                    Ceci est un extrait rapide pour vérifier l'alignement et la lisibilité du texte.
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                    <article class="my-article-item is-pinned">
+                        <a href="#" class="my-article-link">
+                            <div class="article-thumbnail-wrapper">
+                                <span class="my-article-badge">À la une</span>
+                                <img src="https://picsum.photos/seed/2/640/360" alt="Article 2">
+                            </div>
+                            <div class="article-title-wrapper">
+                                <h2 class="article-title">Article mis en avant pour tester le badge et les effets</h2>
+                                <div class="article-meta">
+                                    <span class="article-category">Inspiration</span>
+                                    <span class="article-author">par Camille</span>
+                                    <span class="article-date">9 mars 2024</span>
+                                </div>
+                                <div class="my-article-excerpt">
+                                    Encore un extrait un peu plus long pour vérifier ce qu'il se passe avec la nouvelle feuille de style.
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            </div>
+        </section>
+        <section class="demo-section">
+            <h1>Liste</h1>
+            <div class="my-articles-wrapper my-articles-list" data-cols-mobile="1" data-cols-tablet="1" data-cols-desktop="1" data-cols-ultrawide="1" data-min-card-width="280">
+                <div class="my-articles-list-content">
+                    <article class="my-article-item">
+                        <a href="#" class="my-article-link">
+                            <div class="article-thumbnail-wrapper">
+                                <img src="https://picsum.photos/seed/3/640/360" alt="Article 3">
+                            </div>
+                            <div class="article-content-wrapper">
+                                <h2 class="article-title">Affichage en liste avec image à gauche</h2>
+                                <div class="article-meta">
+                                    <span class="article-category">Tutoriel</span>
+                                    <span class="article-author">par Louis</span>
+                                    <span class="article-date">5 mars 2024</span>
+                                </div>
+                                <div class="my-article-excerpt">
+                                    L'extrait doit rester aligné verticalement et laisser suffisamment d'espace respirer, même sur les écrans plus larges.
+                                </div>
+                            </div>
+                        </a>
+                    </article>
+                </div>
+            </div>
+        </section>
+    </div>
+    <script src="../mon-affichage-article/assets/js/responsive-layout.js"></script>
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            window.MyArticlesResponsiveLayout && window.MyArticlesResponsiveLayout.refreshAll && window.MyArticlesResponsiveLayout.refreshAll();
+        });
+    </script>
+</body>
+</html>
