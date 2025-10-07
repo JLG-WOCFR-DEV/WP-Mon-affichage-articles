@@ -7,10 +7,11 @@
     --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 28%, transparent);
     --my-articles-admin-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 6%);
     --my-articles-admin-surface: #ffffff;
-    --my-articles-admin-surface-muted: color-mix(in srgb, #f5f6fb 85%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-surface-muted: color-mix(in srgb, #f7f8fc 90%, var(--wp-admin-theme-color, #3c434a) 8%);
     --my-articles-admin-elevated: #ffffff;
     --my-articles-admin-text: #111827;
     --my-articles-admin-muted: #6b7280;
+    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 45%, var(--my-articles-admin-muted) 55%);
     --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 35%, transparent);
     --my-articles-admin-accent: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #2563eb 25%);
     --my-articles-admin-accent-soft: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 12%, #e8f1ff 88%);
@@ -22,13 +23,74 @@
     --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, #f0f9ff 70%) 0%, #ffffff 60%, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 18%, #eef2ff 82%) 100%);
 }
 
+@supports not (color: color-mix(in srgb, black 50%, white 50%)) {
+    :root {
+        --my-articles-admin-border-color: rgba(60, 67, 74, 0.16);
+        --my-articles-admin-border: 1px solid rgba(60, 67, 74, 0.16);
+        --my-articles-admin-border-strong: 1px solid rgba(60, 67, 74, 0.28);
+        --my-articles-admin-bg: #f5f6fb;
+        --my-articles-admin-surface-muted: #f7f8fc;
+        --my-articles-admin-outline: rgba(37, 99, 235, 0.35);
+        --my-articles-admin-accent: #2563eb;
+        --my-articles-admin-accent-soft: #e8f1ff;
+        --my-articles-admin-muted-strong: #424a58;
+    }
+
+    .my-articles-admin__header {
+        background: linear-gradient(135deg, #e8f1ff 0%, #ffffff 55%, #eef2ff 100%);
+    }
+
+    .my-articles-admin__tabs {
+        background-color: #f8f9fd;
+    }
+
+    .my-articles-card--primary {
+        background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 65%);
+    }
+
+    .my-articles-card--muted {
+        background-color: #f7f8fc;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --my-articles-admin-bg: #0f172a;
+            --my-articles-admin-surface: #111827;
+            --my-articles-admin-surface-muted: #1a2537;
+            --my-articles-admin-text: #f8fafc;
+            --my-articles-admin-muted: #94a3b8;
+            --my-articles-admin-muted-strong: #b7c1d0;
+            --my-articles-admin-accent-contrast: #f8fafc;
+        }
+
+        .my-articles-admin__header {
+            background: linear-gradient(135deg, #1f2937 0%, #111827 55%, #1f2937 100%);
+        }
+
+        .my-articles-admin__tabs {
+            background-color: rgba(24, 33, 51, 0.85);
+        }
+
+        .my-articles-card--primary {
+            background: linear-gradient(180deg, #16213b 0%, #0f172a 65%);
+        }
+
+        .my-articles-card--muted {
+            background-color: #1a2537;
+        }
+    }
+}
+
 .my-articles-admin {
     position: relative;
     isolation: isolate;
     padding-block: clamp(1.5rem, 1.2rem + 0.6vw, 2.5rem);
+    padding-inline: clamp(1.25rem, 2vw, 2rem);
+    background: var(--my-articles-admin-bg);
     color: var(--my-articles-admin-text);
     max-width: min(1040px, 100%);
     margin-inline: auto;
+    border-radius: var(--my-articles-admin-radius);
 }
 
 .my-articles-admin__header {
@@ -98,6 +160,7 @@
     gap: 0.85rem;
     margin: 0;
     padding: 0.5rem 0.85rem;
+    background-color: #f8f9fd;
     background: color-mix(in srgb, var(--my-articles-admin-surface) 80%, transparent);
     border-radius: var(--my-articles-admin-radius-pill);
     border: 1px solid color-mix(in srgb, var(--my-articles-admin-border-color) 60%, transparent);
@@ -113,7 +176,7 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--my-articles-admin-muted);
+    color: var(--my-articles-admin-muted-strong);
     margin: 0;
 }
 
@@ -232,6 +295,7 @@
 }
 
 .my-articles-card--muted {
+    background-color: #f7f8fc;
     background: var(--my-articles-admin-surface-muted);
     border: 1px solid color-mix(in srgb, var(--my-articles-admin-border-color) 70%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
@@ -255,7 +319,7 @@
 .my-articles-card__description {
     margin: 0;
     font-size: 0.92rem;
-    color: var(--my-articles-admin-muted);
+    color: var(--my-articles-admin-muted-strong);
 }
 
 .my-articles-card__body {
@@ -314,7 +378,7 @@
 .my-articles-admin__intro {
     margin: 0;
     font-size: 1rem;
-    color: color-mix(in srgb, var(--my-articles-admin-muted) 80%, var(--my-articles-admin-text) 20%);
+    color: var(--my-articles-admin-muted-strong);
 }
 
 .my-articles-card--prose h2,
@@ -335,7 +399,7 @@
 
 .my-articles-card--prose p,
 .my-articles-card--prose ul {
-    color: var(--my-articles-admin-muted);
+    color: var(--my-articles-admin-muted-strong);
     font-size: 0.98rem;
 }
 
@@ -436,7 +500,7 @@
 
 .my-articles-admin__form .description {
     margin-top: 0.4rem;
-    color: var(--my-articles-admin-muted);
+    color: var(--my-articles-admin-muted-strong);
     font-size: 0.85rem;
     line-height: 1.5;
 }
@@ -569,6 +633,7 @@
         --my-articles-admin-muted: #94a3b8;
         --my-articles-admin-accent-contrast: #f8fafc;
         --my-articles-admin-shadow: 0 25px 45px -35px rgba(15, 23, 42, 0.95);
+        --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-muted) 65%, var(--my-articles-admin-accent-contrast) 35%);
     }
 
     .my-articles-admin__badge {
@@ -577,10 +642,15 @@
 
     .my-articles-card--muted {
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        background-color: #1a2537;
     }
 
     .my-articles-admin__notices .notice {
         background: color-mix(in srgb, #1e293b 80%, transparent);
+    }
+
+    .my-articles-admin__meta {
+        background-color: #182133;
     }
 }
 
