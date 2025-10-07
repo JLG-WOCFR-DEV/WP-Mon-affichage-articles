@@ -1213,6 +1213,9 @@
             instrumentationDetail.totalRegular = parseInt(responseData.total_regular, 10) || 0;
             instrumentationDetail.totalPinned = parseInt(responseData.total_pinned, 10) || 0;
             instrumentationDetail.pinnedIds = typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '';
+            if (responseData && typeof responseData.pagination_meta === 'object' && responseData.pagination_meta !== null) {
+                instrumentationDetail.pagination = responseData.pagination_meta;
+            }
             instrumentationDetail.hadNonceRefresh = hasRetried;
             instrumentationDetail.errorMessage = '';
             instrumentationDetail.status = 0;
