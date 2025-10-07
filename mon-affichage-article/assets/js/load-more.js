@@ -1431,7 +1431,6 @@
                 .show();
 
             wrapper.attr('data-total-results', responseTotalResults);
-            updateSearchCount(wrapper, responseTotalResults);
 
             var totalPagesResponse = parseInt(responseData.total_pages, 10);
             if (isNaN(totalPagesResponse)) {

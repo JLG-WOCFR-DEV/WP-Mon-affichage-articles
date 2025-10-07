@@ -490,15 +490,6 @@ public function prepare_filter_articles_response( array $args ) {
         $rendered_regular_count = (int) $render_results['regular_rendered_count'];
         $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
 
-        $pagination_context = array(
-            'current_page' => 1,
-        );
-
-        if ( $is_unlimited ) {
-            $pagination_context['unlimited_page_size'] = $state['unlimited_batch_size'];
-            $pagination_context['analytics_page_size'] = $state['unlimited_batch_size'];
-        }
-
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
             $total_regular_posts,
@@ -556,7 +547,6 @@ public function prepare_filter_articles_response( array $args ) {
             'total_regular'           => (int) $total_regular_posts,
             'total_pinned'            => (int) $total_pinned_posts,
             'total_results'           => $total_results,
-            'pagination_meta'         => isset( $pagination_totals['meta'] ) ? $pagination_totals['meta'] : array(),
         );
 
         $this->set_cached_response(
@@ -588,7 +578,6 @@ public function prepare_filter_articles_response( array $args ) {
                     'total_results' => $total_results,
                     'rendered_regular' => $rendered_regular_count,
                     'rendered_pinned'  => $rendered_pinned_count,
-                    'pagination'       => isset( $pagination_totals['meta'] ) ? $pagination_totals['meta'] : array(),
                 )
             );
         }
@@ -810,8 +799,12 @@ public function prepare_load_more_articles_response( array $args ) {
         );
 
         $total_pages = $pagination_totals['total_pages'];
-        $next_page   = isset( $pagination_totals['next_page'] ) ? (int) $pagination_totals['next_page'] : 0;
+        $next_page   = 0;
         $total_results = (int) $total_regular_posts + (int) $total_pinned_posts;
+
+        if ( $total_pages > 0 && $paged < $total_pages ) {
+            $next_page = $paged + 1;
+        }
 
         $response = array(
             'html'                    => $html,
@@ -828,7 +821,6 @@ public function prepare_load_more_articles_response( array $args ) {
             'total_pinned'            => (int) $total_pinned_posts,
             'total_results'           => $total_results,
             'added_count'             => $displayed_count,
-            'pagination_meta'         => isset( $pagination_totals['meta'] ) ? $pagination_totals['meta'] : array(),
         );
 
         $this->set_cached_response(
@@ -862,7 +854,6 @@ public function prepare_load_more_articles_response( array $args ) {
                     'added_count'  => $displayed_count,
                     'rendered_regular' => $rendered_regular_count,
                     'rendered_pinned'  => $rendered_pinned_count,
-                    'pagination'       => isset( $pagination_totals['meta'] ) ? $pagination_totals['meta'] : array(),
                 )
             );
         }

@@ -1691,23 +1691,19 @@ JS;
             My_Articles_Enqueue::get_instance()->register_script_data(
                 'my-articles-filter',
                 'myArticlesFilter',
-                array(
-                    'endpoint'          => $filter_rest_endpoint,
-                    'restRoot'          => $rest_root,
-                    'restNonce'         => $rest_nonce,
-                    'nonceEndpoint'     => $nonce_refresh_endpoint,
-                    'errorText'         => __( 'Erreur AJAX.', 'mon-articles' ),
-                    'countSingle'       => __( '%s article affiché.', 'mon-articles' ),
-                    'countPlural'       => __( '%s articles affichés.', 'mon-articles' ),
-                    'countNone'         => __( 'Aucun article à afficher.', 'mon-articles' ),
+                [
+                    'endpoint'      => $filter_rest_endpoint,
+                    'restRoot'      => $rest_root,
+                    'restNonce'     => $rest_nonce,
+                    'nonceEndpoint' => $nonce_refresh_endpoint,
+                    'errorText'     => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'countSingle' => __( '%s article affiché.', 'mon-articles' ),
+                    'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
+                    'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
                     'countPartialSingle' => __( 'Affichage de %1$s article sur %2$s.', 'mon-articles' ),
                     'countPartialPlural' => __( 'Affichage de %1$s articles sur %2$s.', 'mon-articles' ),
-                    'searchCountLabel'   => __( 'Résultats : %s', 'mon-articles' ),
-                    'searchCountSingle'  => __( '%s résultat', 'mon-articles' ),
-                    'searchCountPlural'  => __( '%s résultats', 'mon-articles' ),
-                    'searchCountNone'    => __( 'Aucun résultat', 'mon-articles' ),
-                    'instrumentation'    => $instrumentation_payload,
-                )
+                    'instrumentation' => $instrumentation_payload,
+                ]
             );
         }
 

@@ -874,64 +874,6 @@
         return fallback;
     }
 
-    function buildSearchCountLabel(totalAvailable) {
-        var fallbackNone = 'Aucun résultat';
-        var fallbackSingle = '%s résultat';
-        var fallbackPlural = '%s résultats';
-        var fallbackLabel = 'Résultats : %s';
-
-        var resolvedTotal = parseInt(totalAvailable, 10);
-        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
-            resolvedTotal = 0;
-        }
-
-        if (resolvedTotal === 0) {
-            return resolveFilterLabel('searchCountNone', fallbackNone) || fallbackNone;
-        }
-
-        var template = resolvedTotal === 1
-            ? resolveFilterLabel('searchCountSingle', fallbackSingle)
-            : resolveFilterLabel('searchCountPlural', fallbackPlural);
-
-        var formatted = formatCountMessage(template, resolvedTotal);
-
-        if (!formatted) {
-            formatted = formatCountMessage(resolvedTotal === 1 ? fallbackSingle : fallbackPlural, resolvedTotal);
-        }
-
-        var wrapperTemplate = resolveFilterLabel('searchCountLabel', fallbackLabel);
-        var wrapped = formatCountMessage(wrapperTemplate, formatted || resolvedTotal);
-
-        if (wrapped) {
-            return wrapped;
-        }
-
-        return formatted || String(resolvedTotal);
-    }
-
-    function updateSearchCount(wrapper, totalAvailable) {
-        if (!wrapper || !wrapper.length) {
-            return;
-        }
-
-        var output = wrapper.find('.my-articles-search-count').first();
-        if (!output.length) {
-            return;
-        }
-
-        var resolvedTotal = parseInt(totalAvailable, 10);
-        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
-            resolvedTotal = 0;
-        }
-
-        var label = buildSearchCountLabel(resolvedTotal);
-        if (label) {
-            output.text(label);
-        }
-
-        output.attr('data-count', resolvedTotal);
-    }
-
     function focusElement($element) {
         if (!$element || !$element.length) {
             return false;
@@ -1193,7 +1135,6 @@
             .show();
 
         wrapper.attr('data-total-results', responseTotalResults);
-        updateSearchCount(wrapper, responseTotalResults);
 
         var firstArticle = contentArea.find('.my-article-item').first();
         focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
@@ -1275,11 +1216,6 @@
                 renderedPinned = 0;
             }
 
-            var paginationMeta = null;
-            if (responseData && typeof responseData.pagination_meta === 'object' && responseData.pagination_meta !== null) {
-                paginationMeta = responseData.pagination_meta;
-            }
-
             emitFilterInteraction('success', $.extend({}, requestDetail, {
                 totalPages: totalPages,
                 nextPage: nextPage,
@@ -1292,8 +1228,7 @@
                 renderedRegularCount: renderedRegular,
                 renderedPinnedCount: renderedPinned,
                 totalRegular: parseInt(responseData.total_regular, 10) || 0,
-                totalPinned: parseInt(responseData.total_pinned, 10) || 0,
-                pagination: paginationMeta
+                totalPinned: parseInt(responseData.total_pinned, 10) || 0
             }));
         }
 
