@@ -1142,17 +1142,13 @@
         var requestUrl = (loadMoreSettings && typeof loadMoreSettings.endpoint === 'string') ? loadMoreSettings.endpoint : '';
 
         if (!requestUrl && loadMoreSettings && typeof loadMoreSettings.restRoot === 'string') {
-            requestUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/load-more';
-        }
-
-        if (!requestUrl) {
-            instrumentationDetail.errorMessage = 'missing-endpoint';
-            emitLoadMoreInteraction('error', instrumentationDetail);
-            return;
+            var trimmedRoot = loadMoreSettings.restRoot.replace(/\/+$/, '');
+            if (trimmedRoot.length) {
+                requestUrl = trimmedRoot + '/my-articles/v1/load-more';
+            }
         }
 
         var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
-        var hasRetried = false;
 
         var instrumentationDetail = {
             instanceId: instanceId,
@@ -1162,9 +1158,37 @@
             search: searchValue,
             sort: sortValue,
             autoTriggered: isAutoTrigger,
-            requestUrl: requestUrl,
+            requestUrl: requestUrl || '',
             hadNonceRefresh: false
         };
+
+        if (!requestUrl) {
+            if (state) {
+                state.isFetching = false;
+            }
+
+            if (wrapper && wrapper.length) {
+                clearFeedback(wrapper);
+                showError(wrapper, fallbackMessage);
+            }
+
+            if (isAutoTrigger) {
+                disableAutoLoad(button, 'error', true);
+            }
+
+            button.prop('disabled', false);
+
+            instrumentationDetail.errorMessage = 'missing-endpoint';
+            instrumentationDetail.status = 0;
+            instrumentationDetail.displayMessage = fallbackMessage;
+
+            emitLoadMoreInteraction('error', instrumentationDetail);
+            debugLog('load-more', 'request:error', instrumentationDetail);
+
+            return;
+        }
+
+        var hasRetried = false;
 
         debugLog('load-more', 'request:init', instrumentationDetail);
 
