@@ -93,3 +93,20 @@ La feuille de style front assure les fondamentaux (squelettes animés, transitio
 - **Feedbacks interactifs** : intégrer des micro-effets (hover avec élévation, focus accentué, lottie ou icônes animées pour les badges) et des réglages d'accessibilité associés (contraste renforcé, annonce ARIA personnalisée) pour se rapprocher du niveau de finition des produits concurrents.
 
 En priorisant ces axes, Tuiles – LCV pourra rivaliser plus sereinement avec les extensions professionnelles, tant sur le confort d'utilisation que sur la richesse fonctionnelle attendue par les équipes marketing et éditoriales exigeantes.
+
+### Compléments UX/UI inspirés des suites professionnelles
+
+1. **Barre de filtres orientée usage**
+   - L'interface actuelle laisse l'éditeur définir uniquement l'alignement, l'intitulé ARIA et une liste brute de filtres, ce qui limite les expériences guidées par persona.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1251-L1338】【F:mon-affichage-article/assets/css/styles.css†L479-L596】 Les solutions pro affichent des barres multi-niveaux avec recherche par tag, segmentation par canal et favoris.
+   - Faire évoluer le panneau pour proposer des collections de filtres pré-définies (Actualités, Contenu evergreen, Promotions) combinées à des chips dynamiques. Chaque chip pourrait exposer des compteurs en temps réel et une option « épingler » pour reproduire les comportements d'Essential Grid ou JetEngine.
+   - Ajouter un configurateur d'états (filtre vide, surcharge marketing, recommandations) afin de transformer la barre en véritable cockpit éditorial plutôt qu'un simple repeater de taxonomies.
+
+2. **Canvas d'édition front « live »**
+   - La preview Gutenberg repose sur une réponse HTML figée injectée via `dangerouslySetInnerHTML`, sans interaction directe avec les composants internes.【F:mon-affichage-article/blocks/mon-affichage-articles/preview.js†L1-L206】 Les éditeurs haut de gamme autorisent un mode « live edit » où l'on ajuste directement titres, badges ou CTA depuis le canvas.
+   - Introduire un rendu React déclaratif dans l'éditeur, capable de simuler les layouts grille/liste/slider avec les tokens du thème actif. On pourrait activer un mode « Inspect » affichant les espacements, les points de rupture et les états de focus, comme sur les constructeurs de pages pros.
+   - Coupler ce mode à un historique de modifications (undo/redo contextualisé) et à un comparateur de variantes A/B pour encourager les itérations de design directement depuis Gutenberg.
+
+3. **Overlays de pilotage et d'analytics in-situ**
+   - Le back-office détaille les canaux d'instrumentation mais ne restitue pas la donnée ni ne propose de retours visuels au moment du paramétrage.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L118】 Les outils professionnels affichent des overlays d'engagement (taux de clic, temps passé) directement au-dessus du listing.
+   - Ajouter, dans le panneau de réglages, une bascule « Mode pilotage » qui superpose aux cartes des badges d'indicateurs en s'appuyant sur les événements déjà émis (`my-articles:filter`, `my-articles:load-more`). Cela offrirait un retour immédiat sur la performance des filtres ou du bouton « Charger plus ».
+   - Prévoir des exports (CSV, PNG de heatmap) et une intégration avec les dashboards internes pour aligner l'expérience sur les plateformes analytiques spécialisées.
