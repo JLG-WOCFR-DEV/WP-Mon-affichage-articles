@@ -4,6 +4,110 @@
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
     var pendingNonceDeferred = null;
+    var DEBUG_STORAGE_KEY = 'myArticlesDebug';
+
+    function getStoredDebugConfig() {
+        if (typeof window === 'undefined') {
+            return null;
+        }
+
+        var globalConfig = window.myArticlesDebug;
+        if (typeof globalConfig !== 'undefined') {
+            return globalConfig;
+        }
+
+        try {
+            if (window.localStorage && typeof window.localStorage.getItem === 'function') {
+                var storedValue = window.localStorage.getItem(DEBUG_STORAGE_KEY);
+                if (!storedValue) {
+                    return null;
+                }
+
+                try {
+                    return JSON.parse(storedValue);
+                } catch (parseError) {
+                    return storedValue;
+                }
+            }
+        } catch (storageError) {
+            // Accessing localStorage can throw in some environments (Safari private mode, etc.).
+        }
+
+        return null;
+    }
+
+    function isDebugEnabled(featureKey) {
+        var config = getStoredDebugConfig();
+
+        if (!config) {
+            return false;
+        }
+
+        if (config === true) {
+            return true;
+        }
+
+        if (typeof config === 'string') {
+            var normalized = config.toLowerCase();
+            if (normalized === 'all' || normalized === featureKey) {
+                return true;
+            }
+
+            var fragments = normalized.split(',');
+            for (var i = 0; i < fragments.length; i++) {
+                if (fragments[i].trim() === featureKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (Array.isArray(config)) {
+            for (var index = 0; index < config.length; index++) {
+                if (String(config[index]).toLowerCase().trim() === featureKey) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (typeof config === 'object') {
+            if (config[featureKey]) {
+                return true;
+            }
+
+            if (config.enabled === true) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function debugLog(featureKey, label, detail) {
+        if (!isDebugEnabled(featureKey)) {
+            return;
+        }
+
+        if (typeof console !== 'undefined') {
+            var logArgs = ['[my-articles][debug][' + featureKey + ']'];
+            if (label) {
+                logArgs.push(label);
+            }
+
+            if (typeof detail !== 'undefined') {
+                logArgs.push(detail);
+            }
+
+            if (typeof console.debug === 'function') {
+                console.debug.apply(console, logArgs);
+            } else if (typeof console.log === 'function') {
+                console.log.apply(console, logArgs);
+            }
+        }
+    }
 
     var INSTRUMENTATION_DEFAULTS = {
         enabled: false,
@@ -1062,6 +1166,8 @@
             hadNonceRefresh: false
         };
 
+        debugLog('load-more', 'request:init', instrumentationDetail);
+
         if (state) {
             state.isFetching = true;
         }
@@ -1121,7 +1227,11 @@
             instrumentationDetail.errorMessage = errorMessage;
             instrumentationDetail.status = extractStatus(jqXHR, response);
             instrumentationDetail.hadNonceRefresh = hasRetried;
+            instrumentationDetail.response = response && response.data ? response.data : response;
+            instrumentationDetail.jqXHR = jqXHR ? { status: jqXHR.status, statusText: jqXHR.statusText } : null;
             emitLoadMoreInteraction('error', instrumentationDetail);
+
+            debugLog('load-more', 'request:error', instrumentationDetail);
 
             if (typeof console !== 'undefined' && typeof console.error === 'function') {
                 console.error(errorMessage);
@@ -1220,6 +1330,8 @@
             instrumentationDetail.errorMessage = '';
             instrumentationDetail.status = 0;
             emitLoadMoreInteraction('success', instrumentationDetail);
+
+            debugLog('load-more', 'request:success', instrumentationDetail);
 
             if (!isAutoTrigger) {
                 focusOnFirstArticleOrTitle(wrapper, contentArea, focusArticle);
@@ -1334,11 +1446,15 @@
                     button.text(loadingText);
                     button.prop('disabled', true);
                     if (wrapper && wrapper.length) {
+                        if (previousArticleCount > 0) {
+                            wrapper.addClass('is-loading-more');
+                        }
                         wrapper.attr('aria-busy', 'true');
                         wrapper.addClass('is-loading');
                     }
                     clearFeedback(wrapper);
                     emitLoadMoreInteraction('request', instrumentationDetail);
+                    debugLog('load-more', 'request:send', instrumentationDetail);
                 },
                 success: function (response) {
                     if (response && response.success) {
@@ -1383,6 +1499,7 @@
                     if (wrapper && wrapper.length) {
                         wrapper.attr('aria-busy', 'false');
                         wrapper.removeClass('is-loading');
+                        wrapper.removeClass('is-loading-more');
                     }
                 }
             });
