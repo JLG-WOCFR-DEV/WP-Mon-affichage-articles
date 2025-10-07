@@ -98,6 +98,158 @@
                   return value;
               };
     var PreviewPane = window.myArticlesBlocks && window.myArticlesBlocks.PreviewPane ? window.myArticlesBlocks.PreviewPane : null;
+    var dateI18n = wp.date && typeof wp.date.dateI18n === 'function' ? wp.date.dateI18n : null;
+    var getDateSettings =
+        wp.date && typeof wp.date.__experimentalGetSettings === 'function'
+            ? wp.date.__experimentalGetSettings
+            : null;
+
+    function parseDate(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+
+        var date = new Date(value);
+
+        if (!date || isNaN(date.getTime())) {
+            return null;
+        }
+
+        return date;
+    }
+
+    function formatDateTime(value) {
+        var date = parseDate(value);
+
+        if (!date) {
+            return __('Inconnu', 'mon-articles');
+        }
+
+        if (dateI18n && getDateSettings) {
+            var settings = getDateSettings();
+            var format = settings && settings.formats && settings.formats.datetime ? settings.formats.datetime : 'Y-m-d H:i';
+
+            return dateI18n(format, date.toISOString());
+        }
+
+        if (typeof date.toLocaleString === 'function') {
+            try {
+                return date.toLocaleString();
+            } catch (error) {
+                // no-op fall back to ISO string below.
+            }
+        }
+
+        return date.toISOString();
+    }
+
+    function getDaysSince(value) {
+        var date = parseDate(value);
+
+        if (!date) {
+            return null;
+        }
+
+        var now = new Date();
+        var diff = now.getTime() - date.getTime();
+
+        if (diff < 0) {
+            diff = 0;
+        }
+
+        return Math.round(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function formatFreshness(days) {
+        if (null === days) {
+            return __('Non disponible', 'mon-articles');
+        }
+
+        if (days <= 0) {
+            return __('Moins de 24 h', 'mon-articles');
+        }
+
+        if (days === 1) {
+            return __('1 jour', 'mon-articles');
+        }
+
+        return sprintf(__('%d jours', 'mon-articles'), days);
+    }
+
+    function buildFreshnessInsights(value) {
+        var days = getDaysSince(value);
+        var summary = formatFreshness(days);
+        var severity = 'ok';
+        var description = '';
+
+        if (null === days) {
+            severity = 'info';
+            description = __('Impossible de déterminer la dernière mise à jour. Effectuez une sauvegarde pour rafraîchir ces informations.', 'mon-articles');
+        } else if (days >= 120) {
+            severity = 'critical';
+            description = sprintf(__('Ce module n’a pas été actualisé depuis %d jours. Vérifiez que sa configuration est toujours pertinente.', 'mon-articles'), days);
+        } else if (days >= 60) {
+            severity = 'warning';
+            description = sprintf(__('Pensez à vérifier ce module : sa dernière mise à jour remonte à %d jours.', 'mon-articles'), days);
+        } else {
+            description = sprintf(__('Mis à jour il y a %s.', 'mon-articles'), summary.toLowerCase());
+        }
+
+        return {
+            days: days,
+            summary: summary,
+            severity: severity,
+            description: description,
+        };
+    }
+
+    function getStatusMetadata(status) {
+        if (typeof status !== 'string' || '' === status) {
+            return {
+                label: __('Inconnu', 'mon-articles'),
+                notice: null,
+            };
+        }
+
+        var normalized = status.toLowerCase();
+        var labels = {
+            publish: __('Publié', 'mon-articles'),
+            draft: __('Brouillon', 'mon-articles'),
+            pending: __('En attente', 'mon-articles'),
+            future: __('Planifié', 'mon-articles'),
+            private: __('Privé', 'mon-articles'),
+            trash: __('Corbeille', 'mon-articles'),
+        };
+        var notices = {
+            draft: __('Ce module est un brouillon : il n’apparaîtra pas côté site tant qu’il n’est pas publié.', 'mon-articles'),
+            pending: __('Ce module est en attente de validation par un éditeur.', 'mon-articles'),
+            future: __('Ce module est planifié : il se publiera automatiquement à la date indiquée.', 'mon-articles'),
+            private: __('Ce module est privé : seuls les utilisateurs autorisés peuvent le voir.', 'mon-articles'),
+            trash: __('Ce module est dans la corbeille : restaurez-le avant de l’utiliser.', 'mon-articles'),
+        };
+
+        var label = labels[normalized] || status;
+        var notice = null;
+
+        if ('publish' !== normalized) {
+            var message = notices[normalized] || sprintf(__('Statut actuel : %s.', 'mon-articles'), label.toLowerCase());
+            var statusType = 'warning';
+
+            if ('trash' === normalized) {
+                statusType = 'error';
+            }
+
+            notice = {
+                type: statusType,
+                message: message,
+            };
+        }
+
+        return {
+            label: label,
+            notice: notice,
+        };
+    }
 
     if (!FormTokenField) {
         FormTokenField = function (props) {
@@ -766,6 +918,125 @@
             }
             var ariaLabelPlaceholder = selectedInstanceTitle;
 
+            var selectedInstance = selectedData && selectedData.selectedInstance ? selectedData.selectedInstance : null;
+            var moduleStatusPanel = null;
+
+            if (selectedInstance) {
+                var lastModified = selectedInstance.modified || selectedInstance.modified_gmt || '';
+                var createdAt = selectedInstance.date || selectedInstance.date_gmt || '';
+                var freshness = buildFreshnessInsights(lastModified);
+                var statusMetadata = getStatusMetadata(selectedInstance.status || '');
+                var insightsRows = [
+                    {
+                        key: 'id',
+                        label: __('Identifiant', 'mon-articles'),
+                        value: '#' + selectedInstance.id,
+                    },
+                    {
+                        key: 'status',
+                        label: __('Statut', 'mon-articles'),
+                        value: statusMetadata.label,
+                    },
+                    {
+                        key: 'updated',
+                        label: __('Dernière mise à jour', 'mon-articles'),
+                        value: formatDateTime(lastModified),
+                    },
+                    {
+                        key: 'freshness',
+                        label: __('Fraîcheur', 'mon-articles'),
+                        value: freshness.summary,
+                    },
+                    {
+                        key: 'created',
+                        label: __('Créé le', 'mon-articles'),
+                        value: formatDateTime(createdAt),
+                    },
+                ];
+
+                var insightsList = el(
+                    'div',
+                    { className: 'my-articles-block__module-insights' },
+                    insightsRows.map(function (row) {
+                        return el(
+                            'div',
+                            { className: 'my-articles-block__module-insights-row', key: row.key },
+                            el('span', { className: 'my-articles-block__module-insights-label' }, row.label),
+                            el('span', { className: 'my-articles-block__module-insights-value' }, row.value)
+                        );
+                    })
+                );
+
+                var statusNotice = null;
+                if (statusMetadata.notice) {
+                    statusNotice = el(
+                        Notice,
+                        { status: statusMetadata.notice.type, isDismissible: false },
+                        statusMetadata.notice.message
+                    );
+                }
+
+                var freshnessNotice = null;
+                if ('warning' === freshness.severity || 'critical' === freshness.severity || 'info' === freshness.severity) {
+                    var noticeStatus = 'info';
+                    if ('warning' === freshness.severity) {
+                        noticeStatus = 'warning';
+                    } else if ('critical' === freshness.severity) {
+                        noticeStatus = 'error';
+                    }
+                    freshnessNotice = el(Notice, { status: noticeStatus, isDismissible: false }, freshness.description);
+                }
+
+                var actions = [];
+                var viewLink = selectedInstance.link || '';
+                if (viewLink) {
+                    actions.push(
+                        el(
+                            Button,
+                            {
+                                key: 'view',
+                                href: viewLink,
+                                target: '_blank',
+                                rel: 'noopener noreferrer',
+                                variant: 'secondary',
+                            },
+                            __('Voir sur le site', 'mon-articles')
+                        )
+                    );
+                }
+
+                if (canEditPosts && selectedInstance.id) {
+                    var editUrl = 'post.php?post=' + selectedInstance.id + '&action=edit';
+                    actions.push(
+                        el(
+                            Button,
+                            {
+                                key: 'edit',
+                                href: editUrl,
+                                target: '_blank',
+                                rel: 'noopener noreferrer',
+                                variant: 'primary',
+                            },
+                            __('Ouvrir dans l’éditeur', 'mon-articles')
+                        )
+                    );
+                }
+
+                var actionsList = null;
+                if (actions.length > 0) {
+                    actionsList = el('div', { className: 'my-articles-block__module-insights-actions' }, actions);
+                }
+
+                moduleStatusPanel = el(
+                    PanelBody,
+                    { title: __('État du module', 'mon-articles'), initialOpen: false },
+                    statusNotice,
+                    freshnessNotice,
+                    insightsList,
+                    actionsList
+                );
+            }
+
             var inspectorControls = el(
                 InspectorControls,
                 {},
@@ -828,6 +1099,7 @@
                         )
                     )
                 ),
+                moduleStatusPanel,
                 el(
                     PanelBody,
                     { title: __('Accessibilité', 'mon-articles'), initialOpen: false },
