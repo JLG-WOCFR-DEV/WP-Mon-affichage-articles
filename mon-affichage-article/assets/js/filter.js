@@ -583,6 +583,143 @@
             .show();
     }
 
+    function toTrimmedString(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+
+        var trimmed = value.trim();
+
+        return trimmed.length ? trimmed : '';
+    }
+
+    function extractFromCandidate(candidate, keys) {
+        if (!candidate || 'object' !== typeof candidate) {
+            return '';
+        }
+
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+                var value = candidate[key];
+                var stringValue = toTrimmedString(value);
+
+                if (stringValue) {
+                    return stringValue;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorMessage(jqXHR, response) {
+        var messageKeys = ['message', 'error', 'detail'];
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var message = extractFromCandidate(candidates[i], messageKeys);
+
+            if (message) {
+                return message;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.responseText === 'string') {
+            try {
+                var parsed = JSON.parse(jqXHR.responseText);
+                var parsedMessage = extractFromCandidate(parsed, messageKeys) || extractFromCandidate(parsed && parsed.data, messageKeys);
+
+                if (parsedMessage) {
+                    return parsedMessage;
+                }
+            } catch (parseError) {
+                // Ignored on purpose: responseText is not valid JSON.
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
+            return jqXHR.statusText;
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorStatus(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+            if (!candidate || 'object' !== typeof candidate) {
+                continue;
+            }
+
+            var status = candidate.status;
+
+            if (typeof status === 'number' && status > 0) {
+                return status;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.status === 'number' && jqXHR.status > 0) {
+            return jqXHR.status;
+        }
+
+        return 0;
+    }
+
+    function extractAjaxErrorCode(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var code = extractFromCandidate(candidates[i], ['code', 'errorCode']);
+
+            if (code) {
+                return code;
+            }
+        }
+
+        return '';
+    }
+
+    function composeAjaxErrorMessage(jqXHR, response, fallbackMessage) {
+        var message = extractAjaxErrorMessage(jqXHR, response);
+        var status = extractAjaxErrorStatus(jqXHR, response);
+        var code = extractAjaxErrorCode(jqXHR, response);
+
+        if (!message) {
+            message = fallbackMessage;
+        }
+
+        var details = [];
+
+        if (code) {
+            details.push('code: ' + code);
+        }
+
+        if (status) {
+            details.push('HTTP ' + status);
+        }
+
+        if (details.length) {
+            message += ' (' + details.join(', ') + ')';
+        }
+
+        return message;
+    }
+
     function updateInstanceQueryParams(instanceId, params) {
         if (typeof window === 'undefined' || !window.history) {
             return;
@@ -1094,46 +1231,15 @@
             return;
         }
 
-        function extractErrorMessage(jqXHR, response) {
-            if (response && response.data && response.data.message) {
-                return response.data.message;
-            }
-
-            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                return jqXHR.responseJSON.data.message;
-            }
-
-            if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
-                return jqXHR.statusText;
-            }
-
-            return '';
-        }
-
-        function extractStatus(jqXHR, response) {
-            if (jqXHR && typeof jqXHR.status === 'number') {
-                return jqXHR.status;
-            }
-
-            if (response && response.data && typeof response.data.status === 'number') {
-                return response.data.status;
-            }
-
-            if (response && typeof response.status === 'number') {
-                return response.status;
-            }
-
-            return 0;
-        }
-
         var defaultErrorMessage = (filterSettings && typeof filterSettings.errorText === 'string')
             ? filterSettings.errorText
             : 'Une erreur est survenue.';
 
         function emitError(jqXHR, response) {
             emitFilterInteraction('error', $.extend({}, requestDetail, {
-                errorMessage: extractErrorMessage(jqXHR, response) || defaultErrorMessage,
-                status: extractStatus(jqXHR, response),
+                errorMessage: extractAjaxErrorMessage(jqXHR, response) || defaultErrorMessage,
+                status: extractAjaxErrorStatus(jqXHR, response),
+                errorCode: extractAjaxErrorCode(jqXHR, response) || '',
                 hadNonceRefresh: hasRetried
             }));
         }
@@ -1323,18 +1429,7 @@
                 }
             },
             onError: function (jqXHR, response) {
-                var errorMessage = '';
-
-                if (response && response.data && response.data.message) {
-                    errorMessage = response.data.message;
-                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
-
-                if (!errorMessage) {
-                    errorMessage = fallbackMessage;
-                }
-
+                var errorMessage = composeAjaxErrorMessage(jqXHR, response, fallbackMessage);
                 showError(wrapper, errorMessage);
             },
             onComplete: function () {
@@ -1481,19 +1576,7 @@
             },
             onError: function (jqXHR, response) {
                 restorePreviousFilterState();
-
-                var errorMessage = '';
-
-                if (response && response.data && response.data.message) {
-                    errorMessage = response.data.message;
-                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
-
-                if (!errorMessage) {
-                    errorMessage = fallbackMessage;
-                }
-
+                var errorMessage = composeAjaxErrorMessage(jqXHR, response, fallbackMessage);
                 showError(wrapper, errorMessage);
             },
             onComplete: function () {
