@@ -33,7 +33,20 @@ class My_Articles_Settings {
     public function enqueue_admin_scripts( $hook ) {
         if ( $hook !== $this->plugin_page_hook ) { return; }
         wp_enqueue_style( 'wp-color-picker' );
-        wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
+        wp_enqueue_style(
+            'my-articles-admin-styles',
+            MY_ARTICLES_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            MY_ARTICLES_VERSION
+        );
+
+        wp_enqueue_script(
+            'my-articles-admin-script',
+            MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js',
+            array( 'wp-color-picker' ),
+            MY_ARTICLES_VERSION,
+            true
+        );
     }
 
     public function create_admin_page() {
@@ -45,24 +58,43 @@ class My_Articles_Settings {
         }
 
         ?>
-        <div class="wrap">
-            <h1><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
-            <div style="margin-bottom: 20px;">
-                <p style="margin: 0;"><strong><?php esc_html_e( 'Auteur :', 'mon-articles' ); ?></strong> LCV</p>
-                <p style="margin: 0;"><strong><?php esc_html_e( 'Version :', 'mon-articles' ); ?></strong> <?php echo esc_html( MY_ARTICLES_VERSION ); ?></p>
-            </div>
+        <div class="wrap my-articles-admin">
+            <header class="my-articles-admin__header">
+                <div class="my-articles-admin__title-group">
+                    <span class="my-articles-admin__badge">LCV</span>
+                    <h1 class="my-articles-admin__title"><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
+                </div>
+                <dl class="my-articles-admin__meta">
+                    <div class="my-articles-admin__meta-item">
+                        <dt><?php esc_html_e( 'Auteur', 'mon-articles' ); ?></dt>
+                        <dd>LCV</dd>
+                    </div>
+                    <div class="my-articles-admin__meta-item">
+                        <dt><?php esc_html_e( 'Version', 'mon-articles' ); ?></dt>
+                        <dd><?php echo esc_html( MY_ARTICLES_VERSION ); ?></dd>
+                    </div>
+                </dl>
+            </header>
 
-            <h2 class="nav-tab-wrapper">
-                <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'settings' ), admin_url( 'admin.php' ) ) ); ?>" class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">
+            <nav class="my-articles-admin__tabs" aria-label="<?php esc_attr_e( 'Navigation des réglages', 'mon-articles' ); ?>">
+                <a
+                    href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'settings' ), admin_url( 'admin.php' ) ) ); ?>"
+                    class="my-articles-admin__tab <?php echo 'settings' === $active_tab ? 'is-active' : ''; ?>"
+                >
                     <?php esc_html_e( 'Réglages', 'mon-articles' ); ?>
                 </a>
-                <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'tutorial' ), admin_url( 'admin.php' ) ) ); ?>" class="nav-tab <?php echo 'tutorial' === $active_tab ? 'nav-tab-active' : ''; ?>">
+                <a
+                    href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'tutorial' ), admin_url( 'admin.php' ) ) ); ?>"
+                    class="my-articles-admin__tab <?php echo 'tutorial' === $active_tab ? 'is-active' : ''; ?>"
+                >
                     <?php esc_html_e( 'Tutoriel', 'mon-articles' ); ?>
                 </a>
-            </h2>
+            </nav>
+
+            <?php settings_errors(); ?>
 
             <?php if ( 'tutorial' === $active_tab ) : ?>
-                <div class="my-articles-tutorial">
+                <div class="my-articles-card my-articles-card--prose">
                     <h2><?php esc_html_e( 'Instrumentation : comprendre ce que vous activez', 'mon-articles' ); ?></h2>
                     <p><?php esc_html_e( 'La section « Instrumentation » vous permet de suivre ce que font les utilisateurs dans vos tuiles (filtrage, chargement progressif, etc.). En activant l’option, le plugin publie automatiquement des événements JavaScript qui décrivent chaque étape de ces interactions (requête, succès, erreur).', 'mon-articles' ); ?></p>
 
@@ -87,16 +119,22 @@ class My_Articles_Settings {
                     <p><?php esc_html_e( 'En résumé, cette section vous offre un moyen simple de suivre, analyser et rediriger les interactions des utilisateurs avec vos tuiles, sans code supplémentaire.', 'mon-articles' ); ?></p>
                 </div>
             <?php else : ?>
-                <p><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
+                <div class="my-articles-card">
+                    <p><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
 
-                <form method="post" action="options.php">
-                    <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
-                </form>
-                <hr>
-                <h2><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
-                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display: inline-block;">
-                    <input type="hidden" name="action" value="my_articles_reset_settings">
-                    <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
+                    <form method="post" action="options.php" class="my-articles-admin__form">
+                        <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
+                    </form>
+                </div>
+
+                <div class="my-articles-card my-articles-admin__maintenance">
+                    <div class="my-articles-admin__maintenance-header">
+                        <h2><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
+                        <p><?php esc_html_e( 'Réinitialise toutes les options aux valeurs par défaut.', 'mon-articles' ); ?></p>
+                    </div>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="my-articles-admin__actions">
+                        <input type="hidden" name="action" value="my_articles_reset_settings">
+                        <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
                     <?php submit_button( __( 'Réinitialiser les réglages', 'mon-articles' ), 'delete', 'submit', false, ['onclick' => 'return confirm("' . esc_js( __( 'Êtes-vous sûr de vouloir réinitialiser tous les réglages ?', 'mon-articles' ) ) . '");'] ); ?>
                 </form>
             <?php endif; ?>

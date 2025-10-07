@@ -1,0 +1,278 @@
+:root {
+    --my-articles-admin-radius: 18px;
+    --my-articles-admin-radius-sm: 12px;
+    --my-articles-admin-border: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 10%, transparent);
+    --my-articles-admin-bg: color-mix(in srgb, #ffffff 90%, var(--wp-admin-theme-color, #3c434a) 4%);
+    --my-articles-admin-elevated: #ffffff;
+    --my-articles-admin-text: #111827;
+    --my-articles-admin-muted: #6b7280;
+    --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 35%, transparent);
+    --my-articles-admin-shadow: 0 18px 35px -18px rgba(15, 23, 42, 0.25);
+    --my-articles-admin-shadow-soft: 0 10px 25px -20px rgba(15, 23, 42, 0.25);
+    --my-articles-admin-radius-pill: 999px;
+    --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
+}
+
+.my-articles-admin {
+    position: relative;
+    padding-block: clamp(1.5rem, 1.2rem + 0.6vw, 2.25rem);
+    color: var(--my-articles-admin-text);
+    max-width: 1100px;
+}
+
+.my-articles-admin__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(1rem, 0.8rem + 0.5vw, 1.5rem);
+    padding: clamp(1.5rem, 1.2rem + 0.6vw, 2rem);
+    margin-bottom: clamp(1.5rem, 1rem + 1vw, 2.5rem);
+    background: var(--my-articles-admin-bg);
+    border-radius: var(--my-articles-admin-radius);
+    border: var(--my-articles-admin-border);
+    box-shadow: var(--my-articles-admin-shadow-soft);
+}
+
+.my-articles-admin__title-group {
+    display: flex;
+    align-items: center;
+    gap: clamp(0.75rem, 0.6rem + 0.4vw, 1rem);
+}
+
+.my-articles-admin__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 12%, transparent);
+    color: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 75%, black 30%);
+}
+
+.my-articles-admin__title {
+    margin: 0;
+    font-size: clamp(1.5rem, 1.2rem + 1vw, 2.3rem);
+    font-weight: 600;
+}
+
+.my-articles-admin__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.my-articles-admin__meta-item {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.my-articles-admin__meta-item dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--my-articles-admin-muted);
+    margin: 0;
+}
+
+.my-articles-admin__meta-item dd {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.my-articles-admin__tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #fff;
+    border-radius: var(--my-articles-admin-radius-pill, 999px);
+    padding: 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 14%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    margin-bottom: clamp(1.5rem, 1.2rem + 0.6vw, 2.25rem);
+}
+
+.my-articles-admin__tab {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.65rem 1.4rem;
+    font-weight: 500;
+    font-size: 0.95rem;
+    border-radius: 999px;
+    color: var(--my-articles-admin-muted);
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.my-articles-admin__tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 20%, transparent);
+}
+
+.my-articles-admin__tab:hover {
+    color: var(--wp-admin-theme-color, #2271b1);
+}
+
+.my-articles-admin__tab.is-active {
+    background: var(--wp-admin-theme-color, #2271b1);
+    color: #fff;
+    box-shadow: 0 8px 16px -10px rgba(34, 113, 177, 0.6);
+}
+
+.my-articles-card {
+    background: var(--my-articles-admin-elevated);
+    border-radius: var(--my-articles-admin-radius);
+    border: var(--my-articles-admin-border);
+    padding: clamp(1.5rem, 1.2rem + 0.7vw, 2.25rem);
+    box-shadow: var(--my-articles-admin-shadow);
+    margin-bottom: var(--my-articles-admin-gap);
+}
+
+.my-articles-card:last-of-type {
+    margin-bottom: 0;
+}
+
+.my-articles-card--prose h2,
+.my-articles-card--prose h3 {
+    font-weight: 600;
+}
+
+.my-articles-card--prose h2 {
+    font-size: 1.45rem;
+    margin-top: 0;
+}
+
+.my-articles-card--prose h3 {
+    font-size: 1.1rem;
+    margin-top: 2rem;
+}
+
+.my-articles-card--prose p,
+.my-articles-card--prose ul {
+    color: var(--my-articles-admin-muted);
+    font-size: 0.98rem;
+}
+
+.my-articles-card--prose ul {
+    padding-left: 1.2rem;
+}
+
+.my-articles-card--prose li + li {
+    margin-top: 0.35rem;
+}
+
+.my-articles-admin__form .form-table {
+    margin-top: 1.5rem;
+    width: 100%;
+}
+
+.my-articles-admin__form .form-table th {
+    width: 240px;
+    font-weight: 500;
+    color: var(--my-articles-admin-text);
+}
+
+.my-articles-admin__form .form-table td,
+.my-articles-admin__form .form-table th {
+    padding: 16px 16px 16px 0;
+    vertical-align: top;
+}
+
+.my-articles-admin__form .form-table tr {
+    border-bottom: 1px solid color-mix(in srgb, #0f172a 12%, transparent);
+}
+
+.my-articles-admin__form .form-table tr:last-child {
+    border-bottom: none;
+}
+
+.my-articles-admin__form input[type="text"],
+.my-articles-admin__form input[type="number"],
+.my-articles-admin__form select,
+.my-articles-admin__form textarea {
+    width: 100%;
+    max-width: 420px;
+    border-radius: var(--my-articles-admin-radius-sm);
+    border: 1px solid color-mix(in srgb, #0f172a 12%, transparent);
+    padding: 0.6rem 0.75rem;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.08);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.my-articles-admin__form input[type="text"]:focus,
+.my-articles-admin__form input[type="number"]:focus,
+.my-articles-admin__form select:focus,
+.my-articles-admin__form textarea:focus {
+    outline: none;
+    border-color: var(--wp-admin-theme-color, #2271b1);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #2271b1) 24%, transparent);
+}
+
+.my-articles-admin__form .description {
+    margin-top: 0.4rem;
+    color: var(--my-articles-admin-muted);
+    font-size: 0.85rem;
+}
+
+.my-articles-admin__form .wp-picker-container .wp-color-result {
+    border-radius: var(--my-articles-admin-radius-sm);
+    padding: 0.3rem 0.6rem;
+}
+
+.my-articles-admin__form .submit {
+    margin-top: 2rem;
+}
+
+.my-articles-admin__maintenance-header {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.my-articles-admin__maintenance-header p {
+    color: var(--my-articles-admin-muted);
+    margin: 0;
+}
+
+.my-articles-admin__actions {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.my-articles-admin__actions .button {
+    border-radius: var(--my-articles-admin-radius-sm);
+    padding: 0.55rem 1.25rem;
+    font-weight: 600;
+}
+
+@media (max-width: 960px) {
+    .my-articles-admin__form .form-table th {
+        width: auto;
+    }
+
+    .my-articles-admin__form .form-table tr {
+        display: block;
+        padding-bottom: 1rem;
+    }
+
+    .my-articles-admin__form .form-table th,
+    .my-articles-admin__form .form-table td {
+        display: block;
+        width: 100%;
+        padding: 0 0 0.75rem;
+    }
+
+    .my-articles-admin__form .form-table td {
+        padding-bottom: 1.25rem;
+    }
+}
