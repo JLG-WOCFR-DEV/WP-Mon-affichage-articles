@@ -5,6 +5,8 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
+require_once __DIR__ . '/class-my-articles-settings-sanitizer.php';
+
 class My_Articles_Settings {
 
     private static $instance;
@@ -141,75 +143,14 @@ class My_Articles_Settings {
     }
 
     public function sanitize( $input ) {
-        $sanitized_input = [];
-        $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
-        $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
-        $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] )
-            ? min( 50, max( 0, intval( $input['posts_per_page'] ) ) )
-            : 10;
-        $sanitized_input['enable_keyword_search'] = isset( $input['enable_keyword_search'] ) ? 1 : 0;
-        $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] )
-            ? min( 6, max( 1, intval( $input['desktop_columns'] ) ) )
-            : 3;
-        $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] )
-            ? min( 3, max( 1, intval( $input['mobile_columns'] ) ) )
-            : 1;
-        $allowed_thumbnail_ratios = My_Articles_Shortcode::get_allowed_thumbnail_aspect_ratios();
-        $default_thumbnail_ratio  = My_Articles_Shortcode::get_default_thumbnail_aspect_ratio();
-        $requested_thumbnail_ratio = isset( $input['thumbnail_aspect_ratio'] ) ? (string) $input['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+        $error_handler = function ( $field, $message, $details ) {
+            if ( function_exists( 'add_settings_error' ) ) {
+                $code = isset( $details['code'] ) ? $details['code'] : $field;
+                add_settings_error( $this->option_name, $code, $message, 'error' );
+            }
+        };
 
-        if ( ! in_array( $requested_thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
-            $requested_thumbnail_ratio = $default_thumbnail_ratio;
-        }
-
-        $sanitized_input['thumbnail_aspect_ratio'] = $requested_thumbnail_ratio;
-        $sanitized_input['gap_size'] = isset( $input['gap_size'] )
-            ? min( 50, max( 0, intval( $input['gap_size'] ) ) )
-            : 25;
-        $sanitized_input['border_radius'] = isset( $input['border_radius'] )
-            ? min( 50, max( 0, intval( $input['border_radius'] ) ) )
-            : 12;
-        $sanitized_input['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
-        $sanitized_input['title_font_size'] = isset( $input['title_font_size'] )
-            ? min( 40, max( 10, intval( $input['title_font_size'] ) ) )
-            : 16;
-        $sanitized_input['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
-        $sanitized_input['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
-        $sanitized_input['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
-        $sanitized_input['meta_font_size'] = isset( $input['meta_font_size'] )
-            ? min( 20, max( 8, intval( $input['meta_font_size'] ) ) )
-            : 12;
-        $sanitized_input['meta_color'] = my_articles_sanitize_color($input['meta_color'] ?? '', '#6b7280');
-        $sanitized_input['meta_color_hover'] = my_articles_sanitize_color($input['meta_color_hover'] ?? '', '#000000');
-        $sanitized_input['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
-        $sanitized_input['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
-        $sanitized_input['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
-        $sanitized_input['module_margin_top'] = isset( $input['module_margin_top'] )
-            ? min( 200, max( 0, intval( $input['module_margin_top'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_bottom'] = isset( $input['module_margin_bottom'] )
-            ? min( 200, max( 0, intval( $input['module_margin_bottom'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_left'] = isset( $input['module_margin_left'] )
-            ? min( 200, max( 0, intval( $input['module_margin_left'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_right'] = isset( $input['module_margin_right'] )
-            ? min( 200, max( 0, intval( $input['module_margin_right'] ) ) )
-            : 0;
-        $sanitized_input['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
-
-        $sanitized_input['instrumentation_enabled'] = ! empty( $input['instrumentation_enabled'] ) ? 1 : 0;
-
-        $allowed_instrumentation_channels = array( 'console', 'dataLayer', 'fetch' );
-        $requested_instrumentation_channel = isset( $input['instrumentation_channel'] ) ? (string) $input['instrumentation_channel'] : 'console';
-
-        if ( ! in_array( $requested_instrumentation_channel, $allowed_instrumentation_channels, true ) ) {
-            $requested_instrumentation_channel = 'console';
-        }
-
-        $sanitized_input['instrumentation_channel'] = $requested_instrumentation_channel;
-
-        return $sanitized_input;
+        return My_Articles_Settings_Sanitizer::sanitize( $input, $error_handler );
     }
 
     // Callbacks
