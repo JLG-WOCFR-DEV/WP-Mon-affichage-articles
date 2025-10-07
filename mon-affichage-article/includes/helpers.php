@@ -273,58 +273,205 @@ if ( ! function_exists( 'my_articles_calculate_total_pages' ) ) {
      * with regular posts. Any leftover pinned posts are carried over before regular posts on
      * subsequent pages.
      *
-     * @param int $total_pinned_posts   Total number of pinned posts matching the query.
-     * @param int $total_regular_posts  Number of available regular posts.
-     * @param int $posts_per_page       Posts per page setting.
+     * @param int   $total_pinned_posts  Total number of pinned posts matching the query.
+     * @param int   $total_regular_posts Number of available regular posts.
+     * @param int   $posts_per_page      Posts per page setting.
+     * @param array $context             Optional context to enrich the calculation. Supported keys:
+     *                                   - `current_page` (int)    : Page for which the calculation is made.
+     *                                   - `override_page_size` (int) : Force a specific page size for the
+     *                                                                  computation.
+     *                                   - `unlimited_page_size` (int) : Page size to use when the listing
+     *                                                                   is configured as “unlimited”.
+     *                                   - `analytics_page_size` (int) : Page size used to project analytics
+     *                                                                   metrics (fallback to
+     *                                                                   `unlimited_page_size`).
      *
      * @return array{
      *     total_pages:int,
      *     next_page:int,
+     *     meta:array{
+     *         requested_page:int,
+     *         current_page:int,
+     *         is_unbounded:bool,
+     *         page_size:int,
+     *         effective_page_size:int,
+     *         total_items:int,
+     *         total_pinned:int,
+     *         total_regular:int,
+     *         remaining_items:int,
+     *         remaining_pinned:int,
+     *         remaining_regular:int,
+     *         remaining_pages:int,
+     *         has_more_items:bool,
+     *         first_page:array{capacity:int,pinned:int,regular:int},
+     *         projected_page_size:int,
+     *         projected_total_pages:int,
+     *         projected_remaining_pages:int,
+     *         projected_remaining_items:int,
+     *     }
      * }
      */
-    function my_articles_calculate_total_pages( $total_pinned_posts, $total_regular_posts, $posts_per_page ) {
+    function my_articles_calculate_total_pages( $total_pinned_posts, $total_regular_posts, $posts_per_page, $context = array() ) {
         $total_pinned_posts  = max( 0, (int) $total_pinned_posts );
         $total_regular_posts = max( 0, (int) $total_regular_posts );
-        $posts_per_page      = max( 0, (int) $posts_per_page );
+        $posts_per_page      = (int) $posts_per_page;
+        $context             = is_array( $context ) ? $context : array();
 
         $total_items = $total_pinned_posts + $total_regular_posts;
+
+        $override_page_size  = isset( $context['override_page_size'] ) ? max( 0, (int) $context['override_page_size'] ) : null;
+        $unlimited_page_size = isset( $context['unlimited_page_size'] ) ? max( 0, (int) $context['unlimited_page_size'] ) : 0;
+        $analytics_page_size = isset( $context['analytics_page_size'] ) ? max( 0, (int) $context['analytics_page_size'] ) : 0;
+
+        if ( null !== $override_page_size ) {
+            $posts_per_page = $override_page_size;
+        }
+
+        $raw_current_page = isset( $context['current_page'] ) ? (int) $context['current_page'] : 1;
+        if ( $raw_current_page < 1 ) {
+            $raw_current_page = 1;
+        }
+
+        $is_unbounded = $posts_per_page <= 0;
+        $page_size    = $is_unbounded ? 0 : $posts_per_page;
+
+        $meta = array(
+            'requested_page'          => $raw_current_page,
+            'current_page'            => 0,
+            'is_unbounded'            => $is_unbounded,
+            'page_size'               => max( 0, $posts_per_page ),
+            'effective_page_size'     => $page_size,
+            'total_items'             => $total_items,
+            'total_pinned'            => $total_pinned_posts,
+            'total_regular'           => $total_regular_posts,
+            'remaining_items'         => 0,
+            'remaining_pinned'        => 0,
+            'remaining_regular'       => 0,
+            'remaining_pages'         => 0,
+            'has_more_items'          => false,
+            'first_page'              => array(
+                'capacity' => $page_size > 0 ? $page_size : $total_items,
+                'pinned'   => 0,
+                'regular'  => 0,
+            ),
+            'projected_page_size'      => 0,
+            'projected_total_pages'    => 0,
+            'projected_remaining_pages'=> 0,
+            'projected_remaining_items'=> 0,
+        );
 
         if ( 0 === $total_items ) {
             $result = array(
                 'total_pages' => 0,
                 'next_page'   => 0,
+                'meta'        => $meta,
             );
 
-            return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
+            return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page, $context );
         }
 
-        if ( 0 === $posts_per_page ) {
-            $result = array(
-                'total_pages' => 1,
-                'next_page'   => 0,
-            );
-
-            return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
+        if ( $page_size > 0 ) {
+            $pinned_on_first_page = min( $total_pinned_posts, $page_size );
+        } else {
+            $pinned_on_first_page = $total_pinned_posts;
         }
 
-        $pinned_on_first_page   = min( $total_pinned_posts, $posts_per_page );
-        $remaining_pinned_posts = max( 0, $total_pinned_posts - $pinned_on_first_page );
-
-        $regular_first_page_capacity = max( 0, $posts_per_page - $pinned_on_first_page );
+        $regular_first_page_capacity = $page_size > 0 ? max( 0, $page_size - $pinned_on_first_page ) : $total_regular_posts;
         $regular_on_first_page       = min( $total_regular_posts, $regular_first_page_capacity );
-        $remaining_regular_posts     = max( 0, $total_regular_posts - $regular_on_first_page );
 
-        $remaining_items  = $remaining_pinned_posts + $remaining_regular_posts;
-        $additional_pages = (int) ceil( $remaining_items / $posts_per_page );
+        $remaining_pinned_posts  = max( 0, $total_pinned_posts - $pinned_on_first_page );
+        $remaining_regular_posts = max( 0, $total_regular_posts - $regular_on_first_page );
+        $remaining_after_first   = $remaining_pinned_posts + $remaining_regular_posts;
 
-        $total_pages = 1 + ( $remaining_items > 0 ? $additional_pages : 0 );
+        if ( $page_size > 0 ) {
+            $additional_pages = (int) ceil( $remaining_after_first / $page_size );
+            $total_pages      = 1 + ( $remaining_after_first > 0 ? $additional_pages : 0 );
+        } else {
+            $total_pages = 0;
+        }
+
+        $resolved_current_page = $raw_current_page;
+        if ( $total_pages > 0 ) {
+            $resolved_current_page = min( $resolved_current_page, $total_pages );
+        } elseif ( $total_items > 0 ) {
+            $resolved_current_page = 1;
+        }
+
+        $pages_after_first = $resolved_current_page > 1 ? $resolved_current_page - 1 : 0;
+
+        if ( $page_size > 0 ) {
+            $remaining_pinned_after_current  = $remaining_pinned_posts;
+            $remaining_regular_after_current = $remaining_regular_posts;
+
+            if ( $pages_after_first > 0 ) {
+                $pinned_consumed_post_first = min( $remaining_pinned_posts, $pages_after_first * $page_size );
+                $remaining_pinned_after_current = max( 0, $remaining_pinned_posts - $pinned_consumed_post_first );
+
+                $regular_capacity_after_pinned = max( 0, ( $pages_after_first * $page_size ) - $pinned_consumed_post_first );
+                $regular_consumed_post_first   = min( $remaining_regular_posts, $regular_capacity_after_pinned );
+                $remaining_regular_after_current = max( 0, $remaining_regular_posts - $regular_consumed_post_first );
+            }
+        } else {
+            $remaining_pinned_after_current  = 0;
+            $remaining_regular_after_current = 0;
+        }
+
+        $remaining_items_after_current = $remaining_pinned_after_current + $remaining_regular_after_current;
+        $has_more_items                = $remaining_items_after_current > 0;
+        $remaining_pages               = ( $total_pages > 0 ) ? max( 0, $total_pages - $resolved_current_page ) : 0;
+
+        if ( $analytics_page_size <= 0 ) {
+            $analytics_page_size = $unlimited_page_size;
+        }
+
+        if ( $analytics_page_size <= 0 ) {
+            $analytics_page_size = $page_size;
+        }
+
+        if ( $analytics_page_size > 0 ) {
+            $projected_total_pages = (int) ceil( $total_items / $analytics_page_size );
+            $projection_current_page = $resolved_current_page > 0 ? $resolved_current_page : 1;
+
+            if ( $projected_total_pages > 0 ) {
+                $projection_current_page = min( $projection_current_page, $projected_total_pages );
+            } else {
+                $projection_current_page = 0;
+            }
+
+            $projected_consumed_items = min( $total_items, $projection_current_page * $analytics_page_size );
+            $projected_remaining_items = max( 0, $total_items - $projected_consumed_items );
+            $projected_remaining_pages = ( $projected_total_pages > 0 ) ? max( 0, $projected_total_pages - $projection_current_page ) : 0;
+        } else {
+            $projected_total_pages   = $total_pages;
+            $projected_remaining_pages = $remaining_pages;
+            $projected_remaining_items = $remaining_items_after_current;
+        }
+
+        $next_page = 0;
+        if ( $page_size > 0 && $total_pages > 0 && $resolved_current_page < $total_pages ) {
+            $next_page = min( $resolved_current_page + 1, $total_pages );
+        }
+
+        $meta['current_page']             = $resolved_current_page;
+        $meta['remaining_items']          = $remaining_items_after_current;
+        $meta['remaining_pinned']         = $remaining_pinned_after_current;
+        $meta['remaining_regular']        = $remaining_regular_after_current;
+        $meta['remaining_pages']          = $remaining_pages;
+        $meta['has_more_items']           = $has_more_items;
+        $meta['first_page']['pinned']     = $pinned_on_first_page;
+        $meta['first_page']['regular']    = $regular_on_first_page;
+        $meta['projected_page_size']      = $analytics_page_size;
+        $meta['projected_total_pages']    = $projected_total_pages;
+        $meta['projected_remaining_pages']= $projected_remaining_pages;
+        $meta['projected_remaining_items']= $projected_remaining_items;
 
         $result = array(
             'total_pages' => $total_pages,
-            'next_page'   => $total_pages > 1 ? 2 : 0,
+            'next_page'   => $next_page,
+            'meta'        => $meta,
         );
 
-        return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page );
+        return apply_filters( 'my_articles_calculate_total_pages', $result, $total_pinned_posts, $total_regular_posts, $posts_per_page, $context );
     }
 }
 

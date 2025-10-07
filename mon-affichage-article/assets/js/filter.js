@@ -1169,6 +1169,11 @@
                 renderedPinned = 0;
             }
 
+            var paginationMeta = null;
+            if (responseData && typeof responseData.pagination_meta === 'object' && responseData.pagination_meta !== null) {
+                paginationMeta = responseData.pagination_meta;
+            }
+
             emitFilterInteraction('success', $.extend({}, requestDetail, {
                 totalPages: totalPages,
                 nextPage: nextPage,
@@ -1181,7 +1186,8 @@
                 renderedRegularCount: renderedRegular,
                 renderedPinnedCount: renderedPinned,
                 totalRegular: parseInt(responseData.total_regular, 10) || 0,
-                totalPinned: parseInt(responseData.total_pinned, 10) || 0
+                totalPinned: parseInt(responseData.total_pinned, 10) || 0,
+                pagination: paginationMeta
             }));
         }
 

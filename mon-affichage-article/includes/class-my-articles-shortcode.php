@@ -913,6 +913,8 @@ JS;
             'effective_posts_per_page'    => $effective_posts_per_page,
             'is_unlimited'                => $is_unlimited,
             'updated_seen_pinned_ids'     => $updated_seen_pinned,
+            'unlimited_batch_size'        => $batch_cap,
+            'should_enforce_unlimited'    => (bool) $should_enforce_unlimited,
         );
     }
 
@@ -1978,10 +1980,20 @@ JS;
                 $total_regular_posts = (int) $count_query->found_posts;
             }
 
+            $pagination_context = array(
+                'current_page' => $paged,
+            );
+
+            if ( ! empty( $state['is_unlimited'] ) ) {
+                $pagination_context['unlimited_page_size'] = $state['unlimited_batch_size'];
+                $pagination_context['analytics_page_size'] = $state['unlimited_batch_size'];
+            }
+
             $pagination_totals = my_articles_calculate_total_pages(
                 $total_matching_pinned,
                 $total_regular_posts,
-                $effective_posts_per_page
+                $effective_posts_per_page,
+                $pagination_context
             );
             $total_pages = $pagination_totals['total_pages'];
 
