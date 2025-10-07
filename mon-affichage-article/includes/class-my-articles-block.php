@@ -59,23 +59,24 @@ class My_Articles_Block {
     }
 
     public static function prepare_overrides_from_attributes( array $attributes ) {
-        $defaults  = My_Articles_Shortcode::get_default_options();
+        $defaults = My_Articles_Shortcode::get_default_options();
+        $schema   = self::get_override_schema();
         $overrides = array();
-        $schema    = self::get_override_schema();
-        $filtered  = array();
 
-        foreach ( $attributes as $key => $value ) {
-            if ( array_key_exists( $key, $defaults ) || array_key_exists( $key, $schema ) ) {
-                $filtered[ $key ] = $value;
-            }
+        $allowed_keys = array_fill_keys( array_keys( $defaults ), true );
+
+        foreach ( array_keys( $schema ) as $schema_key ) {
+            $allowed_keys[ $schema_key ] = true;
         }
+
+        $filtered = array_intersect_key( $attributes, $allowed_keys );
 
         foreach ( $filtered as $key => $raw_value ) {
             if ( null === $raw_value ) {
                 continue;
             }
 
-            $definition    = isset( $schema[ $key ] ) && is_array( $schema[ $key ] ) ? $schema[ $key ] : array();
+            $definition = isset( $schema[ $key ] ) && is_array( $schema[ $key ] ) ? $schema[ $key ] : array();
             $default_value = array_key_exists( $key, $defaults )
                 ? $defaults[ $key ]
                 : ( isset( $definition['default'] ) ? $definition['default'] : null );
