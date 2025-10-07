@@ -30,6 +30,9 @@ class My_Articles_Enqueue {
         wp_register_script( 'swiper-js', $vendor_url . 'swiper/swiper-bundle.min.js', array(), '11.0.0', true );
         wp_register_script( 'lazysizes', $vendor_url . 'lazysizes/lazysizes.min.js', array(), '5.3.2', true );
         wp_register_script( 'my-articles-responsive-layout', MY_ARTICLES_PLUGIN_URL . 'assets/js/responsive-layout.js', array(), MY_ARTICLES_VERSION, true );
+        wp_register_script( 'my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', array( 'jquery' ), MY_ARTICLES_VERSION, true );
+        wp_register_script( 'my-articles-load-more', MY_ARTICLES_PLUGIN_URL . 'assets/js/load-more.js', array( 'jquery' ), MY_ARTICLES_VERSION, true );
+        wp_register_script( 'my-articles-scroll-fix', MY_ARTICLES_PLUGIN_URL . 'assets/js/scroll-fix.js', array( 'jquery' ), MY_ARTICLES_VERSION, true );
         wp_register_script(
             'my-articles-swiper-init',
             MY_ARTICLES_PLUGIN_URL . 'assets/js/swiper-init.js',
@@ -182,5 +185,13 @@ class My_Articles_Enqueue {
                 ),
             ),
         );
+    }
+
+    public function register_script_data( $handle, $object_name, array $data ) {
+        if ( ! class_exists( 'My_Articles_Frontend_Data' ) ) {
+            return false;
+        }
+
+        return My_Articles_Frontend_Data::get_instance()->register( $handle, $object_name, $data );
     }
 }

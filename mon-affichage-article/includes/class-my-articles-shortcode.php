@@ -1686,56 +1686,58 @@ JS;
         );
 
         if ( ! empty( $options['show_category_filter'] ) || ! empty( $options['enable_keyword_search'] ) ) {
-            wp_enqueue_script('my-articles-filter', MY_ARTICLES_PLUGIN_URL . 'assets/js/filter.js', ['jquery'], MY_ARTICLES_VERSION, true);
-            wp_localize_script(
+            wp_enqueue_script( 'my-articles-filter' );
+
+            My_Articles_Enqueue::get_instance()->register_script_data(
                 'my-articles-filter',
                 'myArticlesFilter',
-                [
-                    'endpoint'      => $filter_rest_endpoint,
-                    'restRoot'      => $rest_root,
-                    'restNonce'     => $rest_nonce,
-                    'nonceEndpoint' => $nonce_refresh_endpoint,
-                    'errorText'     => __( 'Erreur AJAX.', 'mon-articles' ),
-                    'countSingle' => __( '%s article affiché.', 'mon-articles' ),
-                    'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
-                    'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
+                array(
+                    'endpoint'          => $filter_rest_endpoint,
+                    'restRoot'          => $rest_root,
+                    'restNonce'         => $rest_nonce,
+                    'nonceEndpoint'     => $nonce_refresh_endpoint,
+                    'errorText'         => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'countSingle'       => __( '%s article affiché.', 'mon-articles' ),
+                    'countPlural'       => __( '%s articles affichés.', 'mon-articles' ),
+                    'countNone'         => __( 'Aucun article à afficher.', 'mon-articles' ),
                     'countPartialSingle' => __( 'Affichage de %1$s article sur %2$s.', 'mon-articles' ),
                     'countPartialPlural' => __( 'Affichage de %1$s articles sur %2$s.', 'mon-articles' ),
                     'searchCountLabel'   => __( 'Résultats : %s', 'mon-articles' ),
                     'searchCountSingle'  => __( '%s résultat', 'mon-articles' ),
                     'searchCountPlural'  => __( '%s résultats', 'mon-articles' ),
                     'searchCountNone'    => __( 'Aucun résultat', 'mon-articles' ),
-                    'instrumentation' => $instrumentation_payload,
-                ]
+                    'instrumentation'    => $instrumentation_payload,
+                )
             );
         }
 
         if ( $options['pagination_mode'] === 'load_more' ) {
-            wp_enqueue_script('my-articles-load-more', MY_ARTICLES_PLUGIN_URL . 'assets/js/load-more.js', ['jquery'], MY_ARTICLES_VERSION, true);
-            wp_localize_script(
+            wp_enqueue_script( 'my-articles-load-more' );
+
+            My_Articles_Enqueue::get_instance()->register_script_data(
                 'my-articles-load-more',
                 'myArticlesLoadMore',
-                [
-                    'endpoint'       => $load_more_rest_endpoint,
-                    'restRoot'       => $rest_root,
-                    'restNonce'      => $rest_nonce,
-                    'nonceEndpoint'  => $nonce_refresh_endpoint,
-                    'loadingText'  => __( 'Chargement...', 'mon-articles' ),
-                    'loadMoreText' => esc_html__( 'Charger plus', 'mon-articles' ),
-                    'errorText'    => __( 'Erreur AJAX.', 'mon-articles' ),
-                    'totalSingle'  => __( '%s article affiché au total.', 'mon-articles' ),
-                    'totalPlural'  => __( '%s articles affichés au total.', 'mon-articles' ),
-                    'addedSingle'  => __( '%s article ajouté.', 'mon-articles' ),
-                    'addedPlural'  => __( '%s articles ajoutés.', 'mon-articles' ),
-                    'noAdditional' => __( 'Aucun article supplémentaire.', 'mon-articles' ),
-                    'none'         => __( 'Aucun article à afficher.', 'mon-articles' ),
+                array(
+                    'endpoint'        => $load_more_rest_endpoint,
+                    'restRoot'        => $rest_root,
+                    'restNonce'       => $rest_nonce,
+                    'nonceEndpoint'   => $nonce_refresh_endpoint,
+                    'loadingText'     => __( 'Chargement...', 'mon-articles' ),
+                    'loadMoreText'    => esc_html__( 'Charger plus', 'mon-articles' ),
+                    'errorText'       => __( 'Erreur AJAX.', 'mon-articles' ),
+                    'totalSingle'     => __( '%s article affiché au total.', 'mon-articles' ),
+                    'totalPlural'     => __( '%s articles affichés au total.', 'mon-articles' ),
+                    'addedSingle'     => __( '%s article ajouté.', 'mon-articles' ),
+                    'addedPlural'     => __( '%s articles ajoutés.', 'mon-articles' ),
+                    'noAdditional'    => __( 'Aucun article supplémentaire.', 'mon-articles' ),
+                    'none'            => __( 'Aucun article à afficher.', 'mon-articles' ),
                     'instrumentation' => $instrumentation_payload,
-                ]
+                )
             );
         }
 
         if ( $options['pagination_mode'] === 'numbered' ) {
-            wp_enqueue_script('my-articles-scroll-fix', MY_ARTICLES_PLUGIN_URL . 'assets/js/scroll-fix.js', ['jquery'], MY_ARTICLES_VERSION, true);
+            wp_enqueue_script( 'my-articles-scroll-fix' );
         }
 
         if ( ! empty( $options['enable_lazy_load'] ) ) {
