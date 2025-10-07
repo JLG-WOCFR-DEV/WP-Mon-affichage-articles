@@ -583,6 +583,143 @@
             .show();
     }
 
+    function toTrimmedString(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+
+        var trimmed = value.trim();
+
+        return trimmed.length ? trimmed : '';
+    }
+
+    function extractFromCandidate(candidate, keys) {
+        if (!candidate || 'object' !== typeof candidate) {
+            return '';
+        }
+
+        for (var i = 0; i < keys.length; i++) {
+            var key = keys[i];
+            if (Object.prototype.hasOwnProperty.call(candidate, key)) {
+                var value = candidate[key];
+                var stringValue = toTrimmedString(value);
+
+                if (stringValue) {
+                    return stringValue;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorMessage(jqXHR, response) {
+        var messageKeys = ['message', 'error', 'detail'];
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var message = extractFromCandidate(candidates[i], messageKeys);
+
+            if (message) {
+                return message;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.responseText === 'string') {
+            try {
+                var parsed = JSON.parse(jqXHR.responseText);
+                var parsedMessage = extractFromCandidate(parsed, messageKeys) || extractFromCandidate(parsed && parsed.data, messageKeys);
+
+                if (parsedMessage) {
+                    return parsedMessage;
+                }
+            } catch (parseError) {
+                // Ignored on purpose: responseText is not valid JSON.
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
+            return jqXHR.statusText;
+        }
+
+        return '';
+    }
+
+    function extractAjaxErrorStatus(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var candidate = candidates[i];
+            if (!candidate || 'object' !== typeof candidate) {
+                continue;
+            }
+
+            var status = candidate.status;
+
+            if (typeof status === 'number' && status > 0) {
+                return status;
+            }
+        }
+
+        if (jqXHR && typeof jqXHR.status === 'number' && jqXHR.status > 0) {
+            return jqXHR.status;
+        }
+
+        return 0;
+    }
+
+    function extractAjaxErrorCode(jqXHR, response) {
+        var candidates = [response, response && response.data];
+
+        if (jqXHR && jqXHR.responseJSON) {
+            candidates.push(jqXHR.responseJSON, jqXHR.responseJSON.data);
+        }
+
+        for (var i = 0; i < candidates.length; i++) {
+            var code = extractFromCandidate(candidates[i], ['code', 'errorCode']);
+
+            if (code) {
+                return code;
+            }
+        }
+
+        return '';
+    }
+
+    function composeAjaxErrorMessage(jqXHR, response, fallbackMessage) {
+        var message = extractAjaxErrorMessage(jqXHR, response);
+        var status = extractAjaxErrorStatus(jqXHR, response);
+        var code = extractAjaxErrorCode(jqXHR, response);
+
+        if (!message) {
+            message = fallbackMessage;
+        }
+
+        var details = [];
+
+        if (code) {
+            details.push('code: ' + code);
+        }
+
+        if (status) {
+            details.push('HTTP ' + status);
+        }
+
+        if (details.length) {
+            message += ' (' + details.join(', ') + ')';
+        }
+
+        return message;
+    }
+
     function updateInstanceQueryParams(instanceId, params) {
         if (typeof window === 'undefined' || !window.history) {
             return;
@@ -624,20 +761,42 @@
         }
     }
 
-    function formatCountMessage(template, count) {
+    function formatCountMessage(template, count, total) {
         if (typeof template !== 'string' || template.length === 0) {
             return '';
         }
 
-        if (template.indexOf('%d') !== -1) {
-            return template.replace(/%d/g, String(count));
-        }
+        var hasTotal = typeof total !== 'undefined';
+        var sequentialIndex = 0;
 
-        if (template.indexOf('%s') !== -1) {
-            return template.replace(/%s/g, String(count));
-        }
+        return template.replace(/%(?:(\d+)\$)?[sd]/g, function (match, position) {
+            if (position) {
+                var positionIndex = parseInt(position, 10);
 
-        return template;
+                if (positionIndex === 1) {
+                    return String(count);
+                }
+
+                if (positionIndex === 2 && hasTotal) {
+                    return String(total);
+                }
+
+                return match;
+            }
+
+            if (sequentialIndex === 0) {
+                sequentialIndex += 1;
+                return String(count);
+            }
+
+            if (hasTotal && sequentialIndex === 1) {
+                sequentialIndex += 1;
+                return String(total);
+            }
+
+            sequentialIndex += 1;
+            return String(count);
+        });
     }
 
     function resolveFilterLabel(key, fallback) {
@@ -651,30 +810,68 @@
         return fallback;
     }
 
-    function buildFilterFeedbackMessage(totalCount) {
+    function buildFilterFeedbackMessage(displayedCount, totalAvailable) {
         var fallbackSingle = '%s article affiché.';
         var fallbackPlural = '%s articles affichés.';
         var fallbackNone = 'Aucun article à afficher.';
+        var fallbackPartialSingle = 'Affichage de %1$s article sur %2$s.';
+        var fallbackPartialPlural = 'Affichage de %1$s articles sur %2$s.';
 
-        var singleLabel = resolveFilterLabel('countSingle', fallbackSingle);
-        var pluralLabel = resolveFilterLabel('countPlural', fallbackPlural);
-        var noneLabel = resolveFilterLabel('countNone', fallbackNone);
+        var resolvedDisplayed = parseInt(displayedCount, 10);
+        if (isNaN(resolvedDisplayed) || resolvedDisplayed < 0) {
+            resolvedDisplayed = 0;
+        }
 
-        if (totalCount > 0) {
-            if (totalCount === 1) {
-                var formattedSingle = formatCountMessage(singleLabel, totalCount) || formatCountMessage(fallbackSingle, totalCount);
-                return formattedSingle || fallbackSingle.replace('%s', String(totalCount));
+        var resolvedTotal = parseInt(totalAvailable, 10);
+        if (isNaN(resolvedTotal) || resolvedTotal < 0) {
+            resolvedTotal = resolvedDisplayed;
+        }
+
+        if (resolvedTotal === 0) {
+            var noneLabel = resolveFilterLabel('countNone', fallbackNone) || fallbackNone;
+            return noneLabel;
+        }
+
+        if (resolvedTotal > resolvedDisplayed) {
+            var partialTemplate = resolvedDisplayed === 1
+                ? resolveFilterLabel('countPartialSingle', fallbackPartialSingle)
+                : resolveFilterLabel('countPartialPlural', fallbackPartialPlural);
+
+            var formattedPartial = formatCountMessage(partialTemplate, resolvedDisplayed, resolvedTotal);
+
+            if (!formattedPartial) {
+                var fallbackTemplate = resolvedDisplayed === 1 ? fallbackPartialSingle : fallbackPartialPlural;
+                formattedPartial = formatCountMessage(fallbackTemplate, resolvedDisplayed, resolvedTotal);
             }
 
-            var formattedPlural = formatCountMessage(pluralLabel, totalCount) || formatCountMessage(fallbackPlural, totalCount);
+            if (formattedPartial) {
+                return formattedPartial;
+            }
+        }
+
+        if (resolvedDisplayed === 1) {
+            var singleLabel = resolveFilterLabel('countSingle', fallbackSingle);
+            var formattedSingle = formatCountMessage(singleLabel, resolvedDisplayed) || formatCountMessage(fallbackSingle, resolvedDisplayed);
+            if (formattedSingle) {
+                return formattedSingle;
+            }
+
+            return fallbackSingle.replace('%s', String(resolvedDisplayed));
+        }
+
+        if (resolvedDisplayed > 1) {
+            var pluralLabel = resolveFilterLabel('countPlural', fallbackPlural);
+            var formattedPlural = formatCountMessage(pluralLabel, resolvedDisplayed) || formatCountMessage(fallbackPlural, resolvedDisplayed);
+
             if (formattedPlural) {
                 return formattedPlural;
             }
 
-            return fallbackPlural.replace('%s', String(totalCount));
+            return fallbackPlural.replace('%s', String(resolvedDisplayed));
         }
 
-        return noneLabel || fallbackNone;
+        var fallback = resolveFilterLabel('countNone', fallbackNone) || fallbackNone;
+        return fallback;
     }
 
     function focusElement($element) {
@@ -919,13 +1116,25 @@
         }
 
         var totalArticles = contentArea.find('.my-article-item').length;
-        var feedbackMessage = buildFilterFeedbackMessage(totalArticles);
+        var responseDisplayedCount = parseInt(responseData.displayed_count, 10);
+        if (isNaN(responseDisplayedCount)) {
+            responseDisplayedCount = totalArticles;
+        }
+
+        var responseTotalResults = parseInt(responseData.total_results, 10);
+        if (isNaN(responseTotalResults)) {
+            responseTotalResults = Math.max(responseDisplayedCount, totalArticles);
+        }
+
+        var feedbackMessage = buildFilterFeedbackMessage(responseDisplayedCount, responseTotalResults);
         var feedbackElement = getFeedbackElement(wrapper);
         feedbackElement.removeClass('is-error')
             .removeAttr('role')
             .attr('aria-live', 'polite')
             .text(feedbackMessage)
             .show();
+
+        wrapper.attr('data-total-results', responseTotalResults);
 
         var firstArticle = contentArea.find('.my-article-item').first();
         focusOnFirstArticleOrTitle(wrapper, contentArea, firstArticle);
@@ -963,46 +1172,15 @@
             return;
         }
 
-        function extractErrorMessage(jqXHR, response) {
-            if (response && response.data && response.data.message) {
-                return response.data.message;
-            }
-
-            if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                return jqXHR.responseJSON.data.message;
-            }
-
-            if (jqXHR && typeof jqXHR.statusText === 'string' && jqXHR.statusText.length) {
-                return jqXHR.statusText;
-            }
-
-            return '';
-        }
-
-        function extractStatus(jqXHR, response) {
-            if (jqXHR && typeof jqXHR.status === 'number') {
-                return jqXHR.status;
-            }
-
-            if (response && response.data && typeof response.data.status === 'number') {
-                return response.data.status;
-            }
-
-            if (response && typeof response.status === 'number') {
-                return response.status;
-            }
-
-            return 0;
-        }
-
         var defaultErrorMessage = (filterSettings && typeof filterSettings.errorText === 'string')
             ? filterSettings.errorText
             : 'Une erreur est survenue.';
 
         function emitError(jqXHR, response) {
             emitFilterInteraction('error', $.extend({}, requestDetail, {
-                errorMessage: extractErrorMessage(jqXHR, response) || defaultErrorMessage,
-                status: extractStatus(jqXHR, response),
+                errorMessage: extractAjaxErrorMessage(jqXHR, response) || defaultErrorMessage,
+                status: extractAjaxErrorStatus(jqXHR, response),
+                errorCode: extractAjaxErrorCode(jqXHR, response) || '',
                 hadNonceRefresh: hasRetried
             }));
         }
@@ -1018,13 +1196,39 @@
                 nextPage = 0;
             }
 
+            var displayedCount = parseInt(responseData.displayed_count, 10);
+            if (isNaN(displayedCount)) {
+                displayedCount = 0;
+            }
+
+            var totalResults = parseInt(responseData.total_results, 10);
+            if (isNaN(totalResults)) {
+                totalResults = displayedCount;
+            }
+
+            var renderedRegular = parseInt(responseData.rendered_regular_count, 10);
+            if (isNaN(renderedRegular)) {
+                renderedRegular = 0;
+            }
+
+            var renderedPinned = parseInt(responseData.rendered_pinned_count, 10);
+            if (isNaN(renderedPinned)) {
+                renderedPinned = 0;
+            }
+
             emitFilterInteraction('success', $.extend({}, requestDetail, {
                 totalPages: totalPages,
                 nextPage: nextPage,
                 pinnedIds: typeof responseData.pinned_ids === 'string' ? responseData.pinned_ids : '',
                 searchQuery: typeof responseData.search_query === 'string' ? responseData.search_query : requestDetail.search,
                 sort: typeof responseData.sort === 'string' ? responseData.sort : requestDetail.sort,
-                hadNonceRefresh: hasRetried
+                hadNonceRefresh: hasRetried,
+                displayedCount: displayedCount,
+                totalResults: totalResults,
+                renderedRegularCount: renderedRegular,
+                renderedPinnedCount: renderedPinned,
+                totalRegular: parseInt(responseData.total_regular, 10) || 0,
+                totalPinned: parseInt(responseData.total_pinned, 10) || 0
             }));
         }
 
@@ -1146,6 +1350,11 @@
                 if (input.length) {
                     input.attr('aria-busy', 'true');
                 }
+                var submitButton = form.find('.my-articles-search-submit').first();
+                if (submitButton.length) {
+                    submitButton.prop('disabled', true);
+                    submitButton.attr('aria-busy', 'true');
+                }
             },
             onSuccess: function (responseData) {
                 var success = handleFilterSuccess(wrapper, contentArea, instanceId, categorySlug, searchValue, responseData);
@@ -1155,18 +1364,7 @@
                 }
             },
             onError: function (jqXHR, response) {
-                var errorMessage = '';
-
-                if (response && response.data && response.data.message) {
-                    errorMessage = response.data.message;
-                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
-
-                if (!errorMessage) {
-                    errorMessage = fallbackMessage;
-                }
-
+                var errorMessage = composeAjaxErrorMessage(jqXHR, response, fallbackMessage);
                 showError(wrapper, errorMessage);
             },
             onComplete: function () {
@@ -1177,6 +1375,12 @@
                 var input = form.find('.my-articles-search-input').first();
                 if (input.length) {
                     input.attr('aria-busy', 'false');
+                }
+
+                var submitButton = form.find('.my-articles-search-submit').first();
+                if (submitButton.length) {
+                    submitButton.prop('disabled', false);
+                    submitButton.attr('aria-busy', 'false');
                 }
 
                 form.data('pending-search', null);
@@ -1307,19 +1511,7 @@
             },
             onError: function (jqXHR, response) {
                 restorePreviousFilterState();
-
-                var errorMessage = '';
-
-                if (response && response.data && response.data.message) {
-                    errorMessage = response.data.message;
-                } else if (jqXHR && jqXHR.responseJSON && jqXHR.responseJSON.data && jqXHR.responseJSON.data.message) {
-                    errorMessage = jqXHR.responseJSON.data.message;
-                }
-
-                if (!errorMessage) {
-                    errorMessage = fallbackMessage;
-                }
-
+                var errorMessage = composeAjaxErrorMessage(jqXHR, response, fallbackMessage);
                 showError(wrapper, errorMessage);
             },
             onComplete: function () {
@@ -1353,6 +1545,37 @@
 
         input.val('');
         updateSearchFormState(form, '');
+        queueSearchRequest(form, { immediate: true, force: true });
+        input.trigger('focus');
+    });
+
+    $(document).on('click', '.my-articles-search-suggestion', function (e) {
+        e.preventDefault();
+
+        var button = $(this);
+        var suggestion = button.data('suggestion');
+        if (typeof suggestion !== 'string') {
+            suggestion = button.text();
+        }
+
+        if (typeof suggestion !== 'string') {
+            return;
+        }
+
+        suggestion = suggestion.trim();
+
+        var form = button.closest('.my-articles-search-form');
+        if (!form.length) {
+            return;
+        }
+
+        var input = form.find('.my-articles-search-input').first();
+        if (!input.length) {
+            return;
+        }
+
+        input.val(suggestion);
+        updateSearchFormState(form, suggestion);
         queueSearchRequest(form, { immediate: true, force: true });
         input.trigger('focus');
     });

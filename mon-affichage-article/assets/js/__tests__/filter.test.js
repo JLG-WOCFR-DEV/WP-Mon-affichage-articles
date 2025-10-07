@@ -77,6 +77,12 @@ describe('filter endpoint interactions', () => {
                         pinned_ids: '5,7',
                         sort: 'comment_count',
                         pagination_html: '<nav class="my-articles-pagination">Page 1</nav>',
+                        displayed_count: 1,
+                        total_results: 5,
+                        rendered_regular_count: 1,
+                        rendered_pinned_count: 0,
+                        total_regular: 4,
+                        total_pinned: 1,
                     },
                 });
             }
@@ -114,6 +120,7 @@ describe('filter endpoint interactions', () => {
 
         const wrapper = document.querySelector('.my-articles-wrapper');
         expect(wrapper.getAttribute('data-sort')).toBe('comment_count');
+        expect(wrapper.getAttribute('data-total-results')).toBe('5');
     });
 
     it('emits custom events during the filter lifecycle', () => {
@@ -136,6 +143,12 @@ describe('filter endpoint interactions', () => {
                         next_page: 2,
                         pinned_ids: '1',
                         sort: 'date',
+                        displayed_count: 1,
+                        total_results: 4,
+                        rendered_regular_count: 1,
+                        rendered_pinned_count: 0,
+                        total_regular: 3,
+                        total_pinned: 1,
                     },
                 });
             }
@@ -156,6 +169,8 @@ describe('filter endpoint interactions', () => {
             expect(receivedEvents[0].detail.instanceId).toBe(42);
             expect(receivedEvents[1].detail.phase).toBe('success');
             expect(receivedEvents[1].detail.totalPages).toBe(3);
+            expect(receivedEvents[1].detail.displayedCount).toBe(1);
+            expect(receivedEvents[1].detail.totalResults).toBe(4);
         } finally {
             window.removeEventListener('my-articles:filter', handler);
         }

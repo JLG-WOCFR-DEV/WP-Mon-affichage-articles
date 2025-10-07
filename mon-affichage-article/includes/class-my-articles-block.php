@@ -62,76 +62,146 @@ class My_Articles_Block {
         $defaults  = My_Articles_Shortcode::get_default_options();
         $overrides = array();
         $filtered  = array_intersect_key( $attributes, $defaults );
-
-        $boolean_override_keys = array(
-            'slideshow_loop',
-            'slideshow_autoplay',
-            'slideshow_pause_on_interaction',
-            'slideshow_pause_on_mouse_enter',
-            'slideshow_show_navigation',
-            'slideshow_show_pagination',
-            'load_more_auto',
-        );
+        $schema    = self::get_override_schema();
 
         foreach ( $filtered as $key => $raw_value ) {
-            $default_value = $defaults[ $key ];
-
             if ( null === $raw_value ) {
                 continue;
             }
 
-            if ( in_array( $key, $boolean_override_keys, true ) ) {
-                $overrides[ $key ] = ! empty( $raw_value ) ? 1 : 0;
+            $definition    = isset( $schema[ $key ] ) && is_array( $schema[ $key ] ) ? $schema[ $key ] : array();
+            $default_value = $defaults[ $key ];
+            $normalized    = self::normalize_override_value( $raw_value, $default_value, $definition );
+
+            if ( null === $normalized ) {
                 continue;
             }
 
-            if ( 'slideshow_delay' === $key ) {
-                $value = (int) $raw_value;
-
-                if ( $value < 0 ) {
-                    $value = 0;
-                }
-
-                if ( $value > 0 && $value < 1000 ) {
-                    $value = 1000;
-                }
-
-                if ( $value > 20000 ) {
-                    $value = 20000;
-                }
-
-                if ( 0 === $value ) {
-                    $value = (int) $default_value;
-                }
-
-                $overrides[ $key ] = $value;
-                continue;
-            }
-
-            if ( is_array( $default_value ) ) {
-                if ( is_array( $raw_value ) ) {
-                    $overrides[ $key ] = $raw_value;
-                }
-                continue;
-            }
-
-            if ( is_int( $default_value ) ) {
-                if ( is_bool( $raw_value ) ) {
-                    $overrides[ $key ] = $raw_value ? 1 : 0;
-                } else {
-                    $overrides[ $key ] = (int) $raw_value;
-                }
-                continue;
-            }
-
-            if ( is_float( $default_value ) ) {
-                $overrides[ $key ] = (float) $raw_value;
-                continue;
-            }
-
-            $overrides[ $key ] = (string) $raw_value;
+            $overrides[ $key ] = $normalized;
         }
 
         return $overrides;
+    }
+
+    /**
+     * Returns the normalization schema used for block attribute overrides.
+     *
+     * The schema maps attribute keys to a definition describing how the value
+     * should be normalized. Custom definitions can be injected via the
+     * `my_articles_block_override_schema` filter.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function get_override_schema() {
+        $defaults = My_Articles_Shortcode::get_default_options();
+
+        $schema = array(
+            'slideshow_loop'                  => array( 'type' => 'bool' ),
+            'slideshow_autoplay'              => array( 'type' => 'bool' ),
+            'slideshow_pause_on_interaction'  => array( 'type' => 'bool' ),
+            'slideshow_pause_on_mouse_enter'  => array( 'type' => 'bool' ),
+            'slideshow_show_navigation'       => array( 'type' => 'bool' ),
+            'slideshow_show_pagination'       => array( 'type' => 'bool' ),
+            'load_more_auto'                  => array( 'type' => 'bool' ),
+            'slideshow_delay'                 => array(
+                'type'                         => 'int',
+                'min'                          => 0,
+                'max'                          => 20000,
+                'min_if_positive'              => 1000,
+                'fallback_to_default_if_zero'  => true,
+            ),
+        );
+
+        $schema = apply_filters( 'my_articles_block_override_schema', $schema, $defaults );
+
+        if ( ! is_array( $schema ) ) {
+            return array();
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Normalizes a single override value according to the provided definition.
+     *
+     * @param mixed  $raw_value     Raw value coming from block attributes.
+     * @param mixed  $default_value Default shortcode option value.
+     * @param array  $definition    Schema definition for the override.
+     *
+     * @return mixed|null Normalized value or null when it should be skipped.
+     */
+    private static function normalize_override_value( $raw_value, $default_value, array $definition ) {
+        $type = isset( $definition['type'] ) ? $definition['type'] : self::infer_override_type( $default_value );
+
+        switch ( $type ) {
+            case 'bool':
+                return ! empty( $raw_value ) ? 1 : 0;
+
+            case 'int':
+                if ( is_bool( $raw_value ) ) {
+                    $value = $raw_value ? 1 : 0;
+                } else {
+                    $value = (int) $raw_value;
+                }
+
+                if ( isset( $definition['min'] ) ) {
+                    $value = max( (int) $definition['min'], $value );
+                }
+
+                if ( isset( $definition['max'] ) ) {
+                    $value = min( (int) $definition['max'], $value );
+                }
+
+                if ( isset( $definition['min_if_positive'] ) && $value > 0 ) {
+                    $value = max( $value, (int) $definition['min_if_positive'] );
+                }
+
+                if ( ! empty( $definition['fallback_to_default_if_zero'] ) && 0 === $value && is_numeric( $default_value ) ) {
+                    $value = (int) $default_value;
+                }
+
+                return $value;
+
+            case 'float':
+                return (float) $raw_value;
+
+            case 'array':
+                if ( is_array( $raw_value ) ) {
+                    return $raw_value;
+                }
+
+                return null;
+
+            case 'string':
+            default:
+                return (string) $raw_value;
+        }
+    }
+
+    /**
+     * Infers the normalization type from the default shortcode value.
+     *
+     * @param mixed $default_value Default shortcode option value.
+     *
+     * @return string One of: bool, int, float, array, string.
+     */
+    private static function infer_override_type( $default_value ) {
+        if ( is_bool( $default_value ) ) {
+            return 'bool';
+        }
+
+        if ( is_int( $default_value ) ) {
+            return 'int';
+        }
+
+        if ( is_float( $default_value ) ) {
+            return 'float';
+        }
+
+        if ( is_array( $default_value ) ) {
+            return 'array';
+        }
+
+        return 'string';
     }
 }

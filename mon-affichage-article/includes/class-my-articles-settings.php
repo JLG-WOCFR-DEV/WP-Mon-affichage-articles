@@ -5,6 +5,8 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
+require_once __DIR__ . '/class-my-articles-settings-sanitizer.php';
+
 class My_Articles_Settings {
 
     private static $instance;
@@ -31,36 +33,148 @@ class My_Articles_Settings {
     public function enqueue_admin_scripts( $hook ) {
         if ( $hook !== $this->plugin_page_hook ) { return; }
         wp_enqueue_style( 'wp-color-picker' );
-        wp_enqueue_script( 'my-articles-admin-script', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js', array( 'wp-color-picker' ), MY_ARTICLES_VERSION, true );
+        wp_enqueue_style(
+            'my-articles-admin-styles',
+            MY_ARTICLES_PLUGIN_URL . 'assets/css/admin.css',
+            array(),
+            MY_ARTICLES_VERSION
+        );
+
+        wp_enqueue_script(
+            'my-articles-admin-script',
+            MY_ARTICLES_PLUGIN_URL . 'assets/js/admin.js',
+            array( 'wp-color-picker' ),
+            MY_ARTICLES_VERSION,
+            true
+        );
     }
 
     public function create_admin_page() {
-        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings';
+        $active_tab   = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings';
         $allowed_tabs = array( 'settings', 'tutorial' );
 
         if ( ! in_array( $active_tab, $allowed_tabs, true ) ) {
             $active_tab = 'settings';
         }
 
+        $tabs = array(
+            'settings' => array(
+                'label'    => __( 'Réglages', 'mon-articles' ),
+                'panel_id' => 'my-articles-panel-settings',
+            ),
+            'tutorial' => array(
+                'label'    => __( 'Tutoriel', 'mon-articles' ),
+                'panel_id' => 'my-articles-panel-tutorial',
+            ),
+        );
+
+        $is_settings_active = ( 'settings' === $active_tab );
+        $is_tutorial_active = ( 'tutorial' === $active_tab );
+
         ?>
-        <div class="wrap">
-            <h1><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
-            <div style="margin-bottom: 20px;">
-                <p style="margin: 0;"><strong><?php esc_html_e( 'Auteur :', 'mon-articles' ); ?></strong> LCV</p>
-                <p style="margin: 0;"><strong><?php esc_html_e( 'Version :', 'mon-articles' ); ?></strong> <?php echo esc_html( MY_ARTICLES_VERSION ); ?></p>
-            </div>
+        <div class="wrap my-articles-admin" data-ui="radix">
+            <header class="my-articles-admin__header">
+                <div class="my-articles-admin__title-group">
+                    <span class="my-articles-admin__badge" aria-hidden="true">LCV</span>
+                    <div>
+                        <h1 class="my-articles-admin__title"><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
+                        <p class="my-articles-admin__subtitle"><?php esc_html_e( 'Contrôlez l’apparence et les intégrations de vos tuiles en quelques clics.', 'mon-articles' ); ?></p>
+                    </div>
+                </div>
+                <dl class="my-articles-admin__meta">
+                    <div class="my-articles-admin__meta-item">
+                        <dt><?php esc_html_e( 'Auteur', 'mon-articles' ); ?></dt>
+                        <dd>LCV</dd>
+                    </div>
+                    <div class="my-articles-admin__meta-item">
+                        <dt><?php esc_html_e( 'Version', 'mon-articles' ); ?></dt>
+                        <dd><?php echo esc_html( MY_ARTICLES_VERSION ); ?></dd>
+                    </div>
+                </dl>
+            </header>
 
-            <h2 class="nav-tab-wrapper">
-                <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'settings' ), admin_url( 'admin.php' ) ) ); ?>" class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">
-                    <?php esc_html_e( 'Réglages', 'mon-articles' ); ?>
-                </a>
-                <a href="<?php echo esc_url( add_query_arg( array( 'page' => 'my-articles-settings', 'tab' => 'tutorial' ), admin_url( 'admin.php' ) ) ); ?>" class="nav-tab <?php echo 'tutorial' === $active_tab ? 'nav-tab-active' : ''; ?>">
-                    <?php esc_html_e( 'Tutoriel', 'mon-articles' ); ?>
-                </a>
-            </h2>
+            <nav class="my-articles-admin__tabs" role="tablist" aria-label="<?php esc_attr_e( 'Navigation des réglages', 'mon-articles' ); ?>">
+                <?php foreach ( $tabs as $tab_key => $tab ) :
+                    $is_current = ( $tab_key === $active_tab );
+                    $tab_url    = add_query_arg(
+                        array(
+                            'page' => 'my-articles-settings',
+                            'tab'  => $tab_key,
+                        ),
+                        admin_url( 'admin.php' )
+                    );
+                    ?>
+                    <a
+                        id="my-articles-tab-<?php echo esc_attr( $tab_key ); ?>"
+                        href="<?php echo esc_url( $tab_url ); ?>"
+                        class="my-articles-admin__tab"
+                        role="tab"
+                        data-state="<?php echo esc_attr( $is_current ? 'active' : 'inactive' ); ?>"
+                        aria-selected="<?php echo esc_attr( $is_current ? 'true' : 'false' ); ?>"
+                        aria-controls="<?php echo esc_attr( $tab['panel_id'] ); ?>"
+                    >
+                        <span class="my-articles-admin__tab-label"><?php echo esc_html( $tab['label'] ); ?></span>
+                    </a>
+                <?php endforeach; ?>
+            </nav>
 
-            <?php if ( 'tutorial' === $active_tab ) : ?>
-                <div class="my-articles-tutorial">
+            <?php $settings_messages = get_settings_errors(); ?>
+            <?php if ( ! empty( $settings_messages ) ) : ?>
+                <div class="my-articles-admin__notices" aria-live="polite">
+                    <?php settings_errors(); ?>
+                </div>
+            <?php endif; ?>
+
+            <section
+                id="my-articles-panel-settings"
+                class="my-articles-admin__panel"
+                role="tabpanel"
+                aria-labelledby="my-articles-tab-settings"
+                data-state="<?php echo esc_attr( $is_settings_active ? 'active' : 'inactive' ); ?>"
+                <?php echo $is_settings_active ? '' : ' hidden'; ?>
+                aria-hidden="<?php echo esc_attr( $is_settings_active ? 'false' : 'true' ); ?>"
+            >
+                <div class="my-articles-admin__panel-grid">
+                    <article class="my-articles-card my-articles-card--primary my-articles-admin__settings-card">
+                        <div class="my-articles-card__body">
+                            <p class="my-articles-admin__intro"><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
+
+                            <form method="post" action="options.php" class="my-articles-admin__form">
+                                <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
+                            </form>
+                        </div>
+                    </article>
+
+                    <aside
+                        class="my-articles-card my-articles-card--muted my-articles-admin__maintenance"
+                        aria-labelledby="my-articles-maintenance-title"
+                        aria-describedby="my-articles-maintenance-description"
+                    >
+                        <div class="my-articles-card__header">
+                            <h2 id="my-articles-maintenance-title" class="my-articles-card__title"><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
+                            <p id="my-articles-maintenance-description" class="my-articles-card__description"><?php esc_html_e( 'Réinitialise toutes les options aux valeurs par défaut.', 'mon-articles' ); ?></p>
+                        </div>
+                        <div class="my-articles-card__body">
+                            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="my-articles-admin__actions">
+                                <input type="hidden" name="action" value="my_articles_reset_settings">
+                                <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
+                                <?php submit_button( __( 'Réinitialiser les réglages', 'mon-articles' ), 'delete', 'submit', false, array( 'onclick' => 'return confirm("' . esc_js( __( 'Êtes-vous sûr de vouloir réinitialiser tous les réglages ?', 'mon-articles' ) ) . '");' ) ); ?>
+                            </form>
+                        </div>
+                    </aside>
+                </div>
+            </section>
+
+            <section
+                id="my-articles-panel-tutorial"
+                class="my-articles-admin__panel"
+                role="tabpanel"
+                aria-labelledby="my-articles-tab-tutorial"
+                data-state="<?php echo esc_attr( $is_tutorial_active ? 'active' : 'inactive' ); ?>"
+                <?php echo $is_tutorial_active ? '' : ' hidden'; ?>
+                aria-hidden="<?php echo esc_attr( $is_tutorial_active ? 'false' : 'true' ); ?>"
+            >
+                <article class="my-articles-card my-articles-card--prose my-articles-card--primary">
                     <h2><?php esc_html_e( 'Instrumentation : comprendre ce que vous activez', 'mon-articles' ); ?></h2>
                     <p><?php esc_html_e( 'La section « Instrumentation » vous permet de suivre ce que font les utilisateurs dans vos tuiles (filtrage, chargement progressif, etc.). En activant l’option, le plugin publie automatiquement des événements JavaScript qui décrivent chaque étape de ces interactions (requête, succès, erreur).', 'mon-articles' ); ?></p>
 
@@ -83,21 +197,8 @@ class My_Articles_Settings {
                     <p><?php esc_html_e( 'Avec le canal « fetch », les événements sont également disponibles via l’action WordPress my_articles_track_interaction. C’est l’occasion de connecter facilement votre solution de monitoring ou d’analytics existante.', 'mon-articles' ); ?></p>
 
                     <p><?php esc_html_e( 'En résumé, cette section vous offre un moyen simple de suivre, analyser et rediriger les interactions des utilisateurs avec vos tuiles, sans code supplémentaire.', 'mon-articles' ); ?></p>
-                </div>
-            <?php else : ?>
-                <p><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
-
-                <form method="post" action="options.php">
-                    <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
-                </form>
-                <hr>
-                <h2><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
-                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display: inline-block;">
-                    <input type="hidden" name="action" value="my_articles_reset_settings">
-                    <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
-                    <?php submit_button( __( 'Réinitialiser les réglages', 'mon-articles' ), 'delete', 'submit', false, ['onclick' => 'return confirm("' . esc_js( __( 'Êtes-vous sûr de vouloir réinitialiser tous les réglages ?', 'mon-articles' ) ) . '");'] ); ?>
-                </form>
-            <?php endif; ?>
+                </article>
+            </section>
         </div>
         <?php
     }
@@ -141,75 +242,14 @@ class My_Articles_Settings {
     }
 
     public function sanitize( $input ) {
-        $sanitized_input = [];
-        $sanitized_input['display_mode'] = isset( $input['display_mode'] ) && in_array($input['display_mode'], ['grid', 'slideshow', 'list']) ? $input['display_mode'] : 'grid';
-        $sanitized_input['default_category'] = isset( $input['default_category'] ) ? sanitize_text_field( $input['default_category'] ) : '';
-        $sanitized_input['posts_per_page'] = isset( $input['posts_per_page'] )
-            ? min( 50, max( 0, intval( $input['posts_per_page'] ) ) )
-            : 10;
-        $sanitized_input['enable_keyword_search'] = isset( $input['enable_keyword_search'] ) ? 1 : 0;
-        $sanitized_input['desktop_columns'] = isset( $input['desktop_columns'] )
-            ? min( 6, max( 1, intval( $input['desktop_columns'] ) ) )
-            : 3;
-        $sanitized_input['mobile_columns'] = isset( $input['mobile_columns'] )
-            ? min( 3, max( 1, intval( $input['mobile_columns'] ) ) )
-            : 1;
-        $allowed_thumbnail_ratios = My_Articles_Shortcode::get_allowed_thumbnail_aspect_ratios();
-        $default_thumbnail_ratio  = My_Articles_Shortcode::get_default_thumbnail_aspect_ratio();
-        $requested_thumbnail_ratio = isset( $input['thumbnail_aspect_ratio'] ) ? (string) $input['thumbnail_aspect_ratio'] : $default_thumbnail_ratio;
+        $error_handler = function ( $field, $message, $details ) {
+            if ( function_exists( 'add_settings_error' ) ) {
+                $code = isset( $details['code'] ) ? $details['code'] : $field;
+                add_settings_error( $this->option_name, $code, $message, 'error' );
+            }
+        };
 
-        if ( ! in_array( $requested_thumbnail_ratio, $allowed_thumbnail_ratios, true ) ) {
-            $requested_thumbnail_ratio = $default_thumbnail_ratio;
-        }
-
-        $sanitized_input['thumbnail_aspect_ratio'] = $requested_thumbnail_ratio;
-        $sanitized_input['gap_size'] = isset( $input['gap_size'] )
-            ? min( 50, max( 0, intval( $input['gap_size'] ) ) )
-            : 25;
-        $sanitized_input['border_radius'] = isset( $input['border_radius'] )
-            ? min( 50, max( 0, intval( $input['border_radius'] ) ) )
-            : 12;
-        $sanitized_input['title_color'] = my_articles_sanitize_color($input['title_color'] ?? '', '#333333');
-        $sanitized_input['title_font_size'] = isset( $input['title_font_size'] )
-            ? min( 40, max( 10, intval( $input['title_font_size'] ) ) )
-            : 16;
-        $sanitized_input['show_category'] = isset( $input['show_category'] ) ? 1 : 0;
-        $sanitized_input['show_author'] = isset( $input['show_author'] ) ? 1 : 0;
-        $sanitized_input['show_date'] = isset( $input['show_date'] ) ? 1 : 0;
-        $sanitized_input['meta_font_size'] = isset( $input['meta_font_size'] )
-            ? min( 20, max( 8, intval( $input['meta_font_size'] ) ) )
-            : 12;
-        $sanitized_input['meta_color'] = my_articles_sanitize_color($input['meta_color'] ?? '', '#6b7280');
-        $sanitized_input['meta_color_hover'] = my_articles_sanitize_color($input['meta_color_hover'] ?? '', '#000000');
-        $sanitized_input['module_bg_color'] = my_articles_sanitize_color($input['module_bg_color'] ?? '', 'rgba(255,255,255,0)');
-        $sanitized_input['vignette_bg_color'] = my_articles_sanitize_color($input['vignette_bg_color'] ?? '', '#ffffff');
-        $sanitized_input['title_wrapper_bg_color'] = my_articles_sanitize_color($input['title_wrapper_bg_color'] ?? '', '#ffffff');
-        $sanitized_input['module_margin_top'] = isset( $input['module_margin_top'] )
-            ? min( 200, max( 0, intval( $input['module_margin_top'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_bottom'] = isset( $input['module_margin_bottom'] )
-            ? min( 200, max( 0, intval( $input['module_margin_bottom'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_left'] = isset( $input['module_margin_left'] )
-            ? min( 200, max( 0, intval( $input['module_margin_left'] ) ) )
-            : 0;
-        $sanitized_input['module_margin_right'] = isset( $input['module_margin_right'] )
-            ? min( 200, max( 0, intval( $input['module_margin_right'] ) ) )
-            : 0;
-        $sanitized_input['pagination_color'] = my_articles_sanitize_color($input['pagination_color'] ?? '', '#333333');
-
-        $sanitized_input['instrumentation_enabled'] = ! empty( $input['instrumentation_enabled'] ) ? 1 : 0;
-
-        $allowed_instrumentation_channels = array( 'console', 'dataLayer', 'fetch' );
-        $requested_instrumentation_channel = isset( $input['instrumentation_channel'] ) ? (string) $input['instrumentation_channel'] : 'console';
-
-        if ( ! in_array( $requested_instrumentation_channel, $allowed_instrumentation_channels, true ) ) {
-            $requested_instrumentation_channel = 'console';
-        }
-
-        $sanitized_input['instrumentation_channel'] = $requested_instrumentation_channel;
-
-        return $sanitized_input;
+        return My_Articles_Settings_Sanitizer::sanitize( $input, $error_handler );
     }
 
     // Callbacks

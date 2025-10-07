@@ -64,6 +64,16 @@ Cette note recense les fonctions qui méritent une refonte pour se rapprocher de
   - Exposer un filtre `my_articles_calculate_total_pages` pour surcharger le calcul.
   - Fournir en sortie des métadonnées supplémentaires (total potentiels, taille restante) pour alimenter des dashboards ou un tracking front avancé.
 
+## 7. `My_Articles_Block::render_block()`
+- **Localisation** : `mon-affichage-article/includes/class-my-articles-block.php`
+- **Problèmes constatés** :
+  - Le bloc délègue directement au shortcode sans différencier les besoins éditeur (aperçu rapide, validation) du rendu frontal, ce qui empêche l'optimisation spécifique au mode preview.【F:mon-affichage-article/includes/class-my-articles-block.php†L32-L62】
+  - La conversion des attributs en overrides dépend d'une liste statique et mélange normalisation et typage, compliquant l'ajout d'options dynamiques et les tests unitaires.【F:mon-affichage-article/includes/class-my-articles-block.php†L64-L123】
+- **Pistes d'amélioration** :
+  - Introduire un adaptateur dédié au bloc afin de pouvoir court-circuiter la requête et injecter des données fictives lors de la prévisualisation dans Gutenberg.
+  - Extraire la normalisation des attributs vers des stratégies typées (booléens, listes, nombres) et exposer des filtres pour autoriser des extensions sans modifier le cœur du bloc.
+  - Ajouter des tests unitaires ciblant `prepare_overrides_from_attributes()` pour sécuriser les conversions et prévenir les régressions lors de l'ajout de nouveaux attributs.
+
 ## Tests de diagnostic ajoutés
 
 - **`tests/CalculateTotalPagesTest.php`** : nouvelle série de scénarios couvrant les combinaisons d'articles épinglés et réguliers, y compris le cas « illimité ». Ces tests servent de filet de sécurité avant refonte et facilitent le repérage d'effets de bord sur la pagination.【F:tests/CalculateTotalPagesTest.php†L1-L54】
