@@ -17,6 +17,7 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 | **Moteur de requête** | Filtres basés sur taxonomies natives et ordre simple.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L397-L440】 | Meta queries avancées, relations complexes, sources externes. | Exposer une configuration pour meta queries, connecteurs API et hooks. |
 | **Analytics** | Émission d'événements sans interface de restitution.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】 | Dashboards intégrés avec indicateurs de performance et A/B testing. | Consolider un module analytics dans l'admin en exploitant les événements existants. |
 | **Performance** | Assets injectés systématiquement (Swiper, LazySizes, styles).【F:mon-affichage-article/includes/class-my-articles-enqueue.php†L44-L53】 | Chargement conditionnel et optimisation Lighthouse (code splitting). | Mettre en place un enqueuing conditionnel et une stratégie de bundles modulaires. |
+| **Stratégie de cache** | Clés de cache REST concaténées sans namespace, collisions possibles entre filtres et recherches.【F:mon-affichage-article/mon-affichage-articles.php†L474-L820】 | Convention d’identifiants stable, invalidation ciblée et observabilité intégrée. | Normaliser les fragments (`search:`, `sort:`) et instrumenter les collisions pour la QA.【F:docs/code-review.md†L5-L16】 |
 
 ## Écarts observés vs. extensions professionnelles
 
@@ -34,6 +35,9 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 
 5. **Performance et chargement conditionnel**
    - Les assets (Swiper, LazySizes, layout) sont systématiquement injectés dans l'éditeur de blocs même si le module n'utilise pas le diaporama ou le lazy-load, ce que les solutions premium optimisent via du code splitting ou des chargements différés.【F:mon-affichage-article/includes/class-my-articles-enqueue.php†L44-L53】
+
+6. **Robustesse du cache serveur**
+   - Les clés générées pour les réponses REST partagent le même format quelle que soit la combinaison de paramètres, ce qui peut renvoyer une réponse d'un contexte différent (recherche vs tri). Les plugins premium exposent des conventions strictes et des tableaux de bord d'invalidation afin de diagnostiquer les ratés avant mise en production.【F:docs/code-review.md†L5-L16】
 
 ## Pistes d'amélioration prioritaires
 
@@ -54,6 +58,9 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 
 6. **Personnalisation des parcours**
    - Exploiter l'action `my_articles_track_interaction` pour introduire des règles de personnalisation (par exemple, remonter les contenus les plus cliqués, adapter l'ordre selon le profil utilisateur). Couplé à un cache segmenté, cela amènerait des capacités de « smart listing » recherchées dans les outils pro.【F:mon-affichage-article/includes/class-my-articles-settings.php†L62-L140】【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L397-L440】
+
+7. **Durcissement du cache REST**
+   - Encapsuler la génération des clés dans un service dédié (`My_Articles_Cache_Key`) qui applique automatiquement les préfixes et expose des métriques (hits/miss) consultables dans l'administration. Coupler ce service avec une page de diagnostic inspirée des dashboards concurrents pour visualiser l'état des caches par instance.【F:docs/code-review.md†L5-L23】【F:docs/roadmap-technique.md†L8-L28】
 
 ### Feuille de route recommandée
 

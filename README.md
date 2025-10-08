@@ -37,12 +37,14 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 - Page « Instrumentation » qui documente les usages et permet d'activer la télémétrie avec choix du canal (console, `dataLayer`, `fetch`).
 - Événements front (`my-articles:filter`, `my-articles:load-more`) riches en métadonnées (phase, filtres, pagination) et callbacks personnalisables pour brancher des outils d'analytics.
 - Action serveur `my_articles_track_interaction` déclenchée sur chaque interaction réussie (y compris en mode `fetch`) pour relayer les données vers des services externes.
+- Constante `MY_ARTICLES_DEBUG_CACHE` permettant d'activer une journalisation détaillée des hits/miss du cache REST dans le `WP_DEBUG_LOG`, utile pour auditer la validité des clés après un déploiement.
 
 ### Intégrations développeurs
 
 - API REST complète (`/filter`, `/load-more`, `/search`, `/render-preview`, `/nonce`, `/track`) avec validations dédiées, prévisualisation sécurisée et recherche incrémentale pour l'admin.
 - Système de cache combinant object cache et transients, namespace rafraîchi automatiquement et hooks pour personnaliser l'expiration ou les post types suivis.
 - Hooks et filtres pour ajuster les préréglages, la liste des post types suivis, le calcul des pages, la validation des instances, ainsi que des traductions chargées dynamiquement depuis les fichiers `.mo` encodés en base64.
+- Filtre `my_articles_cache_fragments` pour enrichir les fragments de contexte utilisés par le cache REST (ajout de paramètres maison, source externe, etc.) tout en conservant la nomenclature sécurisée.
 
 ## Installation
 
@@ -158,6 +160,18 @@ window.addEventListener('my-articles:load-more', (event) => {
 Vous pouvez également fournir un callback personnalisé via `myArticlesFilter.instrumentation.callback` ou `myArticlesLoadMore.instrumentation.callback` pour centraliser le traitement.
 
 ### Relayer les interactions côté serveur
+
+## Prochaines améliorations prioritaires
+
+Pour aller plus loin, plusieurs chantiers sont identifiés et détaillés dans les documents de la section `docs/` :
+
+- **Service de rendu découplé et cache mutualisé** : extraire la préparation des données du shortcode afin de mieux contrôler l’enqueue des assets et préparer l’arrivée d’un catalogue de presets versionnés.【F:docs/roadmap-technique.md†L8-L41】【F:docs/fonctions-a-ameliorer.md†L8-L61】
+- **Catalogue de préréglages visuel** : proposer dans l’éditeur un sélecteur avec vignettes, tags et import/export JSON pour capitaliser sur les configurations populaires.【F:docs/roadmap-technique.md†L43-L59】【F:docs/pistes-amelioration-design.md†L9-L26】
+- **Builder de cartes modulaire** : ouvrir la composition aux champs personnalisés (ACF, taxonomies) via un système de slots et un canvas React en mode aperçu, tout en renforçant l’accessibilité clavier.【F:docs/comparaison-apps-pro.md†L42-L86】【F:docs/pistes-amelioration-design.md†L42-L57】
+- **Instrumentation exploitable** : transformer les événements existants en tableau de bord dans l’admin et fournir des exports pour les équipes marketing.【F:docs/roadmap-technique.md†L61-L84】【F:docs/comparaison-apps-pro.md†L88-L134】
+- **Stratégie de cache robuste** : fiabiliser les clés des réponses REST (filtres, load-more, recherche) afin d’éviter les collisions et faciliter les tests de non-régression côté serveur.【F:docs/code-review.md†L5-L16】【F:tests/REGRESSIONS.md†L1-L26】
+
+Ces axes servent de fil conducteur pour les prochaines itérations produit et facilitent la priorisation des demandes entrantes (design system, performances, observabilité).
 
 Lorsque l’instrumentation est active, chaque réponse réussie déclenche également l’action PHP suivante :
 

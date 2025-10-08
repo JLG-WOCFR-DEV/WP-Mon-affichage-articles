@@ -44,6 +44,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-response-cache-key.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
 
         $this->rest_controller = new My_Articles_Controller( $this );
@@ -469,26 +470,46 @@ public function prepare_filter_articles_response( array $args ) {
             ? $options['active_tax_filters']
             : array();
 
-        $cache_extra_parts = array();
+        $cache_fragments = array();
 
         if ( ! empty( $options['search_query'] ) ) {
-            $cache_extra_parts[] = 'search:' . $options['search_query'];
+            $cache_fragments['search'] = $options['search_query'];
         }
 
         if ( ! empty( $options['sort'] ) ) {
-            $cache_extra_parts[] = 'sort:' . $options['sort'];
+            $cache_fragments['sort'] = $options['sort'];
         }
 
         if ( ! empty( $options['active_tax_filter_keys'] ) ) {
-            $cache_extra_parts[] = 'filters:' . implode( ',', $options['active_tax_filter_keys'] );
+            $filter_keys = array_map( 'strval', $options['active_tax_filter_keys'] );
+            sort( $filter_keys );
+            $cache_fragments['filters'] = implode( ',', $filter_keys );
         }
+
+        $cache_fragments = apply_filters(
+            'my_articles_cache_fragments',
+            $cache_fragments,
+            array(
+                'source'        => 'filter',
+                'instance_id'   => $instance_id,
+                'category'      => $active_category,
+                'display_mode'  => $display_mode,
+                'paged'         => 1,
+                'options'       => $options,
+                'request_args'  => array(
+                    'requested_category' => $category_slug,
+                    'requested_filters'  => $requested_filters,
+                    'requested_sort'     => $requested_sort,
+                ),
+            )
+        );
 
         $cache_key = $this->generate_response_cache_key(
             $instance_id,
             $active_category,
             1,
             $display_mode,
-            implode( '|', $cache_extra_parts )
+            is_array( $cache_fragments ) ? $cache_fragments : array()
         );
 
         $cached_response = $this->get_cached_response( $cache_key );
@@ -791,32 +812,48 @@ public function prepare_load_more_articles_response( array $args ) {
             ? $options['active_tax_filters']
             : array();
 
-        $cache_extra_parts = array();
+        $cache_fragments = array();
 
         if ( ! empty( $options['search_query'] ) ) {
-            $cache_extra_parts[] = 'search:' . $options['search_query'];
+            $cache_fragments['search'] = $options['search_query'];
         }
 
         if ( ! empty( $options['sort'] ) ) {
-            $cache_extra_parts[] = 'sort:' . $options['sort'];
+            $cache_fragments['sort'] = $options['sort'];
         }
 
         if ( ! empty( $seen_pinned_ids ) ) {
-            $cache_extra_parts[] = 'pinned:' . implode( ',', array_map( 'absint', $seen_pinned_ids ) );
+            $normalized_pinned = array_map( 'absint', $seen_pinned_ids );
+            sort( $normalized_pinned );
+            $cache_fragments['pinned'] = implode( ',', $normalized_pinned );
         }
 
         if ( ! empty( $options['active_tax_filter_keys'] ) ) {
-            $cache_extra_parts[] = 'filters:' . implode( ',', $options['active_tax_filter_keys'] );
+            $filter_keys = array_map( 'strval', $options['active_tax_filter_keys'] );
+            sort( $filter_keys );
+            $cache_fragments['filters'] = implode( ',', $filter_keys );
         }
 
-        $cache_extra = implode( '|', $cache_extra_parts );
+        $cache_fragments = apply_filters(
+            'my_articles_cache_fragments',
+            $cache_fragments,
+            array(
+                'source'        => 'load-more',
+                'instance_id'   => $instance_id,
+                'category'      => $active_category,
+                'display_mode'  => $display_mode,
+                'paged'         => $paged,
+                'options'       => $options,
+                'seen_pinned'   => $seen_pinned_ids,
+            )
+        );
 
         $cache_key = $this->generate_response_cache_key(
             $instance_id,
             $active_category,
             $paged,
             $display_mode,
-            $cache_extra
+            is_array( $cache_fragments ) ? $cache_fragments : array()
         );
 
         $cached_response = $this->get_cached_response( $cache_key );
@@ -1054,21 +1091,26 @@ public function prepare_load_more_articles_response( array $args ) {
         );
     }
 
-    private function generate_response_cache_key( $instance_id, $category_slug, $paged, $display_mode, $extra = '' ) {
+    private function generate_response_cache_key( $instance_id, $category_slug, $paged, $display_mode, $extra = array() ) {
         $namespace = $this->get_cache_namespace();
 
-        $payload = array(
-            'instance' => absint( $instance_id ),
-            'category' => (string) $category_slug,
-            'paged'    => absint( $paged ),
-            'mode'     => (string) $display_mode,
-            'extra'    => (string) $extra,
+        $builder = new My_Articles_Response_Cache_Key(
+            $namespace,
+            array(
+                'instance' => absint( $instance_id ),
+                'category' => (string) $category_slug,
+                'paged'    => absint( $paged ),
+                'mode'     => (string) $display_mode,
+            )
         );
 
-        $encoder = function_exists( 'wp_json_encode' ) ? 'wp_json_encode' : 'json_encode';
-        $hash    = md5( (string) call_user_func( $encoder, $payload ) );
+        if ( is_array( $extra ) ) {
+            $builder->add_fragments( $extra );
+        } elseif ( is_string( $extra ) && '' !== $extra ) {
+            $builder->add_fragment( 'legacy', $extra );
+        }
 
-        return sprintf( 'my_articles_%s_%s', $namespace, $hash );
+        return $builder->to_string();
     }
 
     private function get_cache_namespace() {
@@ -1116,20 +1158,35 @@ public function prepare_load_more_articles_response( array $args ) {
 
         if ( function_exists( 'wp_cache_get' ) ) {
             $cached = wp_cache_get( $cache_key, 'my_articles_response' );
-        }
 
-        if ( false !== $cached ) {
-            return $cached;
+            if ( false !== $cached ) {
+                $this->log_cache_event( 'hit', $cache_key, array( 'layer' => 'object-cache' ) );
+
+                return $cached;
+            }
+
+            $this->log_cache_event( 'miss', $cache_key, array( 'layer' => 'object-cache' ) );
         }
 
         $transient = false;
 
         if ( function_exists( 'get_transient' ) ) {
             $transient = get_transient( $cache_key );
-        }
 
-        if ( false !== $transient && function_exists( 'wp_cache_set' ) ) {
-            wp_cache_set( $cache_key, $transient, 'my_articles_response', 0 );
+            if ( false !== $transient ) {
+                $this->log_cache_event( 'hit', $cache_key, array( 'layer' => 'transient' ) );
+
+                if ( function_exists( 'wp_cache_set' ) ) {
+                    $promoted = wp_cache_set( $cache_key, $transient, 'my_articles_response', 0 );
+                    if ( $promoted ) {
+                        $this->log_cache_event( 'promote', $cache_key, array( 'layer' => 'object-cache' ) );
+                    }
+                }
+
+                return $transient;
+            }
+
+            $this->log_cache_event( 'miss', $cache_key, array( 'layer' => 'transient' ) );
         }
 
         return $transient;
@@ -1139,11 +1196,48 @@ public function prepare_load_more_articles_response( array $args ) {
         $expiration = absint( $expiration );
 
         if ( function_exists( 'wp_cache_set' ) ) {
-            wp_cache_set( $cache_key, $data, 'my_articles_response', $expiration );
+            $stored = wp_cache_set( $cache_key, $data, 'my_articles_response', $expiration );
+            $this->log_cache_event(
+                $stored ? 'store' : 'store_failed',
+                $cache_key,
+                array(
+                    'layer'      => 'object-cache',
+                    'expiration' => $expiration,
+                )
+            );
         }
 
         if ( function_exists( 'set_transient' ) ) {
-            set_transient( $cache_key, $data, $expiration );
+            $saved = set_transient( $cache_key, $data, $expiration );
+            $this->log_cache_event(
+                $saved ? 'store' : 'store_failed',
+                $cache_key,
+                array(
+                    'layer'      => 'transient',
+                    'expiration' => $expiration,
+                )
+            );
+        }
+    }
+
+    private function log_cache_event( $event, $cache_key, array $context = array() ) {
+        if ( ! defined( 'MY_ARTICLES_DEBUG_CACHE' ) || true !== MY_ARTICLES_DEBUG_CACHE ) {
+            return;
+        }
+
+        $context['event'] = (string) $event;
+        $context['key']   = (string) $cache_key;
+        $context['time']  = time();
+
+        $encoder = function_exists( 'wp_json_encode' ) ? 'wp_json_encode' : 'json_encode';
+        $encoded = call_user_func( $encoder, $context );
+
+        if ( false === $encoded || null === $encoded ) {
+            $encoded = print_r( $context, true );
+        }
+
+        if ( function_exists( 'error_log' ) ) {
+            error_log( '[my-articles-cache] ' . $encoded );
         }
     }
 
