@@ -689,27 +689,7 @@ class My_Articles_Controller extends WP_REST_Controller {
      * @return string|null Normalized scalar string or null when unavailable.
      */
     private function normalize_request_scalar( $value ) {
-        if ( is_array( $value ) ) {
-            if ( empty( $value ) ) {
-                return null;
-            }
-
-            $value = reset( $value );
-        }
-
-        if ( is_string( $value ) ) {
-            return wp_unslash( $value );
-        }
-
-        if ( is_scalar( $value ) ) {
-            return (string) $value;
-        }
-
-        if ( is_object( $value ) && method_exists( $value, '__toString' ) ) {
-            return (string) $value;
-        }
-
-        return null;
+        return my_articles_normalize_scalar_value( $value );
     }
 
     /**
@@ -779,6 +759,8 @@ class My_Articles_Controller extends WP_REST_Controller {
      * @return array<int, array{taxonomy:string,slug:string}> Sanitized filters.
      */
     public function sanitize_filters_arg( $value, $request, $param ) {
+        $value = my_articles_prepare_filters_value( $value );
+
         if ( is_string( $value ) ) {
             $decoded = json_decode( $value, true );
 
