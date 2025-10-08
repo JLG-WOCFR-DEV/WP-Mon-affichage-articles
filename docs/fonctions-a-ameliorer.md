@@ -74,6 +74,16 @@ Cette note recense les fonctions qui méritent une refonte pour se rapprocher de
   - Extraire la normalisation des attributs vers des stratégies typées (booléens, listes, nombres) et exposer des filtres pour autoriser des extensions sans modifier le cœur du bloc.
   - Ajouter des tests unitaires ciblant `prepare_overrides_from_attributes()` pour sécuriser les conversions et prévenir les régressions lors de l'ajout de nouveaux attributs.
 
+## 8. `generate_response_cache_key()` et helpers REST
+- **Localisation** : `mon-affichage-article/mon-affichage-articles.php`
+- **Problèmes constatés** :
+  - Les fragments de contexte (`search`, `sort`, `pinned_ids`) sont concaténés sans nommage, entraînant des collisions de cache entre requêtes distinctes (ex. recherche `"sort:date"` vs tri `sort => date`).【F:mon-affichage-article/mon-affichage-articles.php†L474-L820】
+  - Les helpers `prepare_filter_articles_response()` et `prepare_load_more_articles_response()` ne documentent pas les conventions attendues pour les nouveaux paramètres, augmentant le risque de régressions lors de l'ajout d'options (filtres personnalisés, presets dynamiques).【F:docs/code-review.md†L5-L16】
+- **Pistes d'amélioration** :
+  - Préfixer explicitement chaque fragment lors de la construction de la clé (`search:`, `sort:`, `pinned:`) et encapsuler la logique dans un objet dédié (Value Object) afin de garantir l'immutabilité et la lisibilité.
+  - Ajouter des tests unitaires couvrant les cas limites (valeurs numériques identiques, paramètres manquants) et documenter les conventions dans `tests/REGRESSIONS.md` pour faciliter les vérifications manuelles.【F:tests/REGRESSIONS.md†L1-L26】
+  - Exposer un filtre `my_articles_cache_fragments` permettant aux intégrations tierces de contribuer à la clé sans casser la nomenclature.
+
 ## Tests de diagnostic ajoutés
 
 - **`tests/CalculateTotalPagesTest.php`** : nouvelle série de scénarios couvrant les combinaisons d'articles épinglés et réguliers, y compris le cas « illimité ». Ces tests servent de filet de sécurité avant refonte et facilitent le repérage d'effets de bord sur la pagination.【F:tests/CalculateTotalPagesTest.php†L1-L54】

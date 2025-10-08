@@ -26,10 +26,18 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
 - **Livrables** :
   - Suite PHPUnit élargie et intégration GitHub Actions.
   - Documentation `composer test` + `npm run test:js` dans le README (déjà présente) et rappels dans les PR templates.
+- **Suivi** : préparer un test dédié aux collisions de clés de cache (`search` vs `sort`, IDs épinglés) avant la refonte de l’enqueue.【F:docs/code-review.md†L5-L23】
+
+### 4. Fiabiliser les clés de cache REST
+- **Portée** : `prepare_filter_articles_response()`, `prepare_load_more_articles_response()` et helpers associés.
+- **Cibles** : préfixer systématiquement les fragments (`search:`, `sort:`, `pinned:`) et documenter la convention pour les nouvelles routes.
+- **Livrables** :
+  - Refactor du générateur de clé (`generate_response_cache_key()`) avec tests de collision.
+  - Notes de migration dans `tests/REGRESSIONS.md` pour accompagner le nettoyage des caches après déploiement.【F:docs/code-review.md†L5-L23】【F:tests/REGRESSIONS.md†L1-L26】
 
 ## 3-6 mois — Expérience éditeur et design
 
-### 4. Catalogue de préréglages enrichi
+### 5. Catalogue de préréglages enrichi
 - **Portée** : presets du shortcode et panneau Module dans le bloc.
 - **Cibles** : charger des préréglages depuis des fichiers JSON, ajouter métadonnées (thumbnails, tags) et synchronisation REST.
 - **Livrables** :
@@ -37,7 +45,7 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
   - Commande WP-CLI pour synchroniser les presets.
 - **Référence** : `docs/pistes-amelioration-design.md` section 2.
 
-### 5. Filtres front avancés
+### 6. Filtres front avancés
 - **Portée** : scripts de filtrage (`assets/js`) et panneau de configuration du bloc.
 - **Cibles** : introduire recherche multi-critères, chips contextuelles et animation de feedback.
 - **Livrables** :
@@ -45,9 +53,17 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
   - Tests d'accessibilité et de clavier pour les nouveaux composants.
 - **Référence** : `docs/pistes-amelioration-design.md` section 4.
 
+### 7. Mode aperçu enrichi
+- **Portée** : `preview.js`, `edit.js` et pipeline de synchronisation des presets.
+- **Cibles** : remplacer le rendu HTML statique par un canvas React capable de charger les tokens du thème actif et de simuler plusieurs points de rupture.
+- **Livrables** :
+  - Composant `PreviewCanvas` avec bascule responsive et mode sombre.
+  - Hooks de personnalisation permettant d’injecter des champs dynamiques (ACF, taxonomies personnalisées).
+- **Référence** : `docs/comparaison-apps-pro.md` section « Focus UX/UI détaillé » et `docs/pistes-amelioration-design.md` section 4.
+
 ## 6-12 mois — Observabilité et intégrations
 
-### 6. Tableau de bord instrumentation
+### 8. Tableau de bord instrumentation
 - **Portée** : page « Instrumentation » et endpoints REST (`/track`).
 - **Cibles** : centraliser les métriques temps réel (latence, erreurs) et proposer des exportations vers Segment/Adobe.
 - **Livrables** :
@@ -55,7 +71,7 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
   - Dashboard React dans l'admin + documentation d'intégration.
 - **Référence** : README section « Instrumentation et suivi » et `docs/fonctions-a-ameliorer.md` section 3.
 
-### 7. Connecteurs de contenu avancés
+### 9. Connecteurs de contenu avancés
 - **Portée** : résolution des sources (`build_display_state`) et normalisation des IDs épinglés.
 - **Cibles** : permettre de plugger des services externes (Elastic, API tierces) via des adapters et un système de priorités.
 - **Livrables** :
@@ -67,9 +83,10 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
 
 | Sujet | Dépendances | Notes |
 | --- | --- | --- |
-| Cache & performance | Finalisation du service de rendu avant instrumentation | Prioriser l'extraction de la couche données pour éviter la dette lors du monitoring. |
+| Cache & performance | Finalisation du service de rendu avant instrumentation, correctifs de clés REST | Prioriser l'extraction de la couche données pour éviter la dette lors du monitoring. |
 | Accessibilité | Requiert les nouvelles interfaces de filtres | Prévoir un audit axe-core à chaque refonte UI. |
 | Internationalisation | À synchroniser avec la gestion des presets JSON | Maintenir la procédure de re-encodage `.mo` décrite dans le README. |
+| Observabilité | Dépend du durcissement des clés de cache et de la nouvelle stack de tests | Bloquer les déploiements tant que les tableaux de bord n'ont pas de données valides. |
 
 ## Suivi opérationnel
 

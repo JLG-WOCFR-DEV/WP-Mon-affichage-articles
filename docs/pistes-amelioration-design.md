@@ -26,3 +26,10 @@
 - Exploiter les interactions existantes (`my-articles:filter`) pour afficher des micro-feedbacks visuels (badge animé sur le filtre actif, compteur de résultats) sans recharger la page.
 
 > **Point de départ actuel :** le bloc fournit des contrôles basiques (alignement, activation/désactivation, libellé ARIA) mais pas de personnalisation avancée des filtres ou du tri multi-niveaux.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1248-L1378】【F:README.md†L69-L108】
+
+## 5. Consolider accessibilité et personnalisation motion
+- Étendre les options d’accessibilité dans l’éditeur (contraste renforcé, bascule `prefers-reduced-motion`, descriptions audio) pour aligner les presets sur les référentiels RGAA/WCAG.
+- Documenter des jeux de tokens compatibles avec les modes d’affichage à forte densité (liste compacte, slider auto) tout en conservant des repères de focus visibles.
+- Introduire un configurateur d’animations permettant de choisir pour chaque preset une courbe d’accélération, une durée et un comportement en entrée/sortie afin de couvrir les contextes éditoriaux (actualité vs dossier).
+
+> **Point de départ actuel :** les feuilles de style appliquent une animation shimmer unique et une transition d’opacité par défaut ; aucun réglage n’est exposé pour les utilisateurs sensibles au mouvement ou les sites devant respecter des normes d’accessibilité renforcées.【F:mon-affichage-article/assets/css/styles.css†L55-L200】
