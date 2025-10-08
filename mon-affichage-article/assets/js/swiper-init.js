@@ -175,6 +175,21 @@
             };
         }
 
+        const normalizeNumber = function (value, fallback) {
+            if (typeof value === 'number' && !Number.isNaN(value)) {
+                return value;
+            }
+
+            const parsed = Number(value);
+            if (Number.isFinite(parsed)) {
+                return parsed;
+            }
+
+            return typeof fallback === 'number' && !Number.isNaN(fallback) ? fallback : 0;
+        };
+
+        const gapSize = normalizeNumber(settings.gap_size, 0);
+
         const autoplayConfig = autoplaySettings.enabled
             ? {
                   delay: typeof autoplaySettings.delay === 'number' ? autoplaySettings.delay : 5000,
@@ -205,7 +220,7 @@
 
         const instance = new Swiper(settings.container_selector, {
             slidesPerView: settings.columns_mobile,
-            spaceBetween: settings.gap_size,
+            spaceBetween: gapSize,
             loop: !!settings.loop,
             watchOverflow: true,
             keyboard: {
@@ -228,9 +243,9 @@
                 itemRoleDescriptionMessage: settings.a11y_item_role_description,
             },
             breakpoints: {
-                768: { slidesPerView: settings.columns_tablet, spaceBetween: settings.gap_size },
-                1024: { slidesPerView: settings.columns_desktop, spaceBetween: settings.gap_size },
-                1536: { slidesPerView: settings.columns_ultrawide, spaceBetween: settings.gap_size },
+                768: { slidesPerView: settings.columns_tablet, spaceBetween: gapSize },
+                1024: { slidesPerView: settings.columns_desktop, spaceBetween: gapSize },
+                1536: { slidesPerView: settings.columns_ultrawide, spaceBetween: gapSize },
             },
             on: {
                 init: function () {
