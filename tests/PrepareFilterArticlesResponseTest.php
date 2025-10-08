@@ -104,11 +104,19 @@ final class PrepareFilterArticlesResponseTest extends TestCase
         $GLOBALS['mon_articles_test_transients_store'] = array();
     }
 
-    private function createShortcodeDouble(): My_Articles_Shortcode
+    private function createShortcodeDouble(array $stateOverrides = array()): My_Articles_Shortcode
     {
-        return new class() extends My_Articles_Shortcode {
+        return new class($stateOverrides) extends My_Articles_Shortcode {
             /** @var array<int, array<string, mixed>> */
             public $capturedArgs = array();
+
+            /** @var array<string, mixed> */
+            private $stateOverrides = array();
+
+            public function __construct(array $stateOverrides = array())
+            {
+                $this->stateOverrides = $stateOverrides;
+            }
 
             public function build_display_state(array $options, array $args = array())
             {
@@ -117,7 +125,7 @@ final class PrepareFilterArticlesResponseTest extends TestCase
                     'args'    => $args,
                 );
 
-                return array(
+                $state = array(
                     'pinned_query'             => new WP_Query(array()),
                     'regular_query'            => new WP_Query(array(
                         array('ID' => 101, 'post_title' => 'Article A'),
@@ -131,6 +139,14 @@ final class PrepareFilterArticlesResponseTest extends TestCase
                     'regular_posts_needed'     => 2,
                     'is_unlimited'             => false,
                 );
+
+                if (!empty($this->stateOverrides)) {
+                    foreach ($this->stateOverrides as $key => $value) {
+                        $state[$key] = $value;
+                    }
+                }
+
+                return $state;
             }
 
             public function render_article_item($options, $is_pinned = false)
@@ -158,6 +174,111 @@ final class PrepareFilterArticlesResponseTest extends TestCase
                 return '<nav data-pages="' . (int) $total_pages . '"></nav>';
             }
         };
+    }
+
+    public function test_prepare_filter_response_provides_pagination_context(): void
+    {
+        $instanceId = 654;
+
+        $settings = array(
+            'post_type'            => 'post',
+            'display_mode'         => 'grid',
+            'pagination_mode'      => 'numbered',
+            'posts_per_page'       => 2,
+            'order'                => 'DESC',
+            'orderby'              => 'date',
+            'search_query'         => '',
+            'sort'                 => 'date',
+            'show_category_filter' => 1,
+        );
+
+        $this->primeInstanceMeta($instanceId, $settings);
+
+        $shortcodeDouble = $this->createShortcodeDouble();
+        $this->swapShortcodeInstance($shortcodeDouble);
+
+        $capturedContext = null;
+
+        add_filter(
+            'my_articles_calculate_total_pages',
+            static function (array $result, int $pinned, int $regular, int $perPage, array $context = array()) use (&$capturedContext): array {
+                $capturedContext = $context;
+
+                return $result;
+            },
+            10,
+            5
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        $response = $plugin->prepare_filter_articles_response(array(
+            'instance_id' => $instanceId,
+            'category'    => 'actus',
+            'filters'     => array(),
+            'current_url' => 'http://example.com/',
+        ));
+
+        $this->assertIsArray($response);
+        $this->assertIsArray($capturedContext);
+        $this->assertSame(1, $capturedContext['current_page'] ?? null);
+        $this->assertArrayNotHasKey('unlimited_page_size', $capturedContext);
+    }
+
+    public function test_prepare_filter_response_includes_unlimited_batch_projection(): void
+    {
+        $instanceId = 655;
+
+        $settings = array(
+            'post_type'            => 'post',
+            'display_mode'         => 'grid',
+            'pagination_mode'      => 'numbered',
+            'posts_per_page'       => 0,
+            'order'                => 'DESC',
+            'orderby'              => 'date',
+            'search_query'         => '',
+            'sort'                 => 'date',
+            'show_category_filter' => 1,
+        );
+
+        $this->primeInstanceMeta($instanceId, $settings);
+
+        $shortcodeDouble = $this->createShortcodeDouble(array(
+            'is_unlimited'             => true,
+            'unlimited_batch_size'     => 6,
+            'effective_posts_per_page' => 0,
+            'render_limit'             => 0,
+        ));
+
+        $this->swapShortcodeInstance($shortcodeDouble);
+
+        $capturedContext = null;
+
+        add_filter(
+            'my_articles_calculate_total_pages',
+            static function (array $result, int $pinned, int $regular, int $perPage, array $context = array()) use (&$capturedContext): array {
+                $capturedContext = $context;
+
+                return $result;
+            },
+            10,
+            5
+        );
+
+        $plugin = new Mon_Affichage_Articles();
+
+        $response = $plugin->prepare_filter_articles_response(array(
+            'instance_id' => $instanceId,
+            'category'    => '',
+            'filters'     => array(),
+            'current_url' => 'http://example.com/',
+        ));
+
+        $this->assertIsArray($response);
+        $this->assertIsArray($capturedContext);
+        $this->assertSame(1, $capturedContext['current_page'] ?? null);
+        $this->assertSame(6, $capturedContext['unlimited_page_size'] ?? null);
+        $this->assertSame(6, $capturedContext['analytics_page_size'] ?? null);
     }
 
     public function test_prepare_filter_response_applies_requested_sort(): void

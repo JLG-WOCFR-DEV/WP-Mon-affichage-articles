@@ -565,6 +565,19 @@ public function prepare_filter_articles_response( array $args ) {
         $rendered_regular_count = (int) $render_results['regular_rendered_count'];
         $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
 
+        $pagination_context = array(
+            'current_page' => 1,
+        );
+
+        if ( $is_unlimited ) {
+            $unlimited_batch_size = isset( $state['unlimited_batch_size'] ) ? (int) $state['unlimited_batch_size'] : 0;
+
+            if ( $unlimited_batch_size > 0 ) {
+                $pagination_context['unlimited_page_size'] = $unlimited_batch_size;
+                $pagination_context['analytics_page_size'] = $unlimited_batch_size;
+            }
+        }
+
         $pagination_totals = my_articles_calculate_total_pages(
             $total_pinned_posts,
             $total_regular_posts,
