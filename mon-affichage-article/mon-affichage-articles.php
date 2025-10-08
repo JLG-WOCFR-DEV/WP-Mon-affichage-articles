@@ -145,6 +145,73 @@ final class Mon_Affichage_Articles {
         return My_Articles_Shortcode::sanitize_filter_pairs( $raw_filters );
     }
 
+    /**
+     * Build the normalized options array used to query an instance.
+     *
+     * Centralizes the normalization performed by the shortcode layer so both
+     * the filter and load-more flows share the same safeguards.
+     *
+     * @param array $options_meta Raw options stored on the instance post.
+     * @param array $request_context {
+     *     Optional. Request context to feed into the normalizer.
+     *
+     *     @type string $requested_category                Category slug requested by the user.
+     *     @type string $requested_search                  Raw search term provided by the user.
+     *     @type string $requested_sort                    Requested sort key.
+     *     @type array  $requested_filters                 Sanitized taxonomy filters.
+     *     @type bool   $allow_external_requested_category Whether external categories are allowed.
+     * }
+     *
+     * @return array{
+     *     options: array,
+     *     normalize_context: array
+     * }|WP_Error
+     */
+    private function build_instance_query_context( array $options_meta, array $request_context = array() ) {
+        $requested_category = isset( $request_context['requested_category'] )
+            ? (string) $request_context['requested_category']
+            : '';
+
+        $normalize_context = array(
+            'requested_category'  => $requested_category,
+            'force_collect_terms' => true,
+        );
+
+        if ( ! empty( $request_context['allow_external_requested_category'] ) ) {
+            $normalize_context['allow_external_requested_category'] = true;
+        }
+
+        if ( ! empty( $request_context['requested_search'] ) ) {
+            $normalize_context['requested_search'] = (string) $request_context['requested_search'];
+        }
+
+        if ( ! empty( $request_context['requested_sort'] ) ) {
+            $normalize_context['requested_sort'] = (string) $request_context['requested_sort'];
+        }
+
+        if ( ! empty( $request_context['requested_filters'] ) && is_array( $request_context['requested_filters'] ) ) {
+            $normalize_context['requested_filters'] = $request_context['requested_filters'];
+        }
+
+        $options = My_Articles_Shortcode::normalize_instance_options(
+            $options_meta,
+            $normalize_context
+        );
+
+        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
+            return new WP_Error(
+                'my_articles_category_not_allowed',
+                __( 'Catégorie non autorisée.', 'mon-articles' ),
+                array( 'status' => 403 )
+            );
+        }
+
+        return array(
+            'options'           => $options,
+            'normalize_context' => $normalize_context,
+        );
+    }
+
     public function validate_instance_for_request( $instance_id ) {
         $post_type = get_post_type( $instance_id );
 
@@ -365,27 +432,22 @@ public function prepare_filter_articles_response( array $args ) {
 
         $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
 
-        $normalize_context = array(
-            'requested_category'  => $category_slug,
-            'force_collect_terms' => true,
-        );
-
-        if ( $allows_requested_category ) {
-            $normalize_context['allow_external_requested_category'] = true;
-        }
-
-        if ( '' !== $search_term ) {
-            $normalize_context['requested_search'] = $search_term;
-        }
-
-        if ( ! empty( $requested_filters ) ) {
-            $normalize_context['requested_filters'] = $requested_filters;
-        }
-
-        $options = My_Articles_Shortcode::normalize_instance_options(
+        $normalized_options = $this->build_instance_query_context(
             $options_meta,
-            $normalize_context
+            array(
+                'requested_category'                 => $category_slug,
+                'requested_search'                   => $search_term,
+                'requested_filters'                  => $requested_filters,
+                'requested_sort'                     => $requested_sort,
+                'allow_external_requested_category'  => $allows_requested_category,
+            )
         );
+
+        if ( is_wp_error( $normalized_options ) ) {
+            return $normalized_options;
+        }
+
+        $options = $normalized_options['options'];
 
         if ( ! $allows_requested_category && '' !== $category_slug ) {
             $default_term = isset( $options['default_term'] ) ? (string) $options['default_term'] : '';
@@ -397,14 +459,6 @@ public function prepare_filter_articles_response( array $args ) {
                     array( 'status' => 403 )
                 );
             }
-        }
-
-        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            return new WP_Error(
-                'my_articles_category_not_allowed',
-                __( 'Catégorie non autorisée.', 'mon-articles' ),
-                array( 'status' => 403 )
-            );
         }
 
         $display_mode      = $options['display_mode'];
@@ -676,35 +730,22 @@ public function prepare_load_more_articles_response( array $args ) {
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
         $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
-        $normalize_context  = array(
-            'requested_category'  => $category,
-            'force_collect_terms' => true,
-        );
 
-        if ( '' !== $search_term ) {
-            $normalize_context['requested_search'] = $search_term;
-        }
-
-        if ( '' !== $requested_sort ) {
-            $normalize_context['requested_sort'] = $requested_sort;
-        }
-
-        if ( ! empty( $requested_filters ) ) {
-            $normalize_context['requested_filters'] = $requested_filters;
-        }
-
-        $options = My_Articles_Shortcode::normalize_instance_options(
+        $normalized_options = $this->build_instance_query_context(
             $options_meta,
-            $normalize_context
+            array(
+                'requested_category' => $category,
+                'requested_search'   => $search_term,
+                'requested_sort'     => $requested_sort,
+                'requested_filters'  => $requested_filters,
+            )
         );
 
-        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            return new WP_Error(
-                'my_articles_category_not_allowed',
-                __( 'Catégorie non autorisée.', 'mon-articles' ),
-                array( 'status' => 403 )
-            );
+        if ( is_wp_error( $normalized_options ) ) {
+            return $normalized_options;
         }
+
+        $options = $normalized_options['options'];
 
         $pagination_mode = isset( $options['pagination_mode'] ) ? $options['pagination_mode'] : 'none';
 
