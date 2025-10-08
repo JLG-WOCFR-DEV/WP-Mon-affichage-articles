@@ -124,7 +124,7 @@ class My_Articles_Controller extends WP_REST_Controller {
             'category'    => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_title',
+                'sanitize_callback' => array( $this, 'sanitize_title_arg' ),
             ),
             'filters'     => array(
                 'type'              => 'array',
@@ -134,17 +134,17 @@ class My_Articles_Controller extends WP_REST_Controller {
             'current_url' => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'search'      => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'sort'        => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_key',
+                'sanitize_callback' => array( $this, 'sanitize_key_arg' ),
             ),
         );
     }
@@ -170,12 +170,12 @@ class My_Articles_Controller extends WP_REST_Controller {
             'pinned_ids'  => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'category'    => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_title',
+                'sanitize_callback' => array( $this, 'sanitize_title_arg' ),
             ),
             'filters'     => array(
                 'type'              => 'array',
@@ -185,12 +185,12 @@ class My_Articles_Controller extends WP_REST_Controller {
             'search'      => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'sort'        => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_key',
+                'sanitize_callback' => array( $this, 'sanitize_key_arg' ),
             ),
         );
     }
@@ -205,12 +205,12 @@ class My_Articles_Controller extends WP_REST_Controller {
             'search' => array(
                 'type'              => 'string',
                 'required'          => false,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'post_type' => array(
                 'type'              => 'string',
                 'required'          => true,
-                'sanitize_callback' => 'sanitize_key',
+                'sanitize_callback' => array( $this, 'sanitize_key_arg' ),
             ),
         );
     }
@@ -225,7 +225,7 @@ class My_Articles_Controller extends WP_REST_Controller {
             'event'  => array(
                 'type'              => 'string',
                 'required'          => true,
-                'sanitize_callback' => 'sanitize_text_field',
+                'sanitize_callback' => array( $this, 'sanitize_text_arg' ),
             ),
             'detail' => array(
                 'type'     => 'object',
@@ -675,6 +675,98 @@ class My_Articles_Controller extends WP_REST_Controller {
         }
 
         return $overrides;
+    }
+
+    /**
+     * Extracts a scalar string representation from arbitrary REST payloads.
+     *
+     * Mirrors the guards used across the plugin when reading request data so
+     * callbacks never forward complex values—such as WP_REST_Request
+     * instances—to core sanitizers that expect strings.
+     *
+     * @param mixed $value Raw value to normalize.
+     *
+     * @return string|null Normalized scalar string or null when unavailable.
+     */
+    private function normalize_request_scalar( $value ) {
+        if ( is_array( $value ) ) {
+            if ( empty( $value ) ) {
+                return null;
+            }
+
+            $value = reset( $value );
+        }
+
+        if ( is_string( $value ) ) {
+            return wp_unslash( $value );
+        }
+
+        if ( is_scalar( $value ) ) {
+            return (string) $value;
+        }
+
+        if ( is_object( $value ) && method_exists( $value, '__toString' ) ) {
+            return (string) $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * Sanitizes arbitrary text arguments received via the REST API.
+     *
+     * @param mixed           $value   Raw value provided by the request.
+     * @param WP_REST_Request $request REST request instance.
+     * @param string          $param   Parameter name.
+     *
+     * @return string Sanitized string.
+     */
+    public function sanitize_text_arg( $value, $request = null, $param = '' ) {
+        $normalized = $this->normalize_request_scalar( $value );
+
+        if ( null === $normalized ) {
+            return '';
+        }
+
+        return sanitize_text_field( $normalized );
+    }
+
+    /**
+     * Sanitizes arguments that should conform to key-like structures.
+     *
+     * @param mixed           $value   Raw value provided by the request.
+     * @param WP_REST_Request $request REST request instance.
+     * @param string          $param   Parameter name.
+     *
+     * @return string Sanitized key string.
+     */
+    public function sanitize_key_arg( $value, $request = null, $param = '' ) {
+        $normalized = $this->normalize_request_scalar( $value );
+
+        if ( null === $normalized ) {
+            return '';
+        }
+
+        return sanitize_key( $normalized );
+    }
+
+    /**
+     * Sanitizes arguments that represent term slugs or similar titles.
+     *
+     * @param mixed           $value   Raw value provided by the request.
+     * @param WP_REST_Request $request REST request instance.
+     * @param string          $param   Parameter name.
+     *
+     * @return string Sanitized title string.
+     */
+    public function sanitize_title_arg( $value, $request = null, $param = '' ) {
+        $normalized = $this->normalize_request_scalar( $value );
+
+        if ( null === $normalized ) {
+            return '';
+        }
+
+        return sanitize_title( $normalized );
     }
 
     /**
