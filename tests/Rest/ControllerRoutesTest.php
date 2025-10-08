@@ -61,6 +61,7 @@ final class ControllerRoutesTest extends TestCase
         $request->set_param('current_url', 'http://example.com/page');
         $request->set_param('search', ' hello   world ');
         $request->set_param('sort', 'comment_count');
+        $request->set_param('filters', '[{"taxonomy":"category","slug":"news"}]');
 
         $response = $controller->filter_articles($request);
 
@@ -85,6 +86,9 @@ final class ControllerRoutesTest extends TestCase
                 'http_referer' => 'http://example.com/ref',
                 'search'       => ' hello   world ',
                 'sort'         => 'comment_count',
+                'filters'      => array(
+                    array('taxonomy' => 'category', 'slug' => 'news'),
+                ),
             ),
             $capturedArgs
         );
@@ -161,6 +165,9 @@ final class ControllerRoutesTest extends TestCase
         $request->set_param('category', 'featured');
         $request->set_param('search', 'top stories');
         $request->set_param('sort', 'title');
+        $request->set_param('filters', array(
+            array('taxonomy' => 'post_tag', 'slug' => 'highlights'),
+        ));
 
         $response = $controller->load_more_articles($request);
 
@@ -184,6 +191,9 @@ final class ControllerRoutesTest extends TestCase
                 'category'    => 'featured',
                 'search'      => 'top stories',
                 'sort'        => 'title',
+                'filters'     => array(
+                    array('taxonomy' => 'post_tag', 'slug' => 'highlights'),
+                ),
             ),
             $capturedArgs
         );

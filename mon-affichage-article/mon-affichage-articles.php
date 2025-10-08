@@ -124,6 +124,27 @@ final class Mon_Affichage_Articles {
         return $default;
     }
 
+    /**
+     * Normalizes filter selections coming from user requests.
+     *
+     * Accepts JSON strings or array payloads and always returns the
+     * fully-sanitized structure expected by the shortcode layer.
+     *
+     * @param mixed $raw_filters Incoming filters payload.
+     * @return array<int, array{taxonomy:string,slug:string}>
+     */
+    private function sanitize_filters_parameter( $raw_filters ) {
+        if ( is_string( $raw_filters ) ) {
+            $raw_filters = wp_unslash( $raw_filters );
+        } elseif ( is_array( $raw_filters ) ) {
+            $raw_filters = wp_unslash( $raw_filters );
+        } else {
+            return array();
+        }
+
+        return My_Articles_Shortcode::sanitize_filter_pairs( $raw_filters );
+    }
+
     public function validate_instance_for_request( $instance_id ) {
         $post_type = get_post_type( $instance_id );
 
@@ -591,6 +612,9 @@ public function prepare_filter_articles_response( array $args ) {
         $raw_current_url = isset( $_POST['current_url'] ) ? wp_unslash( $_POST['current_url'] ) : '';
         $search_term    = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
 
+        $filters_raw = $_POST['filters'] ?? array();
+        $filters     = $this->sanitize_filters_parameter( $filters_raw );
+
         $raw_sort = isset( $_POST['sort'] ) ? wp_unslash( $_POST['sort'] ) : '';
         $requested_sort = '';
 
@@ -606,6 +630,7 @@ public function prepare_filter_articles_response( array $args ) {
                 'http_referer' => wp_get_referer(),
                 'search'       => $search_term,
                 'sort'         => $requested_sort,
+                'filters'      => $filters,
             )
         );
 
@@ -868,6 +893,16 @@ public function prepare_load_more_articles_response( array $args ) {
         $category    = isset( $_POST['category'] ) ? sanitize_title( wp_unslash( $_POST['category'] ) ) : '';
         $search_term = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
 
+        $filters_raw = $_POST['filters'] ?? array();
+        $filters     = $this->sanitize_filters_parameter( $filters_raw );
+
+        $raw_sort = isset( $_POST['sort'] ) ? wp_unslash( $_POST['sort'] ) : '';
+        $requested_sort = '';
+
+        if ( is_scalar( $raw_sort ) ) {
+            $requested_sort = sanitize_key( (string) $raw_sort );
+        }
+
         $response = $this->prepare_load_more_articles_response(
             array(
                 'instance_id' => $instance_id,
@@ -875,6 +910,8 @@ public function prepare_load_more_articles_response( array $args ) {
                 'pinned_ids'  => $pinned_ids,
                 'category'    => $category,
                 'search'      => $search_term,
+                'filters'     => $filters,
+                'sort'        => $requested_sort,
             )
         );
 
