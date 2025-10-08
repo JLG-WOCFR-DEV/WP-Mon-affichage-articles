@@ -2448,26 +2448,30 @@ JS;
             }
         }
         ?>
-        <a href="<?php echo $escaped_link; ?>" class="my-article-link">
+        <div class="my-article-link">
             <div class="article-thumbnail-wrapper">
                 <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
-                <?php if (has_post_thumbnail()):
-                    $image_id = get_post_thumbnail_id();
-                    $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
+                <a href="<?php echo $escaped_link; ?>" class="article-thumbnail-link">
+                    <?php if (has_post_thumbnail()):
+                        $image_id = get_post_thumbnail_id();
+                        $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
 
-                    if ( '' !== $thumbnail_html ) {
-                        echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                    } else {
-                        $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
-                        the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
-                    }
-                else: ?>
-                    <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
-                    <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
-                <?php endif; ?>
+                        if ( '' !== $thumbnail_html ) {
+                            echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                        } else {
+                            $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
+                            the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
+                        }
+                    else: ?>
+                        <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
+                        <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
+                    <?php endif; ?>
+                </a>
             </div>
             <div class="<?php echo esc_attr($wrapper_class); ?>">
-                <h2 class="article-title"><?php echo $title_display; ?></h2>
+                <h2 class="article-title">
+                    <a href="<?php echo $escaped_link; ?>" class="article-title-link"><?php echo $title_display; ?></a>
+                </h2>
                 <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
                     <div class="article-meta">
                         <?php if ($options['show_category'] && !empty($taxonomy) && !empty($term_names)) : ?>
@@ -2514,7 +2518,7 @@ JS;
                 }
                 ?>
             </div>
-        </a>
+        </div>
         <?php
     }
 
