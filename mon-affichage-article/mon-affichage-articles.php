@@ -569,9 +569,13 @@ public function prepare_filter_articles_response( array $args ) {
             'current_page' => 1,
         );
 
-        if ( ! empty( $is_unlimited ) ) {
-            $pagination_context['unlimited_page_size'] = $state['unlimited_batch_size'];
-            $pagination_context['analytics_page_size'] = $state['unlimited_batch_size'];
+        if ( $is_unlimited ) {
+            $unlimited_batch_size = isset( $state['unlimited_batch_size'] ) ? (int) $state['unlimited_batch_size'] : 0;
+
+            if ( $unlimited_batch_size > 0 ) {
+                $pagination_context['unlimited_page_size'] = $unlimited_batch_size;
+                $pagination_context['analytics_page_size'] = $unlimited_batch_size;
+            }
         }
 
         $pagination_totals = my_articles_calculate_total_pages(
