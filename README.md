@@ -66,7 +66,7 @@ Utiliser le shortcode :
 
 ### Attributs disponibles dans l'éditeur
 
-- **design_preset** (`custom`, `lcv-classique`, `dark-spotlight`, `editorial-focus`)
+- **design_preset** (`custom`, `lcv-classique`, `dark-spotlight`, `editorial-focus`, `headless-air`, `shadcn-contrast`, `radix-modular`, `bootstrap-classic`, `semantic-soft`, `anime-motion`)
   - Contrôle l’application d’un préréglage complet (couleurs, ombres, espacements). Le modèle « Focus éditorial » est verrouillé et fige les réglages associés.
 - **display_mode** (`grid`, `list`, `slideshow`)
 - **thumbnail_aspect_ratio** (`1`, `4/3`, `3/2`, `16/9`) – contraint les images et squelettes à un ratio précis.
@@ -93,6 +93,12 @@ Les modèles intégrés permettent de démarrer rapidement avec des combinaisons
 - **Classique LCV** (`lcv-classique`) : fond clair, ombres légères et cartes arrondies.
 - **Projecteur sombre** (`dark-spotlight`) : palette foncée à fort contraste pour des mises en avant immersives.
 - **Focus éditorial** (`editorial-focus`) : présentation magazine verrouillée (mode liste, extraits activés) pour homogénéiser les modules éditoriaux.
+- **Headless Air** (`headless-air`) : rendu lumineux et épuré, parfait pour les interfaces système type Headless UI.
+- **Shadcn Contrast** (`shadcn-contrast`) : ambiance nocturne très contrastée avec accents chartreuse.
+- **Radix Modular** (`radix-modular`) : tokens d’espacement réguliers et hiérarchie lisible inspirés de Radix UI.
+- **Bootstrap Classic** (`bootstrap-classic`) : repères chromatiques familiers (bleu primaire, badges contrastés) alignés sur Bootstrap.
+- **Semantic Soft** (`semantic-soft`) : pastels doux et métadonnées colorées dans l’esprit de Semantic UI.
+- **Anime Motion** (`anime-motion`) : contraste néon et ambiance sombre adaptées à des pages événementielles animées.
 
 Le panneau « Module » de l’éditeur propose un sélecteur de modèle ; les préréglages verrouillés grisent automatiquement les contrôles concernés.
 
