@@ -75,6 +75,7 @@
     var useState = wp.element.useState;
     var useEffect = wp.element.useEffect;
     var useCallback = wp.element.useCallback;
+    var useMemo = wp.element.useMemo;
     var useViewportMatch =
         wp.compose && wp.compose.useViewportMatch
             ? wp.compose.useViewportMatch
@@ -341,6 +342,15 @@
         context: 'view',
     };
     var MODULES_PER_PAGE = 20;
+    var MODULE_LIST_FIELDS = typeof Object.freeze === 'function' ? Object.freeze(['id', 'title']) : ['id', 'title'];
+    var SELECTED_INSTANCE_FIELDS =
+        typeof Object.freeze === 'function'
+            ? Object.freeze(['id', 'title', 'status', 'link', 'date', 'date_gmt', 'modified', 'modified_gmt'])
+            : ['id', 'title', 'status', 'link', 'date', 'date_gmt', 'modified', 'modified_gmt'];
+    var SELECTED_INSTANCE_QUERY =
+        typeof Object.freeze === 'function'
+            ? Object.freeze({ context: 'edit', _fields: SELECTED_INSTANCE_FIELDS })
+            : { context: 'edit', _fields: SELECTED_INSTANCE_FIELDS };
 
     registerBlockType('mon-affichage/articles', {
         edit: function (props) {
@@ -358,6 +368,23 @@
             var _useState3 = useState([]);
             var fetchedInstances = _useState3[0];
             var setFetchedInstances = _useState3[1];
+
+            var modulesQuery = useMemo(
+                function () {
+                    var query = Object.assign({}, MODULE_QUERY_DEFAULTS, {
+                        per_page: MODULES_PER_PAGE,
+                        page: currentPage,
+                        _fields: MODULE_LIST_FIELDS,
+                    });
+
+                    if (searchValue) {
+                        query.search = searchValue;
+                    }
+
+                    return query;
+                },
+                [searchValue, currentPage]
+            );
 
             var _useState4 = useState(true);
             var hasMoreResults = _useState4[0];
@@ -387,32 +414,34 @@
 
             var isDesignPresetLocked = false;
 
-            var listData = useSelect(function (select) {
-                var core = select('core');
-                var dataStore = select('core/data');
-                var query = Object.assign({}, MODULE_QUERY_DEFAULTS, {
-                    per_page: MODULES_PER_PAGE,
-                    page: currentPage,
-                });
+            var listData = useSelect(
+                function (select) {
+                    var core = select('core');
+                    var dataStore = select('core/data');
 
-                if (searchValue) {
-                    query.search = searchValue;
-                }
-
-                return {
-                    instances: core.getEntityRecords('postType', 'mon_affichage', query),
-                    isResolving: dataStore.isResolving('core', 'getEntityRecords', ['postType', 'mon_affichage', query]),
-                };
-            }, [searchValue, currentPage]);
+                    return {
+                        instances: core.getEntityRecords('postType', 'mon_affichage', modulesQuery),
+                        isResolving: dataStore.isResolving('core', 'getEntityRecords', ['postType', 'mon_affichage', modulesQuery]),
+                    };
+                },
+                [modulesQuery]
+            );
 
             var selectedData = useSelect(function (select) {
                 var core = select('core');
                 var dataStore = select('core/data');
 
                 return {
-                    selectedInstance: attributes.instanceId ? core.getEntityRecord('postType', 'mon_affichage', attributes.instanceId) : null,
+                    selectedInstance: attributes.instanceId
+                        ? core.getEntityRecord('postType', 'mon_affichage', attributes.instanceId, SELECTED_INSTANCE_QUERY)
+                        : null,
                     isResolvingSelected: attributes.instanceId
-                        ? dataStore.isResolving('core', 'getEntityRecord', ['postType', 'mon_affichage', attributes.instanceId])
+                        ? dataStore.isResolving('core', 'getEntityRecord', [
+                              'postType',
+                              'mon_affichage',
+                              attributes.instanceId,
+                              SELECTED_INSTANCE_QUERY,
+                          ])
                         : false,
                 };
             }, [attributes.instanceId]);
