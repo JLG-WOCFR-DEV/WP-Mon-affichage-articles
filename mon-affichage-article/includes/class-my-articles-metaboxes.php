@@ -106,8 +106,10 @@ class My_Articles_Metaboxes {
 
     public function render_shortcode_metabox( $post ) {
         if ( $post->ID && 'auto-draft' !== $post->post_status ) {
-            echo '<p>' . esc_html__( 'Copiez ce shortcode dans vos pages ou articles :', 'mon-articles' ) . '</p>';
-            echo '<input type="text" value="[mon_affichage_articles id=&quot;' . esc_attr( $post->ID ) . '&quot;]" readonly style="width: 100%; padding: 8px; text-align: center;">';
+            $shortcode_field_id = 'my-articles-shortcode-field';
+
+            echo '<p><label for="' . esc_attr( $shortcode_field_id ) . '">' . esc_html__( 'Copiez ce shortcode dans vos pages ou articles :', 'mon-articles' ) . '</label></p>';
+            echo '<input type="text" id="' . esc_attr( $shortcode_field_id ) . '" name="' . esc_attr( $shortcode_field_id ) . '" value="[mon_affichage_articles id=&quot;' . esc_attr( $post->ID ) . '&quot;]" readonly style="width: 100%; padding: 8px; text-align: center;">';
         } else {
             echo '<p>' . esc_html__( 'Enregistrez cet affichage pour générer le shortcode.', 'mon-articles' ) . '</p>';
         }
