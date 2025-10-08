@@ -53,6 +53,66 @@ if ( ! function_exists( 'my_articles_sanitize_color' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_normalize_scalar_value' ) ) {
+    /**
+     * Normalize arbitrary input into a scalar string representation.
+     *
+     * WordPress core receives request data in a variety of shapes (strings,
+     * numbers, arrays with a single entry, objects implementing
+     * `__toString`). Professional-grade plugins tend to centralize this
+     * normalisation so every consumer benefits from identical safeguards.
+     *
+     * @param mixed $value Raw value that should be normalised.
+     *
+     * @return string|null Normalised scalar string when available, null otherwise.
+     */
+    function my_articles_normalize_scalar_value( $value ) {
+        if ( is_array( $value ) ) {
+            if ( empty( $value ) ) {
+                return null;
+            }
+
+            $value = reset( $value );
+        }
+
+        if ( is_string( $value ) ) {
+            return wp_unslash( $value );
+        }
+
+        if ( is_scalar( $value ) ) {
+            return (string) $value;
+        }
+
+        if ( is_object( $value ) && method_exists( $value, '__toString' ) ) {
+            return (string) $value;
+        }
+
+        return null;
+    }
+}
+
+if ( ! function_exists( 'my_articles_prepare_filters_value' ) ) {
+    /**
+     * Prepare incoming filter payloads before they are sanitised.
+     *
+     * REST requests and AJAX submissions often contain slashed data. By
+     * removing those slashes up-front we ensure downstream JSON decoding and
+     * sanitisation behave exactly like they do in enterprise-grade
+     * applications.
+     *
+     * @param mixed $raw_filters Raw filters payload received from the client.
+     *
+     * @return mixed Normalised payload with slashes stripped when relevant.
+     */
+    function my_articles_prepare_filters_value( $raw_filters ) {
+        if ( is_string( $raw_filters ) || is_array( $raw_filters ) ) {
+            return wp_unslash( $raw_filters );
+        }
+
+        return $raw_filters;
+    }
+}
+
 if ( ! function_exists( 'my_articles_normalize_internal_url' ) ) {
     /**
      * Sanitize a URL while ensuring it targets the current site domain.

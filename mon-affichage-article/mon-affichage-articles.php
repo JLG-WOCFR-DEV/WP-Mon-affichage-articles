@@ -93,32 +93,19 @@ final class Mon_Affichage_Articles {
             return $default;
         }
 
-        $value = $args[ $key ];
+        $value = my_articles_normalize_scalar_value( $args[ $key ] );
 
-        if ( is_array( $value ) ) {
-            if ( empty( $value ) ) {
-                return $default;
-            }
-
-            $value = reset( $value );
-        }
-
-        if ( is_string( $value ) ) {
-            $value = wp_unslash( $value );
-        } elseif ( is_object( $value ) && method_exists( $value, '__toString' ) ) {
-            $value = (string) $value;
-        } elseif ( ! is_scalar( $value ) ) {
+        if ( null === $value || ! is_callable( $sanitizer ) ) {
             return $default;
         }
 
-        if ( ! is_callable( $sanitizer ) ) {
-            return $default;
-        }
-
-        $value = (string) $value;
         $sanitized = call_user_func( $sanitizer, $value );
 
         if ( is_scalar( $sanitized ) ) {
+            return (string) $sanitized;
+        }
+
+        if ( is_object( $sanitized ) && method_exists( $sanitized, '__toString' ) ) {
             return (string) $sanitized;
         }
 
@@ -135,15 +122,9 @@ final class Mon_Affichage_Articles {
      * @return array<int, array{taxonomy:string,slug:string}>
      */
     private function sanitize_filters_parameter( $raw_filters ) {
-        if ( is_string( $raw_filters ) ) {
-            $raw_filters = wp_unslash( $raw_filters );
-        } elseif ( is_array( $raw_filters ) ) {
-            $raw_filters = wp_unslash( $raw_filters );
-        } else {
-            return array();
-        }
+        $prepared_filters = my_articles_prepare_filters_value( $raw_filters );
 
-        return My_Articles_Shortcode::sanitize_filter_pairs( $raw_filters );
+        return My_Articles_Shortcode::sanitize_filter_pairs( $prepared_filters );
     }
 
     /**
