@@ -418,4 +418,59 @@ final class PrepareFilterArticlesResponseTest extends TestCase
         $this->assertSame(7, $capturedContext['unlimited_page_size']);
         $this->assertSame(7, $capturedContext['analytics_page_size']);
     }
+
+    public function test_prepare_filter_response_cache_keys_do_not_collide_for_search_and_sort(): void
+    {
+        $instanceId = 4321;
+
+        $settings = array(
+            'post_type'            => 'post',
+            'display_mode'         => 'list',
+            'pagination_mode'      => 'numbered',
+            'posts_per_page'       => 3,
+            'order'                => 'DESC',
+            'orderby'              => 'date',
+            'search_query'         => '',
+            'sort'                 => 'date',
+            'show_category_filter' => 1,
+            'enable_keyword_search'=> 1,
+        );
+
+        $this->primeInstanceMeta($instanceId, $settings);
+
+        $shortcodeDouble = $this->createShortcodeDouble();
+        $this->swapShortcodeInstance($shortcodeDouble);
+
+        $plugin = new Mon_Affichage_Articles();
+
+        $firstResponse = $plugin->prepare_filter_articles_response(array(
+            'instance_id' => $instanceId,
+            'category'    => 'actus',
+            'search'      => 'sort:foo',
+            'filters'     => array(),
+            'current_url' => 'http://example.com/',
+        ));
+
+        $secondResponse = $plugin->prepare_filter_articles_response(array(
+            'instance_id' => $instanceId,
+            'category'    => 'actus',
+            'sort'        => 'foo',
+            'filters'     => array(),
+            'current_url' => 'http://example.com/',
+        ));
+
+        $this->assertIsArray($firstResponse);
+        $this->assertIsArray($secondResponse);
+        $this->assertSame('sort:foo', $firstResponse['search_query']);
+        $this->assertSame('foo', $secondResponse['sort']);
+
+        $cacheGroup = $GLOBALS['mon_articles_test_wp_cache']['my_articles_response'] ?? array();
+
+        $this->assertCount(2, $cacheGroup);
+        $this->assertSame(
+            array_keys($cacheGroup),
+            array_values(array_unique(array_keys($cacheGroup))),
+            'Expected cache keys to be unique for distinct search/sort combinations.'
+        );
+    }
 }

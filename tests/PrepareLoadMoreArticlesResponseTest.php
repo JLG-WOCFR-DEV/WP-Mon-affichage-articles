@@ -299,4 +299,69 @@ final class PrepareLoadMoreArticlesResponseTest extends TestCase
         $this->assertSame(array(900, 901), $captured['args']['seen_pinned_ids']);
         $this->assertSame('sequential', $captured['args']['pagination_strategy']);
     }
+
+    public function test_prepare_load_more_response_cache_keys_do_not_collide_for_search_and_pinned_ids(): void
+    {
+        $instanceId = 4242;
+
+        $settings = array(
+            'post_type'            => 'post',
+            'display_mode'         => 'grid',
+            'pagination_mode'      => 'load_more',
+            'posts_per_page'       => 2,
+            'order'                => 'DESC',
+            'orderby'              => 'date',
+            'search_query'         => '',
+            'sort'                 => 'date',
+            'pinned_posts'         => array(),
+            'ignore_native_sticky' => 1,
+            'enable_keyword_search'=> 1,
+            'is_unlimited'         => 0,
+        );
+
+        $this->primeInstanceMeta($instanceId, $settings);
+
+        $shortcodeDouble = $this->createShortcodeDouble(
+            array(),
+            array(
+                array('ID' => 3101, 'post_title' => 'Alpha'),
+            ),
+            array(
+                'total_pinned_posts'       => 0,
+                'total_regular_posts'      => 4,
+                'effective_posts_per_page' => 2,
+                'updated_seen_pinned_ids'  => array(),
+            )
+        );
+
+        $this->swapShortcodeInstance($shortcodeDouble);
+
+        $plugin = new Mon_Affichage_Articles();
+
+        $searchResponse = $plugin->prepare_load_more_articles_response(array(
+            'instance_id' => $instanceId,
+            'paged'       => 2,
+            'search'      => '123',
+        ));
+
+        $pinnedResponse = $plugin->prepare_load_more_articles_response(array(
+            'instance_id' => $instanceId,
+            'paged'       => 2,
+            'pinned_ids'  => '123',
+        ));
+
+        $this->assertIsArray($searchResponse);
+        $this->assertIsArray($pinnedResponse);
+        $this->assertSame('123', $searchResponse['search_query']);
+        $this->assertSame('123', $pinnedResponse['pinned_ids']);
+
+        $cacheGroup = $GLOBALS['mon_articles_test_wp_cache']['my_articles_response'] ?? array();
+
+        $this->assertCount(2, $cacheGroup);
+        $this->assertSame(
+            array_keys($cacheGroup),
+            array_values(array_unique(array_keys($cacheGroup))),
+            'Expected cache keys to be unique for search vs pinned fragments.'
+        );
+    }
 }
