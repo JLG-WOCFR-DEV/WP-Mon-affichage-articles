@@ -21,6 +21,12 @@
     --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 22%, transparent);
     --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
     --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, #f0f9ff 70%) 0%, #ffffff 60%, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 18%, #eef2ff 82%) 100%);
+    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 92%, #1f2937 8%);
+    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 70%, #ffffff 30%);
+    --my-articles-admin-success-text: #14532d;
+    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 70%, #ffffff 30%);
+    --my-articles-admin-error-text: #991b1b;
 }
 
 @supports not (color: color-mix(in srgb, black 50%, white 50%)) {
@@ -34,6 +40,12 @@
         --my-articles-admin-accent: #2563eb;
         --my-articles-admin-accent-soft: #e8f1ff;
         --my-articles-admin-muted-strong: #424a58;
+        --my-articles-admin-notice-bg: #ffffff;
+        --my-articles-admin-notice-text: #1f2937;
+        --my-articles-admin-success-bg: #dcfce7;
+        --my-articles-admin-success-text: #14532d;
+        --my-articles-admin-error-bg: #fee2e2;
+        --my-articles-admin-error-text: #991b1b;
     }
 
     .my-articles-admin__header {
@@ -77,6 +89,21 @@
 
         .my-articles-card--muted {
             background-color: #1a2537;
+        }
+
+        .my-articles-admin__notices .notice {
+            background: #1f2937;
+            color: #e2e8f0;
+        }
+
+        .my-articles-admin__notices .notice-success {
+            background: #064e3b;
+            color: #bbf7d0;
+        }
+
+        .my-articles-admin__notices .notice-error {
+            background: #7f1d1d;
+            color: #fecaca;
         }
     }
 }
@@ -351,17 +378,20 @@
     border: 1px solid color-mix(in srgb, var(--my-articles-admin-border-color) 55%, transparent);
     box-shadow: 0 12px 24px -18px rgba(15, 23, 42, 0.35);
     padding: 0.85rem 1.1rem;
-    background: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 8%);
+    background: var(--my-articles-admin-notice-bg);
+    color: var(--my-articles-admin-notice-text);
 }
 
 .my-articles-admin__notices .notice-success {
     border-color: color-mix(in srgb, #22c55e 35%, transparent);
-    background: color-mix(in srgb, #dcfce7 70%, #ffffff 30%);
+    background: var(--my-articles-admin-success-bg);
+    color: var(--my-articles-admin-success-text);
 }
 
 .my-articles-admin__notices .notice-error {
     border-color: color-mix(in srgb, #ef4444 45%, transparent);
-    background: color-mix(in srgb, #fee2e2 70%, #ffffff 30%);
+    background: var(--my-articles-admin-error-bg);
+    color: var(--my-articles-admin-error-text);
 }
 
 .my-articles-admin__panel {
@@ -513,6 +543,68 @@
     line-height: 1.5;
 }
 
+.my-articles-theme-toggle {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.my-articles-theme-toggle__option {
+    position: relative;
+    display: inline-flex;
+    cursor: pointer;
+}
+
+.my-articles-theme-toggle__option input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+}
+
+.my-articles-theme-toggle__label {
+    position: relative;
+    display: grid;
+    gap: 0.2rem;
+    align-items: start;
+    padding: 0.6rem 1rem;
+    border-radius: var(--my-articles-admin-radius-sm);
+    border: 1px solid color-mix(in srgb, var(--my-articles-admin-border-color) 55%, transparent);
+    background: color-mix(in srgb, var(--my-articles-admin-surface) 92%, transparent);
+    min-inline-size: min(220px, 100%);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+.my-articles-theme-toggle__option:hover .my-articles-theme-toggle__label {
+    border-color: color-mix(in srgb, var(--my-articles-admin-accent) 35%, transparent);
+    transform: translateY(-1px);
+}
+
+.my-articles-theme-toggle__option:focus-within .my-articles-theme-toggle__label {
+    box-shadow: var(--my-articles-admin-shadow-focus);
+}
+
+.my-articles-theme-toggle__option input:checked + .my-articles-theme-toggle__label {
+    border-color: color-mix(in srgb, var(--my-articles-admin-accent) 55%, transparent);
+    background: color-mix(in srgb, var(--my-articles-admin-accent-soft) 70%, transparent);
+    color: color-mix(in srgb, var(--my-articles-admin-accent) 45%, var(--my-articles-admin-text) 55%);
+}
+
+.my-articles-theme-toggle__title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.my-articles-theme-toggle__description {
+    font-size: 0.78rem;
+    color: var(--my-articles-admin-muted-strong);
+}
+
 .my-articles-admin__form .wp-picker-container .wp-color-result {
     border-radius: var(--my-articles-admin-radius-sm);
     padding: 0.3rem 0.6rem;
@@ -642,6 +734,12 @@
         --my-articles-admin-accent-contrast: #f8fafc;
         --my-articles-admin-shadow: 0 25px 45px -35px rgba(15, 23, 42, 0.95);
         --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-muted) 65%, var(--my-articles-admin-accent-contrast) 35%);
+        --my-articles-admin-notice-bg: color-mix(in srgb, #1f2937 80%, transparent);
+        --my-articles-admin-notice-text: color-mix(in srgb, #e2e8f0 88%, #f8fafc 12%);
+        --my-articles-admin-success-bg: color-mix(in srgb, #047857 55%, transparent);
+        --my-articles-admin-success-text: color-mix(in srgb, #bbf7d0 85%, #ecfdf5 15%);
+        --my-articles-admin-error-bg: color-mix(in srgb, #7f1d1d 60%, transparent);
+        --my-articles-admin-error-text: color-mix(in srgb, #fecaca 80%, #fee2e2 20%);
     }
 
     .my-articles-admin__badge {
@@ -654,12 +752,118 @@
     }
 
     .my-articles-admin__notices .notice {
-        background: color-mix(in srgb, #1e293b 80%, transparent);
+        background: var(--my-articles-admin-notice-bg);
     }
 
     .my-articles-admin__meta {
         background-color: #182133;
     }
+
+    .my-articles-admin__notices .notice-success {
+        background: var(--my-articles-admin-success-bg);
+        color: var(--my-articles-admin-success-text);
+    }
+
+    .my-articles-admin__notices .notice-error {
+        background: var(--my-articles-admin-error-bg);
+        color: var(--my-articles-admin-error-text);
+    }
+}
+
+.my-articles-admin[data-theme="light"] {
+    color-scheme: light;
+    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 16%, transparent);
+    --my-articles-admin-border: 1px solid var(--my-articles-admin-border-color);
+    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 28%, transparent);
+    --my-articles-admin-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 6%);
+    --my-articles-admin-surface: #ffffff;
+    --my-articles-admin-surface-muted: color-mix(in srgb, #f7f8fc 90%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-elevated: #ffffff;
+    --my-articles-admin-text: #111827;
+    --my-articles-admin-muted: #6b7280;
+    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 45%, var(--my-articles-admin-muted) 55%);
+    --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 35%, transparent);
+    --my-articles-admin-accent: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #2563eb 25%);
+    --my-articles-admin-accent-soft: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 12%, #e8f1ff 88%);
+    --my-articles-admin-accent-contrast: #ffffff;
+    --my-articles-admin-shadow: 0 18px 35px -18px rgba(15, 23, 42, 0.25);
+    --my-articles-admin-shadow-soft: 0 20px 45px -30px rgba(15, 23, 42, 0.3);
+    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 22%, transparent);
+    --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
+    --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, #f0f9ff 70%) 0%, #ffffff 60%, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 18%, #eef2ff 82%) 100%);
+    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 92%, #1f2937 8%);
+    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 70%, #ffffff 30%);
+    --my-articles-admin-success-text: #14532d;
+    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 70%, #ffffff 30%);
+    --my-articles-admin-error-text: #991b1b;
+}
+
+.my-articles-admin[data-theme="light"] .my-articles-admin__header {
+    background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 55%, #dbeafe 45%) 0%,
+        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 40%, #e5edff 60%) 52%,
+        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #cbd5f5 35%) 100%
+    );
+}
+
+.my-articles-admin[data-theme="light"] .my-articles-admin__tabs {
+    background: color-mix(in srgb, var(--my-articles-admin-surface) 75%, transparent);
+}
+
+.my-articles-admin[data-theme="light"] .my-articles-card--muted {
+    background-color: #f7f8fc;
+}
+
+.my-articles-admin[data-theme="light"] .my-articles-admin__meta {
+    background-color: color-mix(in srgb, var(--my-articles-admin-surface) 80%, transparent);
+}
+
+.my-articles-admin[data-theme="dark"] {
+    color-scheme: dark;
+    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, transparent);
+    --my-articles-admin-border: 1px solid var(--my-articles-admin-border-color);
+    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 42%, transparent);
+    --my-articles-admin-bg: color-mix(in srgb, #111827 80%, var(--wp-admin-theme-color, #3c434a) 20%);
+    --my-articles-admin-surface: color-mix(in srgb, #0f172a 85%, #1e293b 15%);
+    --my-articles-admin-surface-muted: color-mix(in srgb, #1e293b 88%, #0f172a 12%);
+    --my-articles-admin-elevated: color-mix(in srgb, #111827 75%, #1e293b 25%);
+    --my-articles-admin-text: #f8fafc;
+    --my-articles-admin-muted: #94a3b8;
+    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-muted) 65%, var(--my-articles-admin-accent-contrast) 35%);
+    --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 45%, transparent);
+    --my-articles-admin-accent: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #2563eb 25%);
+    --my-articles-admin-accent-soft: color-mix(in srgb, #1f2937 55%, rgba(59, 130, 246, 0.35) 45%);
+    --my-articles-admin-accent-contrast: #f8fafc;
+    --my-articles-admin-shadow: 0 25px 45px -35px rgba(15, 23, 42, 0.95);
+    --my-articles-admin-shadow-soft: 0 25px 45px -35px rgba(15, 23, 42, 0.8);
+    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 32%, transparent);
+    --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
+    --my-articles-admin-gradient: linear-gradient(135deg, #1f2937 0%, #111827 55%, #1f2937 100%);
+    --my-articles-admin-notice-bg: color-mix(in srgb, #1f2937 80%, transparent);
+    --my-articles-admin-notice-text: color-mix(in srgb, #e2e8f0 88%, #f8fafc 12%);
+    --my-articles-admin-success-bg: color-mix(in srgb, #047857 55%, transparent);
+    --my-articles-admin-success-text: color-mix(in srgb, #bbf7d0 85%, #ecfdf5 15%);
+    --my-articles-admin-error-bg: color-mix(in srgb, #7f1d1d 60%, transparent);
+    --my-articles-admin-error-text: color-mix(in srgb, #fecaca 80%, #fee2e2 20%);
+}
+
+.my-articles-admin[data-theme="dark"] .my-articles-admin__header {
+    background: linear-gradient(135deg, #1f2937 0%, #111827 55%, #1f2937 100%);
+}
+
+.my-articles-admin[data-theme="dark"] .my-articles-admin__tabs {
+    background-color: rgba(24, 33, 51, 0.85);
+}
+
+.my-articles-admin[data-theme="dark"] .my-articles-card--muted {
+    background-color: #1a2537;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.my-articles-admin[data-theme="dark"] .my-articles-admin__meta {
+    background-color: #182133;
 }
 
 @media (prefers-reduced-motion: reduce) {

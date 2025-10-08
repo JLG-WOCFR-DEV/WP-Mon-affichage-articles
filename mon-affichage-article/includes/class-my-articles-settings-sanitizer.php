@@ -187,6 +187,12 @@ if ( ! class_exists( 'My_Articles_Settings_Sanitizer' ) ) {
                     'default' => 'console',
                     'label'   => self::translate( 'Canal de sortie' ),
                 ),
+                'admin_theme' => array(
+                    'type'    => 'enum',
+                    'allowed' => array( 'auto', 'light', 'dark' ),
+                    'default' => 'auto',
+                    'label'   => self::translate( 'Mode d\'affichage de l\'interface' ),
+                ),
             );
 
             if ( function_exists( 'apply_filters' ) ) {
