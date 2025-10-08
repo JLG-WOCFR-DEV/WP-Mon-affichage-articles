@@ -472,7 +472,7 @@ public function prepare_filter_articles_response( array $args ) {
         $cache_extra_parts = array();
 
         if ( ! empty( $options['search_query'] ) ) {
-            $cache_extra_parts[] = $options['search_query'];
+            $cache_extra_parts[] = 'search:' . $options['search_query'];
         }
 
         if ( ! empty( $options['sort'] ) ) {
@@ -794,7 +794,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $cache_extra_parts = array();
 
         if ( ! empty( $options['search_query'] ) ) {
-            $cache_extra_parts[] = $options['search_query'];
+            $cache_extra_parts[] = 'search:' . $options['search_query'];
         }
 
         if ( ! empty( $options['sort'] ) ) {
@@ -802,7 +802,7 @@ public function prepare_load_more_articles_response( array $args ) {
         }
 
         if ( ! empty( $seen_pinned_ids ) ) {
-            $cache_extra_parts[] = implode( ',', array_map( 'absint', $seen_pinned_ids ) );
+            $cache_extra_parts[] = 'pinned:' . implode( ',', array_map( 'absint', $seen_pinned_ids ) );
         }
 
         if ( ! empty( $options['active_tax_filter_keys'] ) ) {
