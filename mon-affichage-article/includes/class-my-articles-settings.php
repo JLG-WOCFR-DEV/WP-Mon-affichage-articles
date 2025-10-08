@@ -71,8 +71,14 @@ class My_Articles_Settings {
         $is_settings_active = ( 'settings' === $active_tab );
         $is_tutorial_active = ( 'tutorial' === $active_tab );
 
+        $options = get_option( $this->option_name, array() );
+        $admin_theme = isset( $options['admin_theme'] ) ? (string) $options['admin_theme'] : 'auto';
+        if ( ! in_array( $admin_theme, array( 'auto', 'light', 'dark' ), true ) ) {
+            $admin_theme = 'auto';
+        }
+
         ?>
-        <div class="wrap my-articles-admin" data-ui="radix">
+        <div class="wrap my-articles-admin" data-ui="radix" data-theme="<?php echo esc_attr( $admin_theme ); ?>">
             <header class="my-articles-admin__header">
                 <div class="my-articles-admin__title-group">
                     <span class="my-articles-admin__badge" aria-hidden="true">LCV</span>
@@ -221,6 +227,7 @@ class My_Articles_Settings {
         add_settings_field( 'module_margin_right', __( 'Marge à droite (px)', 'mon-articles' ), array( $this, 'module_margin_right_callback' ), 'my-articles-admin', 'setting_section_layout' );
         
         add_settings_section( 'setting_section_appearance', __( 'Apparence', 'mon-articles' ), null, 'my-articles-admin' );
+        add_settings_field( 'admin_theme', __( 'Mode d\'affichage de l\'interface', 'mon-articles' ), array( $this, 'admin_theme_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'module_bg_color', __( 'Couleur de fond du module', 'mon-articles' ), array( $this, 'module_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'vignette_bg_color', __( 'Couleur de fond de la vignette', 'mon-articles' ), array( $this, 'vignette_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'title_wrapper_bg_color', __( 'Couleur de fond du bloc titre', 'mon-articles' ), array( $this, 'title_wrapper_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
@@ -307,6 +314,55 @@ class My_Articles_Settings {
     public function module_bg_color_callback() { $this->render_color_input('module_bg_color', 'rgba(255,255,255,0)', true); }
     public function vignette_bg_color_callback() { $this->render_color_input('vignette_bg_color', '#ffffff'); }
     public function title_wrapper_bg_color_callback() { $this->render_color_input('title_wrapper_bg_color', '#ffffff'); }
+    public function admin_theme_callback() {
+        $options = get_option( $this->option_name );
+        if ( ! is_array( $options ) ) {
+            $options = array();
+        }
+
+        $current_theme = isset( $options['admin_theme'] ) ? (string) $options['admin_theme'] : 'auto';
+        if ( ! in_array( $current_theme, array( 'auto', 'light', 'dark' ), true ) ) {
+            $current_theme = 'auto';
+        }
+
+        $choices = array(
+            'auto'  => array(
+                'label'       => __( 'Automatique', 'mon-articles' ),
+                'description' => __( 'Suit automatiquement vos préférences système ou WordPress.', 'mon-articles' ),
+            ),
+            'light' => array(
+                'label'       => __( 'Mode clair', 'mon-articles' ),
+                'description' => __( 'Palette lumineuse optimisée pour les environnements clairs.', 'mon-articles' ),
+            ),
+            'dark'  => array(
+                'label'       => __( 'Mode sombre', 'mon-articles' ),
+                'description' => __( 'Palette contrastée agréable dans les ambiances sombres.', 'mon-articles' ),
+            ),
+        );
+
+        ?>
+        <fieldset class="my-articles-theme-toggle">
+            <legend class="screen-reader-text"><?php esc_html_e( 'Mode d\'affichage de l\'interface', 'mon-articles' ); ?></legend>
+            <?php foreach ( $choices as $value => $data ) : ?>
+                <label class="my-articles-theme-toggle__option">
+                    <input
+                        type="radio"
+                        name="<?php echo esc_attr( $this->option_name ); ?>[admin_theme]"
+                        value="<?php echo esc_attr( $value ); ?>"
+                        <?php checked( $current_theme, $value ); ?>
+                    />
+                    <span class="my-articles-theme-toggle__label">
+                        <span class="my-articles-theme-toggle__title"><?php echo esc_html( $data['label'] ); ?></span>
+                        <?php if ( ! empty( $data['description'] ) ) : ?>
+                            <span class="my-articles-theme-toggle__description"><?php echo esc_html( $data['description'] ); ?></span>
+                        <?php endif; ?>
+                    </span>
+                </label>
+            <?php endforeach; ?>
+        </fieldset>
+        <p class="description"><?php esc_html_e( 'Contrôlez manuellement l’apparence du tableau de bord du plugin.', 'mon-articles' ); ?></p>
+        <?php
+    }
     public function module_margin_top_callback() { $this->render_number_input('module_margin_top', 0, 0, 200); }
     public function module_margin_bottom_callback() { $this->render_number_input('module_margin_bottom', 0, 0, 200); }
     public function module_margin_left_callback() { $this->render_number_input('module_margin_left', 0, 0, 200); }
