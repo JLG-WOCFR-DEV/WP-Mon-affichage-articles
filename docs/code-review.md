@@ -16,3 +16,9 @@
 - Continuer à enrichir `tests/REGRESSIONS.md` avec un scénario WP-CLI complet de purge après déploiement (documentation amorcée).【F:tests/REGRESSIONS.md†L1-L26】
 - Étendre la télémétrie aux temps de rendu serveur (corrélation avec les événements front) lors de la mise en place du dashboard instrumentation.
 
+## Plan d'action proposé
+
+- **Étape 1 — Refactor** : introduire une classe `My_Articles_Response_Cache_Key` responsable de la normalisation des fragments et du hash final. Cette classe doit être couverte par des tests unitaires (`tests/ResponseCacheKeyTest.php`).
+- **Étape 2 — Documentation** : compléter `tests/REGRESSIONS.md` avec un scénario manuel décrivant la purge des caches existants après déploiement et les commandes WP-CLI associées.【F:tests/REGRESSIONS.md†L1-L26】
+- **Étape 3 — Observabilité** : journaliser les hits/miss dans `WP_DEBUG_LOG` (ou un canal dédié) lorsque la constante `MY_ARTICLES_DEBUG_CACHE` est active afin d'alimenter un futur tableau de bord instrumentation.【F:docs/roadmap-technique.md†L8-L84】
+
