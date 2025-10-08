@@ -44,10 +44,25 @@ Ce document rassemble plusieurs pistes de préréglages inspirés de bibliothèq
 - **Interactions** : animations séquencées (fade-in + scale) à l'apparition des articles, transitions dynamiques sur les filtres.
 - **Usage** : pour des pages événementielles, lancements produit ou storytelling immersif.
 
+## 7. Preset « Editorial Spotlight » (slug : `editorial-spotlight`)
+- **Palette** : tons chauds (ocre, rouge profond) avec un mode sombre équilibré (`#1C1917`) et surbrillance en or rosé.
+- **Typographie** : `Playfair Display` pour les titres, `Source Serif Pro` pour les extraits, accent sur les lettrines.
+- **Composants** : cartes pleine largeur en mode liste avec lettrines (`::first-letter`), encarts auteur et séparateurs en pointillés.
+- **Interactions** : animation de soulignement progressif sur les titres, focus state très contrasté pour les liens et CTA.
+- **Usage** : mise en avant de dossiers longs ou interviews nécessitant un ton magazine.
+
+## 8. Preset « Neo Brutalist » (slug : `neo-brutalist`)
+- **Palette** : blocs de couleurs primaires franches (`#FF3366`, `#1F1DFF`, `#00C48C`) sur fond crème (`#FFF7E6`).
+- **Typographie** : `Archivo Black` pour les titres, `Work Sans` pour les métadonnées, capitales et tracking réduit.
+- **Composants** : cartes avec `border` épais (`4px`), `box-shadow` dur et boutons rectangulaires à coins droits.
+- **Interactions** : transitions instantanées (sans easing) et effets `translateY` prononcés au survol pour accentuer la dimension tactile.
+- **Usage** : campagnes percutantes, univers culture/événementiel cherchant un rendu graphique assumé.
+
 ## Implémentation suggérée
 1. Déclarer chaque preset dans un fichier JSON (par ex. `presets/{slug}.json`) contenant couleurs, typos et tokens CSS.
 2. Générer des classes utilitaires (`.is-style-{slug}`) via build CSS pour activer un preset sur le bloc.
 3. Prévoir des aperçus (captures WebP) et métadonnées (mode clair/sombre, tonalité, accessibilité) pour l'interface d'administration.
 4. Exposer une commande npm (`npm run generate-presets`) qui synchronise les JSON avec `theme.json` et le CSS compilé.
+5. Ajouter un validateur d’accessibilité (contraste, respect de `prefers-reduced-motion`) pour chaque preset avant publication.【F:docs/pistes-amelioration-design.md†L41-L65】
 
 Ces suggestions servent de base pour étendre la bibliothèque de préréglages et offrir un spectre esthétique aligné sur des écosystèmes UI éprouvés.
