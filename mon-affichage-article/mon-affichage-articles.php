@@ -480,6 +480,8 @@ public function prepare_filter_articles_response( array $args ) {
             $cache_fragments['sort'] = $options['sort'];
         }
 
+        $cache_fragments['debug'] = ! empty( $options['enable_debug_mode'] ) ? '1' : '0';
+
         if ( ! empty( $options['active_tax_filter_keys'] ) ) {
             $filter_keys = array_map( 'strval', $options['active_tax_filter_keys'] );
             sort( $filter_keys );
@@ -821,6 +823,8 @@ public function prepare_load_more_articles_response( array $args ) {
         if ( ! empty( $options['sort'] ) ) {
             $cache_fragments['sort'] = $options['sort'];
         }
+
+        $cache_fragments['debug'] = ! empty( $options['enable_debug_mode'] ) ? '1' : '0';
 
         if ( ! empty( $seen_pinned_ids ) ) {
             $normalized_pinned = array_map( 'absint', $seen_pinned_ids );

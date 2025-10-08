@@ -363,6 +363,50 @@ final class MyArticlesMetaboxesTest extends TestCase
         $mon_articles_test_taxonomies = array();
         $mon_articles_test_terms = array();
     }
+
+    public function test_save_meta_data_allows_disabling_debug_mode(): void
+    {
+        global $mon_articles_test_saved_meta,
+            $mon_articles_test_valid_nonces,
+            $_POST;
+
+        $mon_articles_test_saved_meta = array();
+        $mon_articles_test_valid_nonces = array(
+            'valid-nonce' => array('my_articles_save_meta_box_data'),
+        );
+
+        $_POST = array(
+            'my_articles_meta_box_nonce' => 'valid-nonce',
+            '_my_articles_settings'      => array(
+                'post_type'         => 'post',
+                'pagination_mode'   => 'none',
+                'enable_debug_mode' => '1',
+            ),
+        );
+
+        $metaboxes = My_Articles_Metaboxes::get_instance();
+        $metaboxes->save_meta_data(321);
+
+        $initial = $mon_articles_test_saved_meta[321]['_my_articles_settings'] ?? null;
+        self::assertIsArray($initial);
+        self::assertSame(1, $initial['enable_debug_mode']);
+
+        $_POST = array(
+            'my_articles_meta_box_nonce' => 'valid-nonce',
+            '_my_articles_settings'      => array(
+                'post_type'       => 'post',
+                'pagination_mode' => 'none',
+            ),
+        );
+
+        $metaboxes->save_meta_data(321);
+
+        $updated = $mon_articles_test_saved_meta[321]['_my_articles_settings'] ?? null;
+        self::assertIsArray($updated);
+        self::assertSame(0, $updated['enable_debug_mode']);
+
+        $_POST = array();
+    }
 }
 
 }
