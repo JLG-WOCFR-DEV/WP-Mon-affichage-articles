@@ -1406,4 +1406,5 @@ if (!class_exists('WP_Query')) {
 require_once __DIR__ . '/../mon-affichage-article/mon-affichage-articles.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-cache-key.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/rest/class-my-articles-controller.php';

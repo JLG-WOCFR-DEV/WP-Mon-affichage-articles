@@ -37,12 +37,14 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 - Page « Instrumentation » qui documente les usages et permet d'activer la télémétrie avec choix du canal (console, `dataLayer`, `fetch`).
 - Événements front (`my-articles:filter`, `my-articles:load-more`) riches en métadonnées (phase, filtres, pagination) et callbacks personnalisables pour brancher des outils d'analytics.
 - Action serveur `my_articles_track_interaction` déclenchée sur chaque interaction réussie (y compris en mode `fetch`) pour relayer les données vers des services externes.
+- Constante `MY_ARTICLES_DEBUG_CACHE` permettant d'activer une journalisation détaillée des hits/miss du cache REST dans le `WP_DEBUG_LOG`, utile pour auditer la validité des clés après un déploiement.
 
 ### Intégrations développeurs
 
 - API REST complète (`/filter`, `/load-more`, `/search`, `/render-preview`, `/nonce`, `/track`) avec validations dédiées, prévisualisation sécurisée et recherche incrémentale pour l'admin.
 - Système de cache combinant object cache et transients, namespace rafraîchi automatiquement et hooks pour personnaliser l'expiration ou les post types suivis.
 - Hooks et filtres pour ajuster les préréglages, la liste des post types suivis, le calcul des pages, la validation des instances, ainsi que des traductions chargées dynamiquement depuis les fichiers `.mo` encodés en base64.
+- Filtre `my_articles_cache_fragments` pour enrichir les fragments de contexte utilisés par le cache REST (ajout de paramètres maison, source externe, etc.) tout en conservant la nomenclature sécurisée.
 
 ## Installation
 

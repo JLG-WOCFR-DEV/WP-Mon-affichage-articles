@@ -83,6 +83,7 @@ Cette note recense les fonctions qui méritent une refonte pour se rapprocher de
   - Préfixer explicitement chaque fragment lors de la construction de la clé (`search:`, `sort:`, `pinned:`) et encapsuler la logique dans un objet dédié (Value Object) afin de garantir l'immutabilité et la lisibilité.
   - Ajouter des tests unitaires couvrant les cas limites (valeurs numériques identiques, paramètres manquants) et documenter les conventions dans `tests/REGRESSIONS.md` pour faciliter les vérifications manuelles.【F:tests/REGRESSIONS.md†L1-L26】
   - Exposer un filtre `my_articles_cache_fragments` permettant aux intégrations tierces de contribuer à la clé sans casser la nomenclature.
+- **Avancées récentes** : la classe `My_Articles_Response_Cache_Key` encapsule le hashage, `my_articles_cache_fragments` est disponible et `ResponseCacheKeyTest` protège des collisions connues. Reste à formaliser la doc de contribution pour les routes futures.
 
 ## Tests de diagnostic ajoutés
 

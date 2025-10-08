@@ -34,6 +34,7 @@ Cette feuille de route découpe les chantiers identifiés dans le README et les 
 - **Livrables** :
   - Refactor du générateur de clé (`generate_response_cache_key()`) avec tests de collision.
   - Notes de migration dans `tests/REGRESSIONS.md` pour accompagner le nettoyage des caches après déploiement.【F:docs/code-review.md†L5-L23】【F:tests/REGRESSIONS.md†L1-L26】
+- **Statut** : ✅ `My_Articles_Response_Cache_Key` centralise désormais les fragments nommés, des tests unitaires dédiés existent (`tests/ResponseCacheKeyTest.php`) et la journalisation `MY_ARTICLES_DEBUG_CACHE` facilite l'audit des hits/miss.
 
 ## 3-6 mois — Expérience éditeur et design
 

@@ -19,3 +19,4 @@
 - **Collision test:** Prepare two payloads (`search = "sort:date"` & `sort = "date"`) and confirm `generate_response_cache_key()` produces distinct hashes after the prefix refactor. Repeat with `pinned_ids = [123]` vs `search = "123"`.
 - **Manual QA:** Purge any persisted cache (`wp transient delete --all`, flush object cache) before déployer les nouvelles clés pour éviter de servir des réponses mélangées.
 - **Debug instrumentation:** Activer `define( 'MY_ARTICLES_DEBUG_CACHE', true );` dans l'environnement de staging pour suivre les hits/miss dans les logs et vérifier qu'aucune collision n'est enregistrée sous forte charge.【F:docs/code-review.md†L5-L23】
+- **Extensions tierces:** Brancher un filtre de test sur `my_articles_cache_fragments` pour ajouter un fragment personnalisé et vérifier qu'il apparaît bien dans les logs `MY_ARTICLES_DEBUG_CACHE` (hash distinct attendu).
