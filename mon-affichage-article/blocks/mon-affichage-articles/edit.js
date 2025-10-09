@@ -21,6 +21,15 @@
         : wp.editor && (wp.editor.useSetting || wp.editor.__experimentalUseSetting);
     var components = wp.components || {};
     var PanelBody = components.PanelBody;
+    var Panel = components.Panel
+        ? components.Panel
+        : function (props) {
+              var className = 'components-panel';
+              if (props && props.className) {
+                  className += ' ' + props.className;
+              }
+              return el('div', Object.assign({}, props, { className: className }), props && props.children);
+          };
     var ToolbarGroup = components.ToolbarGroup;
     var ToolbarButton = components.ToolbarButton;
     var ComboboxControl = components.ComboboxControl;
@@ -35,6 +44,11 @@
     var Placeholder = components.Placeholder || null;
     var Spinner = components.Spinner || null;
     var Notice = components.Notice || null;
+    var SearchControl = components.SearchControl || null;
+    var Guide = components.Guide || null;
+    var GuidePage = components.GuidePage || null;
+    var Modal = components.Modal || null;
+    var Tooltip = components.Tooltip || null;
     var Fragment = wp.element.Fragment;
     var el = wp.element.createElement;
 
@@ -98,7 +112,14 @@
             : function (value) {
                   return value;
               };
-    var PreviewPane = window.myArticlesBlocks && window.myArticlesBlocks.PreviewPane ? window.myArticlesBlocks.PreviewPane : null;
+    var PreviewCanvas = null;
+    if (window.myArticlesBlocks) {
+        if (window.myArticlesBlocks.PreviewCanvas) {
+            PreviewCanvas = window.myArticlesBlocks.PreviewCanvas;
+        } else if (window.myArticlesBlocks.PreviewPane) {
+            PreviewCanvas = window.myArticlesBlocks.PreviewPane;
+        }
+    }
     var dateI18n = wp.date && typeof wp.date.dateI18n === 'function' ? wp.date.dateI18n : null;
     var getDateSettings =
         wp.date && typeof wp.date.__experimentalGetSettings === 'function'
@@ -202,6 +223,344 @@
             severity: severity,
             description: description,
         };
+    }
+
+    function parseColor(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+
+        var color = value.trim().toLowerCase();
+
+        if (!color) {
+            return null;
+        }
+
+        if (color[0] === '#') {
+            var hex = color.slice(1);
+            if (hex.length === 3) {
+                hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+            }
+            if (hex.length === 6) {
+                var r = parseInt(hex.slice(0, 2), 16);
+                var g = parseInt(hex.slice(2, 4), 16);
+                var b = parseInt(hex.slice(4, 6), 16);
+                if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+                    return { r: r, g: g, b: b };
+                }
+            }
+            return null;
+        }
+
+        var rgbMatch = color.match(/rgba?\(([^)]+)\)/);
+        if (rgbMatch && rgbMatch[1]) {
+            var parts = rgbMatch[1]
+                .split(',')
+                .map(function (part) {
+                    return parseFloat(part.trim());
+                })
+                .filter(function (part) {
+                    return !isNaN(part);
+                });
+
+            if (parts.length >= 3) {
+                return { r: parts[0], g: parts[1], b: parts[2] };
+            }
+        }
+
+        return null;
+    }
+
+    function isColorDark(value) {
+        var rgb = parseColor(value);
+        if (!rgb) {
+            return null;
+        }
+
+        var luminance = (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+        return luminance < 0.6;
+    }
+
+    function buildPresetSwatch(values) {
+        var background = values && typeof values.module_bg_color === 'string' ? values.module_bg_color : '#ffffff';
+        var accent = values && typeof values.pagination_color === 'string' ? values.pagination_color : '#2563eb';
+        var heading = values && typeof values.title_color === 'string' ? values.title_color : '#1f2937';
+
+        return {
+            background: background,
+            accent: accent,
+            heading: heading,
+        };
+    }
+
+    function derivePresetTags(preset, presetId) {
+        var tags = [];
+        if (preset && Array.isArray(preset.tags)) {
+            tags = preset.tags.filter(function (tag) {
+                return tag && typeof tag === 'string';
+            });
+        }
+
+        if (!tags.length) {
+            var values = preset && preset.values ? preset.values : {};
+            var displayMode = typeof values.display_mode === 'string' ? values.display_mode : 'grid';
+            var displayLabels = {
+                grid: __('Grille', 'mon-articles'),
+                list: __('Liste', 'mon-articles'),
+                slideshow: __('Diaporama', 'mon-articles'),
+            };
+            if (displayLabels[displayMode]) {
+                tags.push(displayLabels[displayMode]);
+            }
+        }
+
+        var isDark = preset && preset.values ? isColorDark(preset.values.module_bg_color) : null;
+        if (null !== isDark) {
+            tags.push(isDark ? __('Sombre', 'mon-articles') : __('Clair', 'mon-articles'));
+        }
+
+        if (preset && preset.locked) {
+            tags.push(__('Guidé', 'mon-articles'));
+        }
+
+        if (presetId && tags.length === 0) {
+            tags.push(presetId);
+        }
+
+        var unique = [];
+        var seen = {};
+        tags.forEach(function (tag) {
+            if (!tag || typeof tag !== 'string') {
+                return;
+            }
+            if (seen[tag]) {
+                return;
+            }
+            seen[tag] = true;
+            unique.push(tag);
+        });
+
+        return unique;
+    }
+
+    function PresetGallery(props) {
+        var presets = Array.isArray(props.presets) ? props.presets : [];
+
+        if (!presets.length) {
+            return el(
+                Notice,
+                { status: 'info', isDismissible: false },
+                __('Aucun modèle disponible pour le moment.', 'mon-articles')
+            );
+        }
+
+        var activeId = props.value || '';
+        var disabled = !!props.disabled;
+        var onChange = typeof props.onChange === 'function' ? props.onChange : function () {};
+
+        return el(
+            'div',
+            {
+                className: 'my-articles-preset-gallery',
+                role: 'listbox',
+                'aria-label': __('Choisir un modèle de présentation', 'mon-articles'),
+            },
+            presets.map(function (preset) {
+                var isActive = preset.id === activeId;
+                var cardClass = 'my-articles-preset-card';
+
+                if (isActive) {
+                    cardClass += ' is-active';
+                }
+
+                if (disabled) {
+                    cardClass += ' is-disabled';
+                }
+
+                var swatch = preset.swatch || {};
+
+                var preview = el(
+                    'span',
+                    {
+                        className: 'my-articles-preset-card__preview',
+                        style: {
+                            background: swatch.background || '#ffffff',
+                        },
+                        'aria-hidden': 'true',
+                    },
+                    el('span', {
+                        className: 'my-articles-preset-card__accent',
+                        style: { background: swatch.accent || '#2563eb' },
+                    }),
+                    el(
+                        'span',
+                        {
+                            className: 'my-articles-preset-card__heading',
+                            style: { color: swatch.heading || '#1f2937' },
+                        },
+                        'Aa'
+                    )
+                );
+
+                var tagList = null;
+                if (preset.tags && preset.tags.length) {
+                    tagList = el(
+                        'span',
+                        { className: 'my-articles-preset-card__tags' },
+                        preset.tags.map(function (tag) {
+                            return el('span', { key: tag, className: 'my-articles-preset-card__tag' }, tag);
+                        })
+                    );
+                }
+
+                var lockBadge = null;
+                if (preset.locked) {
+                    var badgeContent = __('Modèle guidé', 'mon-articles');
+                    var badgeNode = el('span', { className: 'my-articles-preset-card__badge' }, '🔒 ', badgeContent);
+                    lockBadge = Tooltip
+                        ? el(
+                              Tooltip,
+                              { text: __('Certains réglages sont verrouillés par ce modèle.', 'mon-articles') },
+                              badgeNode
+                          )
+                        : badgeNode;
+                }
+
+                return el(
+                    'button',
+                    {
+                        key: preset.id,
+                        type: 'button',
+                        className: cardClass,
+                        role: 'option',
+                        'aria-selected': isActive,
+                        'aria-pressed': isActive,
+                        onClick: function () {
+                            if (disabled || isActive) {
+                                return;
+                            }
+                            onChange(preset.id);
+                        },
+                        disabled: disabled,
+                    },
+                    preview,
+                    el('span', { className: 'my-articles-preset-card__label' }, preset.label || preset.id),
+                    preset.description
+                        ? el('span', { className: 'my-articles-preset-card__description' }, preset.description)
+                        : null,
+                    tagList,
+                    lockBadge
+                );
+            })
+        );
+    }
+
+    function OnboardingGuide(props) {
+        var onFinish = typeof props.onFinish === 'function' ? props.onFinish : function () {};
+        var onDismiss = typeof props.onDismiss === 'function' ? props.onDismiss : onFinish;
+
+        if (Guide && GuidePage) {
+            return el(
+                Guide,
+                {
+                    className: 'my-articles-onboarding',
+                    finishButtonText: __('Terminer', 'mon-articles'),
+                    nextButtonText: __('Suivant', 'mon-articles'),
+                    backButtonText: __('Précédent', 'mon-articles'),
+                    onFinish: onFinish,
+                    onDismiss: onDismiss,
+                    isVisible: true,
+                },
+                el(
+                    GuidePage,
+                    {
+                        key: 'welcome',
+                        title: __('Bienvenue dans Tuiles – LCV', 'mon-articles'),
+                        description: __('Un assistant condensé pour paramétrer rapidement votre module.', 'mon-articles'),
+                    },
+                    el(
+                        'p',
+                        {},
+                        __('Trouvez un module existant via la recherche et choisissez un modèle visuel adapté à votre usage.', 'mon-articles')
+                    ),
+                    el(
+                        'p',
+                        {},
+                        __('Vous pouvez filtrer les réglages par mots-clés grâce au champ de recherche du panneau latéral.', 'mon-articles')
+                    )
+                ),
+                el(
+                    GuidePage,
+                    {
+                        key: 'presets',
+                        title: __('Explorer les modèles', 'mon-articles'),
+                        description: __('La galerie affiche un aperçu, des tags d’usage et le statut de verrouillage de chaque modèle.', 'mon-articles'),
+                    },
+                    el(
+                        'p',
+                        {},
+                        __('Cliquez sur une vignette pour appliquer instantanément un modèle. Les tags aident à repérer les contextes recommandés.', 'mon-articles')
+                    ),
+                    el(
+                        'p',
+                        {},
+                        __('Les modèles guidés verrouillent certains réglages pour garantir la cohérence éditoriale.', 'mon-articles')
+                    )
+                ),
+                el(
+                    GuidePage,
+                    {
+                        key: 'pilot',
+                        title: __('Activer le mode pilotage', 'mon-articles'),
+                        description: __('Superposez des métriques clés directement dans la prévisualisation.', 'mon-articles'),
+                    },
+                    el(
+                        'p',
+                        {},
+                        __('Le bouton « Pilotage » de la barre d’outils affiche le volume d’articles, les filtres actifs et la configuration de pagination.', 'mon-articles')
+                    ),
+                    el(
+                        'p',
+                        {},
+                        __('Changez de viewport pour valider vos choix responsive depuis le sélecteur intégré à la prévisualisation.', 'mon-articles')
+                    )
+                )
+            );
+        }
+
+        if (Modal) {
+            return el(
+                Modal,
+                {
+                    title: __('Bienvenue dans Tuiles – LCV', 'mon-articles'),
+                    className: 'my-articles-onboarding-modal',
+                    onRequestClose: onDismiss,
+                },
+                el(
+                    'div',
+                    { className: 'my-articles-onboarding-modal__content' },
+                    el(
+                        'p',
+                        {},
+                        __('Parcourez les modèles visuels, utilisez la recherche de réglages et activez le mode pilotage pour contrôler vos données.', 'mon-articles')
+                    )
+                ),
+                el(
+                    'div',
+                    { className: 'my-articles-onboarding-modal__actions' },
+                    el(
+                        Button,
+                        {
+                            variant: 'primary',
+                            onClick: onFinish,
+                        },
+                        __('Terminer', 'mon-articles')
+                    )
+                )
+            );
+        }
+
+        return null;
     }
 
     function getStatusMetadata(status) {
@@ -394,6 +753,18 @@
             var previewViewport = _useState5[0];
             var setPreviewViewport = _useState5[1];
 
+            var _useState6 = useState('');
+            var inspectorSearch = _useState6[0];
+            var setInspectorSearch = _useState6[1];
+
+            var _useState7 = useState(!attributes.onboarding_complete);
+            var isOnboardingVisible = _useState7[0];
+            var setOnboardingVisible = _useState7[1];
+
+            var _useState8 = useState(false);
+            var isPilotMode = _useState8[0];
+            var setPilotMode = _useState8[1];
+
             var viewportLessThanMedium = typeof useViewportMatch === 'function' ? useViewportMatch('medium', '<') : false;
             var viewportLessThanLarge = typeof useViewportMatch === 'function' ? useViewportMatch('large', '<') : false;
             var autoPreviewViewport = 'desktop';
@@ -413,6 +784,31 @@
             var thumbnailAspectRatio = sanitizeThumbnailAspectRatio(attributes.thumbnail_aspect_ratio || DEFAULT_THUMBNAIL_ASPECT_RATIO);
 
             var isDesignPresetLocked = false;
+
+            useEffect(
+                function () {
+                    if (attributes.onboarding_complete && isOnboardingVisible) {
+                        setOnboardingVisible(false);
+                    }
+                },
+                [attributes.onboarding_complete]
+            );
+
+            var handleOnboardingFinish = useCallback(
+                function () {
+                    setAttributes({ onboarding_complete: true });
+                    setOnboardingVisible(false);
+                },
+                [setAttributes]
+            );
+
+            var handleOnboardingDismiss = useCallback(
+                function () {
+                    setAttributes({ onboarding_complete: true });
+                    setOnboardingVisible(false);
+                },
+                [setAttributes]
+            );
 
             var listData = useSelect(
                 function (select) {
@@ -606,26 +1002,51 @@
                 };
             };
 
-            var designPresetOptions = Object.keys(designPresets).map(function (presetId) {
-                var preset = designPresets[presetId] || {};
-                return { label: preset.label || presetId, value: presetId };
-            });
-            if (designPresetOptions.length === 0) {
-                designPresetOptions = [{ label: __('Personnalisé', 'mon-articles'), value: DESIGN_PRESET_FALLBACK }];
-            } else {
-                designPresetOptions.sort(function (a, b) {
-                    if (a.value === DESIGN_PRESET_FALLBACK) {
-                        return -1;
+            var designPresetList = useMemo(
+                function () {
+                    var list = Object.keys(designPresets).map(function (presetId) {
+                        var preset = designPresets[presetId] || {};
+                        var tags = derivePresetTags(preset, presetId);
+                        return {
+                            id: presetId,
+                            label: preset.label || presetId,
+                            description: preset.description || '',
+                            locked: !!preset.locked,
+                            tags: tags,
+                            swatch: buildPresetSwatch(preset.values || {}),
+                        };
+                    });
+
+                    if (list.length === 0) {
+                        list = [
+                            {
+                                id: DESIGN_PRESET_FALLBACK,
+                                label: __('Personnalisé', 'mon-articles'),
+                                description: __('Conservez vos réglages actuels.', 'mon-articles'),
+                                locked: false,
+                                tags: [__('Libre', 'mon-articles')],
+                                swatch: buildPresetSwatch({}),
+                            },
+                        ];
+                    } else {
+                        list.sort(function (a, b) {
+                            if (a.id === DESIGN_PRESET_FALLBACK) {
+                                return -1;
+                            }
+                            if (b.id === DESIGN_PRESET_FALLBACK) {
+                                return 1;
+                            }
+                            if (typeof a.label === 'string' && typeof b.label === 'string') {
+                                return a.label.localeCompare(b.label);
+                            }
+                            return 0;
+                        });
                     }
-                    if (b.value === DESIGN_PRESET_FALLBACK) {
-                        return 1;
-                    }
-                    if (typeof a.label === 'string' && typeof b.label === 'string') {
-                        return a.label.localeCompare(b.label);
-                    }
-                    return 0;
-                });
-            }
+
+                    return list;
+                },
+                [designPresets]
+            );
 
             useEffect(
                 function () {
@@ -724,6 +1145,25 @@
                                     }
                                 },
                             });
+                        })
+                    )
+                );
+
+                toolbarChildren.push(
+                    el(
+                        ToolbarGroup,
+                        { key: 'pilot-mode', label: __('Pilotage', 'mon-articles') },
+                        el(ToolbarButton, {
+                            key: 'pilot-toggle',
+                            icon: 'chart-area',
+                            label: __('Basculer le mode pilotage', 'mon-articles'),
+                            showTooltip: true,
+                            isPressed: isPilotMode,
+                            onClick: function () {
+                                setPilotMode(function (previous) {
+                                    return !previous;
+                                });
+                            },
                         })
                     )
                 );
@@ -1066,638 +1506,815 @@
                 );
             }
 
-            var inspectorControls = el(
-                InspectorControls,
-                {},
-                el(
-                    PanelBody,
-                    { title: __('Module', 'mon-articles'), initialOpen: true },
+
+            var normalizedInspectorSearch = typeof inspectorSearch === 'string' ? inspectorSearch.trim().toLowerCase() : '';
+            var shouldForceInspectorOpen = normalizedInspectorSearch.length > 0;
+
+            var onboardingCallout = null;
+            if (!attributes.onboarding_complete) {
+                onboardingCallout = el(
+                    Notice,
+                    {
+                        status: 'info',
+                        isDismissible: false,
+                        className: 'my-articles-module__onboarding-notice',
+                    },
+                    __('Besoin d’un repérage rapide ? Lancez la visite guidée.', 'mon-articles'),
+                    ' ',
                     el(
-                        Fragment,
-                        {},
-                        el(ComboboxControl, {
-                            label: __('Instance', 'mon-articles'),
-                            value: attributes.instanceId ? String(attributes.instanceId) : '',
-                            options: instanceOptions,
-                            onChange: function (value) {
-                                var parsed = parseInt(value, 10);
-                                setAttributes({ instanceId: parsed > 0 ? parsed : 0 });
+                        Button,
+                        {
+                            variant: 'link',
+                            onClick: function () {
+                                setOnboardingVisible(true);
                             },
-                            onFilterValueChange: function (value) {
-                                debouncedFilterUpdate(value);
-                            },
-                            help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
-                        }),
-                        listData && listData.isResolving
-                            ? el('div', { className: 'my-articles-block__module-loading' }, el(Spinner, { key: 'module-spinner' }))
-                            : null,
-                        showLoadMoreButton
-                            ? el(
-                                  Button,
-                                  {
-                                      variant: 'secondary',
-                                      onClick: function () {
-                                          setCurrentPage(function (prevPage) {
-                                              return prevPage + 1;
-                                          });
-                                      },
-                                      disabled: !hasMoreResults || (listData && listData.isResolving),
-                                      className: 'my-articles-block__module-load-more',
-                                  },
-                                  hasMoreResults
-                                      ? __('Charger plus de résultats', 'mon-articles')
-                                      : __('Tous les contenus sont chargés', 'mon-articles')
-                              )
-                            : null,
-                        el(SelectControl, {
-                            label: __('Modèle', 'mon-articles'),
-                            value: currentDesignPresetId,
-                            options: designPresetOptions,
-                            onChange: handleDesignPresetChange,
-                        }),
-                        isDesignPresetLocked
-                            ? el(Notice, { status: 'info', isDismissible: false }, __('Ce modèle verrouille certains réglages de design.', 'mon-articles'))
-                            : null,
-                        el(
-                            'p',
-                            { className: 'components-base-control__help my-articles-block__toolbar-help' },
-                            __(
-                                'Astuce : la barre d’outils du bloc permet de changer le mode (Grille/Liste/Diaporama) et de simuler les colonnes mobile/tablette/desktop.',
-                                'mon-articles'
-                            )
-                        )
-                    )
-                ),
-                moduleStatusPanel,
-                el(
-                    PanelBody,
-                    { title: __('Accessibilité', 'mon-articles'), initialOpen: false },
-                    el(TextControl, {
-                        label: __('Libellé ARIA du module', 'mon-articles'),
-                        value: attributes.aria_label || '',
-                        onChange: function (value) {
-                            setAttributes({ aria_label: value || '' });
                         },
-                        placeholder: ariaLabelPlaceholder,
-                        help: __('Laissez vide pour utiliser automatiquement le titre du module.', 'mon-articles'),
-                    })
-                ),
+                        __('Commencer', 'mon-articles')
+                    )
+                );
+            } else {
+                onboardingCallout = el(
+                    Button,
+                    {
+                        variant: 'link',
+                        className: 'my-articles-module-actions__onboarding',
+                        onClick: function () {
+                            setOnboardingVisible(true);
+                        },
+                    },
+                    __('Revoir la visite guidée', 'mon-articles')
+                );
+            }
+
+            var moduleSearchTokens = designPresetList.reduce(function (tokens, preset) {
+                if (preset.label) {
+                    tokens.push(preset.label);
+                }
+                if (preset.description) {
+                    tokens.push(preset.description);
+                }
+                if (Array.isArray(preset.tags)) {
+                    preset.tags.forEach(function (tag) {
+                        tokens.push(tag);
+                    });
+                }
+                return tokens;
+            }, []);
+            if (selectedInstanceTitle) {
+                moduleSearchTokens.push(selectedInstanceTitle);
+            }
+
+            var modulePanel = el(
+                PanelBody,
+                {
+                    key: 'module-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Module', 'mon-articles'),
+                    initialOpen: true,
+                    className: shouldForceInspectorOpen ? 'my-articles-panel is-search-active' : 'my-articles-panel',
+                },
                 el(
-                    PanelBody,
-                    { title: __('Affichage', 'mon-articles'), initialOpen: false },
-                    el(SelectControl, {
-                        label: __('Mode d’affichage', 'mon-articles'),
-                        value: attributes.display_mode || 'grid',
-                        options: [
-                            { label: __('Grille', 'mon-articles'), value: 'grid' },
-                            { label: __('Liste', 'mon-articles'), value: 'list' },
-                            { label: __('Diaporama', 'mon-articles'), value: 'slideshow' },
-                        ],
-                        onChange: withLockedGuard('display_mode', function (value) {
-                            setAttributes({ display_mode: value });
-                        }),
-                        disabled: isAttributeLocked('display_mode'),
+                    Fragment,
+                    {},
+                    el(ComboboxControl, {
+                        label: __('Instance', 'mon-articles'),
+                        value: attributes.instanceId ? String(attributes.instanceId) : '',
+                        options: instanceOptions,
+                        onChange: function (value) {
+                            var parsed = parseInt(value, 10);
+                            setAttributes({ instanceId: parsed > 0 ? parsed : 0 });
+                        },
+                        onFilterValueChange: function (value) {
+                            debouncedFilterUpdate(value);
+                        },
+                        help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
                     }),
-                    el(RangeControl, {
-                        label: __('Articles par page', 'mon-articles'),
-                        value: attributes.posts_per_page,
-                        min: 0,
-                        max: 24,
-                        allowReset: true,
-                        onChange: withLockedGuard('posts_per_page', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ posts_per_page: value });
-                        }),
-                        help: __('Définissez 0 pour désactiver la limite.', 'mon-articles'),
-                        disabled: isAttributeLocked('posts_per_page'),
+                    listData && listData.isResolving
+                        ? el('div', { className: 'my-articles-block__module-loading' }, el(Spinner, { key: 'module-spinner' }))
+                        : null,
+                    showLoadMoreButton
+                        ? el(
+                              Button,
+                              {
+                                  variant: 'secondary',
+                                  onClick: function () {
+                                      setCurrentPage(function (prevPage) {
+                                          return prevPage + 1;
+                                      });
+                                  },
+                                  disabled: !hasMoreResults || (listData && listData.isResolving),
+                                  className: 'my-articles-block__module-load-more',
+                              },
+                              hasMoreResults
+                                  ? __('Charger plus de résultats', 'mon-articles')
+                                  : __('Tous les contenus sont chargés', 'mon-articles')
+                          )
+                        : null,
+                    el(
+                        'div',
+                        { className: 'my-articles-preset-gallery__container' },
+                        el(PresetGallery, {
+                            presets: designPresetList,
+                            value: currentDesignPresetId,
+                            onChange: handleDesignPresetChange,
+                            disabled: isAttributeLocked('design_preset'),
+                        })
+                    ),
+                    isDesignPresetLocked
+                        ? el(Notice, { status: 'info', isDismissible: false }, __('Ce modèle verrouille certains réglages de design.', 'mon-articles'))
+                        : null,
+                    onboardingCallout,
+                    el(
+                        'p',
+                        { className: 'components-base-control__help my-articles-block__toolbar-help' },
+                        __('Astuce : la barre d’outils du bloc permet de changer le mode (Grille/Liste/Diaporama) et de simuler les colonnes mobile/tablette/desktop.', 'mon-articles')
+                    )
+                )
+            );
+
+            var accessibilityPanel = el(
+                PanelBody,
+                {
+                    key: 'accessibility-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Accessibilité', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(TextControl, {
+                    label: __('Libellé ARIA du module', 'mon-articles'),
+                    value: attributes.aria_label || '',
+                    onChange: function (value) {
+                        setAttributes({ aria_label: value || '' });
+                    },
+                    placeholder: ariaLabelPlaceholder,
+                    help: __('Laissez vide pour utiliser automatiquement le titre du module.', 'mon-articles'),
+                })
+            );
+
+            var appearancePanel = el(
+                PanelBody,
+                {
+                    key: 'appearance-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Affichage', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(SelectControl, {
+                    label: __('Mode d’affichage', 'mon-articles'),
+                    value: attributes.display_mode || 'grid',
+                    options: [
+                        { label: __('Grille', 'mon-articles'), value: 'grid' },
+                        { label: __('Liste', 'mon-articles'), value: 'list' },
+                        { label: __('Diaporama', 'mon-articles'), value: 'slideshow' },
+                    ],
+                    onChange: withLockedGuard('display_mode', function (value) {
+                        setAttributes({ display_mode: value });
                     }),
-                    el(SelectControl, {
-                        label: __('Pagination', 'mon-articles'),
-                        value: attributes.pagination_mode || 'none',
-                        options: [
-                            { label: __('Aucune', 'mon-articles'), value: 'none' },
-                            { label: __('Bouton « Charger plus »', 'mon-articles'), value: 'load_more' },
-                            { label: __('Pagination numérotée', 'mon-articles'), value: 'numbered' },
-                        ],
-                        onChange: withLockedGuard('pagination_mode', function (value) {
-                            setAttributes({ pagination_mode: value });
-                        }),
-                        disabled: isAttributeLocked('pagination_mode'),
+                    disabled: isAttributeLocked('display_mode'),
+                }),
+                el(RangeControl, {
+                    label: __('Articles par page', 'mon-articles'),
+                    value: attributes.posts_per_page,
+                    min: 0,
+                    max: 24,
+                    allowReset: true,
+                    onChange: withLockedGuard('posts_per_page', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 0;
+                        }
+                        setAttributes({ posts_per_page: value });
                     }),
-                    attributes.pagination_mode === 'load_more'
-                        ? el(ToggleControl, {
+                    help: __('Définissez 0 pour désactiver la limite.', 'mon-articles'),
+                    disabled: isAttributeLocked('posts_per_page'),
+                }),
+                el(SelectControl, {
+                    label: __('Pagination', 'mon-articles'),
+                    value: attributes.pagination_mode || 'none',
+                    options: [
+                        { label: __('Aucune', 'mon-articles'), value: 'none' },
+                        { label: __('Bouton « Charger plus »', 'mon-articles'), value: 'load_more' },
+                        { label: __('Pagination numérotée', 'mon-articles'), value: 'numbered' },
+                    ],
+                    onChange: withLockedGuard('pagination_mode', function (value) {
+                        setAttributes({ pagination_mode: value });
+                    }),
+                    disabled: isAttributeLocked('pagination_mode'),
+                }),
+                attributes.pagination_mode === 'load_more'
+                    ? el(
+                          ToggleControl,
+                          {
                               label: __('Activer le déclenchement automatique', 'mon-articles'),
-                              help: __(
-                                  'Déclenche le bouton « Charger plus » dès qu’il devient visible à l’écran.',
-                                  'mon-articles'
-                              ),
+                              help: __('Déclenche le bouton « Charger plus » dès qu’il devient visible à l’écran.', 'mon-articles'),
                               checked: !!attributes.load_more_auto,
                               onChange: withLockedGuard('load_more_auto', function (value) {
                                   setAttributes({ load_more_auto: !!value });
                               }),
                               disabled: isAttributeLocked('load_more_auto'),
+                          }
+                      )
+                    : null,
+                el(SelectControl, {
+                    label: __('Ratio des vignettes', 'mon-articles'),
+                    value: thumbnailAspectRatio,
+                    options: THUMBNAIL_ASPECT_RATIO_OPTIONS,
+                    onChange: withLockedGuard('thumbnail_aspect_ratio', function (value) {
+                        setAttributes({ thumbnail_aspect_ratio: sanitizeThumbnailAspectRatio(value) });
+                    }),
+                    help: __('Seuls les ratios 1, 4/3, 3/2 et 16/9 sont acceptés.', 'mon-articles'),
+                    disabled: isAttributeLocked('thumbnail_aspect_ratio'),
+                }),
+                isSlideshowMode
+                    ? el(
+                          Fragment,
+                          {},
+                          el(ToggleControl, {
+                              label: __('Boucle infinie', 'mon-articles'),
+                              checked: !!attributes.slideshow_loop,
+                              onChange: withLockedGuard('slideshow_loop', function (value) {
+                                  setAttributes({ slideshow_loop: !!value });
+                              }),
+                              disabled: isAttributeLocked('slideshow_loop'),
+                          }),
+                          el(ToggleControl, {
+                              label: __('Lecture automatique', 'mon-articles'),
+                              checked: !!attributes.slideshow_autoplay,
+                              onChange: withLockedGuard('slideshow_autoplay', function (value) {
+                                  setAttributes({ slideshow_autoplay: !!value });
+                              }),
+                              disabled: isAttributeLocked('slideshow_autoplay'),
+                          }),
+                          el(RangeControl, {
+                              label: __('Délai entre les diapositives (ms)', 'mon-articles'),
+                              value: ensureNumber(attributes.slideshow_delay, 5000),
+                              min: 1000,
+                              max: 20000,
+                              step: 100,
+                              allowReset: true,
+                              onChange: withLockedGuard('slideshow_delay', function (value) {
+                                  if (typeof value !== 'number') {
+                                      value = 5000;
+                                  }
+                                  setAttributes({ slideshow_delay: value });
+                              }),
+                              disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_delay'),
+                              help: __('Actif uniquement si la lecture automatique est activée.', 'mon-articles'),
+                          }),
+                          el(ToggleControl, {
+                              label: __('Mettre en pause lors des interactions', 'mon-articles'),
+                              checked: !!attributes.slideshow_pause_on_interaction,
+                              onChange: withLockedGuard('slideshow_pause_on_interaction', function (value) {
+                                  setAttributes({ slideshow_pause_on_interaction: !!value });
+                              }),
+                              disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_interaction'),
+                          }),
+                          el(ToggleControl, {
+                              label: __('Mettre en pause au survol', 'mon-articles'),
+                              checked: !!attributes.slideshow_pause_on_mouse_enter,
+                              onChange: withLockedGuard('slideshow_pause_on_mouse_enter', function (value) {
+                                  setAttributes({ slideshow_pause_on_mouse_enter: !!value });
+                              }),
+                              disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_mouse_enter'),
+                          }),
+                          el(ToggleControl, {
+                              label: __('Afficher les flèches de navigation', 'mon-articles'),
+                              checked: !!attributes.slideshow_show_navigation,
+                              onChange: withLockedGuard('slideshow_show_navigation', function (value) {
+                                  setAttributes({ slideshow_show_navigation: !!value });
+                              }),
+                              disabled: isAttributeLocked('slideshow_show_navigation'),
+                          }),
+                          el(ToggleControl, {
+                              label: __('Afficher la pagination', 'mon-articles'),
+                              checked: !!attributes.slideshow_show_pagination,
+                              onChange: withLockedGuard('slideshow_show_pagination', function (value) {
+                                  setAttributes({ slideshow_show_pagination: !!value });
+                              }),
+                              disabled: isAttributeLocked('slideshow_show_pagination'),
                           })
-                        : null,
-                    el(SelectControl, {
-                        label: __('Ratio des vignettes', 'mon-articles'),
-                        value: thumbnailAspectRatio,
-                        options: THUMBNAIL_ASPECT_RATIO_OPTIONS,
-                        onChange: withLockedGuard('thumbnail_aspect_ratio', function (value) {
-                            setAttributes({ thumbnail_aspect_ratio: sanitizeThumbnailAspectRatio(value) });
-                        }),
-                        help: __('Seuls les ratios 1, 4/3, 3/2 et 16/9 sont acceptés.', 'mon-articles'),
-                        disabled: isAttributeLocked('thumbnail_aspect_ratio'),
+                      )
+                    : null
+            );
+
+            var layoutPanel = el(
+                PanelBody,
+                {
+                    key: 'layout-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Disposition', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(RangeControl, {
+                    label: __('Colonnes (mobile)', 'mon-articles'),
+                    value: ensureNumber(attributes.columns_mobile, 1),
+                    min: 1,
+                    max: 3,
+                    allowReset: true,
+                    onChange: withLockedGuard('columns_mobile', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 1;
+                        }
+                        setAttributes({ columns_mobile: value });
                     }),
-                    isSlideshowMode
-                        ? el(Fragment, {},
-                              el(ToggleControl, {
-                                  label: __('Boucle infinie', 'mon-articles'),
-                                  checked: !!attributes.slideshow_loop,
-                                  onChange: withLockedGuard('slideshow_loop', function (value) {
-                                      setAttributes({ slideshow_loop: !!value });
-                                  }),
-                                  disabled: isAttributeLocked('slideshow_loop'),
-                              }),
-                              el(ToggleControl, {
-                                  label: __('Lecture automatique', 'mon-articles'),
-                                  checked: !!attributes.slideshow_autoplay,
-                                  onChange: withLockedGuard('slideshow_autoplay', function (value) {
-                                      setAttributes({ slideshow_autoplay: !!value });
-                                  }),
-                                  disabled: isAttributeLocked('slideshow_autoplay'),
-                              }),
-                              el(RangeControl, {
-                                  label: __('Délai entre les diapositives (ms)', 'mon-articles'),
-                                  value: ensureNumber(attributes.slideshow_delay, 5000),
-                                  min: 1000,
-                                  max: 20000,
-                                  step: 100,
-                                  allowReset: true,
-                                  onChange: withLockedGuard('slideshow_delay', function (value) {
-                                      if (typeof value !== 'number') {
-                                          value = 5000;
-                                      }
-                                      setAttributes({ slideshow_delay: value });
-                                  }),
-                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_delay'),
-                                  help: __('Actif uniquement si la lecture automatique est activée.', 'mon-articles'),
-                              }),
-                              el(ToggleControl, {
-                                  label: __('Mettre en pause lors des interactions', 'mon-articles'),
-                                  checked: !!attributes.slideshow_pause_on_interaction,
-                                  onChange: withLockedGuard('slideshow_pause_on_interaction', function (value) {
-                                      setAttributes({ slideshow_pause_on_interaction: !!value });
-                                  }),
-                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_interaction'),
-                              }),
-                              el(ToggleControl, {
-                                  label: __('Mettre en pause au survol', 'mon-articles'),
-                                  checked: !!attributes.slideshow_pause_on_mouse_enter,
-                                  onChange: withLockedGuard('slideshow_pause_on_mouse_enter', function (value) {
-                                      setAttributes({ slideshow_pause_on_mouse_enter: !!value });
-                                  }),
-                                  disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_mouse_enter'),
-                              }),
-                              el(ToggleControl, {
-                                  label: __('Afficher les flèches de navigation', 'mon-articles'),
-                                  checked: !!attributes.slideshow_show_navigation,
-                                  onChange: withLockedGuard('slideshow_show_navigation', function (value) {
-                                      setAttributes({ slideshow_show_navigation: !!value });
-                                  }),
-                                  disabled: isAttributeLocked('slideshow_show_navigation'),
-                              }),
-                              el(ToggleControl, {
-                                  label: __('Afficher la pagination', 'mon-articles'),
-                                  checked: !!attributes.slideshow_show_pagination,
-                                  onChange: withLockedGuard('slideshow_show_pagination', function (value) {
-                                      setAttributes({ slideshow_show_pagination: !!value });
-                                  }),
-                                  disabled: isAttributeLocked('slideshow_show_pagination'),
-                              })
-                          )
-                        : null
-                ),
+                    disabled: isListMode || isAttributeLocked('columns_mobile'),
+                    help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                }),
+                el(RangeControl, {
+                    label: __('Colonnes (tablette)', 'mon-articles'),
+                    value: ensureNumber(attributes.columns_tablet, 2),
+                    min: 1,
+                    max: 4,
+                    allowReset: true,
+                    onChange: withLockedGuard('columns_tablet', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 2;
+                        }
+                        setAttributes({ columns_tablet: value });
+                    }),
+                    disabled: isListMode || isAttributeLocked('columns_tablet'),
+                    help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                }),
+                el(RangeControl, {
+                    label: __('Colonnes (desktop)', 'mon-articles'),
+                    value: ensureNumber(attributes.columns_desktop, 3),
+                    min: 1,
+                    max: 6,
+                    allowReset: true,
+                    onChange: withLockedGuard('columns_desktop', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 3;
+                        }
+                        setAttributes({ columns_desktop: value });
+                    }),
+                    disabled: isListMode || isAttributeLocked('columns_desktop'),
+                    help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                }),
+                el(RangeControl, {
+                    label: __('Colonnes (ultra-large)', 'mon-articles'),
+                    value: ensureNumber(attributes.columns_ultrawide, 4),
+                    min: 1,
+                    max: 8,
+                    allowReset: true,
+                    onChange: withLockedGuard('columns_ultrawide', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 4;
+                        }
+                        setAttributes({ columns_ultrawide: value });
+                    }),
+                    disabled: isListMode || isAttributeLocked('columns_ultrawide'),
+                    help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
+                }),
+                el(RangeControl, {
+                    label: __('Espacement des vignettes (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.gap_size, 25),
+                    min: 0,
+                    max: 50,
+                    allowReset: true,
+                    onChange: withLockedGuard('gap_size', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 25;
+                        }
+                        setAttributes({ gap_size: value });
+                    }),
+                    disabled: isListMode || isAttributeLocked('gap_size'),
+                }),
+                el(RangeControl, {
+                    label: __('Espacement vertical (liste)', 'mon-articles'),
+                    value: ensureNumber(attributes.list_item_gap, 25),
+                    min: 0,
+                    max: 50,
+                    allowReset: true,
+                    onChange: withLockedGuard('list_item_gap', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 25;
+                        }
+                        setAttributes({ list_item_gap: value });
+                    }),
+                    disabled: !isListMode || isAttributeLocked('list_item_gap'),
+                })
+            );
+
+            var spacingPanel = el(
+                PanelBody,
+                {
+                    key: 'spacing-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Espacements & typographie', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(RangeControl, {
+                    label: __('Marge intérieure haute (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.module_padding_top, 0),
+                    min: 0,
+                    max: 200,
+                    allowReset: true,
+                    onChange: withLockedGuard('module_padding_top', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 0;
+                        }
+                        setAttributes({ module_padding_top: value });
+                    }),
+                    disabled: isAttributeLocked('module_padding_top'),
+                }),
+                el(RangeControl, {
+                    label: __('Marge intérieure basse (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.module_padding_bottom, 0),
+                    min: 0,
+                    max: 200,
+                    allowReset: true,
+                    onChange: withLockedGuard('module_padding_bottom', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 0;
+                        }
+                        setAttributes({ module_padding_bottom: value });
+                    }),
+                    disabled: isAttributeLocked('module_padding_bottom'),
+                }),
+                el(RangeControl, {
+                    label: __('Marge intérieure gauche (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.module_padding_left, 0),
+                    min: 0,
+                    max: 200,
+                    allowReset: true,
+                    onChange: withLockedGuard('module_padding_left', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 0;
+                        }
+                        setAttributes({ module_padding_left: value });
+                    }),
+                    disabled: isAttributeLocked('module_padding_left'),
+                }),
+                el(RangeControl, {
+                    label: __('Marge intérieure droite (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.module_padding_right, 0),
+                    min: 0,
+                    max: 200,
+                    allowReset: true,
+                    onChange: withLockedGuard('module_padding_right', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 0;
+                        }
+                        setAttributes({ module_padding_right: value });
+                    }),
+                    disabled: isAttributeLocked('module_padding_right'),
+                }),
+                el(RangeControl, {
+                    label: __('Arrondi des bordures (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.border_radius, 12),
+                    min: 0,
+                    max: 50,
+                    allowReset: true,
+                    onChange: withLockedGuard('border_radius', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 12;
+                        }
+                        setAttributes({ border_radius: value });
+                    }),
+                    disabled: isAttributeLocked('border_radius'),
+                }),
+                el(RangeControl, {
+                    label: __('Taille du titre (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.title_font_size, 16),
+                    min: 12,
+                    max: 40,
+                    allowReset: true,
+                    onChange: withLockedGuard('title_font_size', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 16;
+                        }
+                        setAttributes({ title_font_size: value });
+                    }),
+                    disabled: isAttributeLocked('title_font_size'),
+                }),
+                el(RangeControl, {
+                    label: __('Taille des métadonnées (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.meta_font_size, 14),
+                    min: 10,
+                    max: 24,
+                    allowReset: true,
+                    onChange: withLockedGuard('meta_font_size', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 14;
+                        }
+                        setAttributes({ meta_font_size: value });
+                    }),
+                    disabled: isAttributeLocked('meta_font_size'),
+                }),
+                el(RangeControl, {
+                    label: __('Taille de l’extrait (px)', 'mon-articles'),
+                    value: ensureNumber(attributes.excerpt_font_size, 14),
+                    min: 10,
+                    max: 24,
+                    allowReset: true,
+                    onChange: withLockedGuard('excerpt_font_size', function (value) {
+                        if (typeof value !== 'number') {
+                            value = 14;
+                        }
+                        setAttributes({ excerpt_font_size: value });
+                    }),
+                    disabled: isAttributeLocked('excerpt_font_size'),
+                })
+            );
+
+            var filtersPanel = el(
+                PanelBody,
+                {
+                    key: 'filters-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Filtres additionnels', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(ToggleControl, {
+                    label: __('Afficher le filtre de catégories', 'mon-articles'),
+                    checked: !!attributes.show_category_filter,
+                    onChange: withLockedGuard('show_category_filter', function (value) {
+                        setAttributes({ show_category_filter: !!value });
+                    }),
+                    disabled: isAttributeLocked('show_category_filter'),
+                }),
+                el(ToggleControl, {
+                    label: __('Activer la recherche par mots-clés', 'mon-articles'),
+                    checked: !!attributes.enable_keyword_search,
+                    onChange: withLockedGuard('enable_keyword_search', function (value) {
+                        setAttributes({ enable_keyword_search: !!value });
+                    }),
+                    disabled: isAttributeLocked('enable_keyword_search'),
+                }),
+                el(TextControl, {
+                    label: __('Taxonomies filtrables (slug:terme)', 'mon-articles'),
+                    value: (attributes.filters || []).join(', '),
+                    onChange: function (value) {
+                        var tokens = (value || '')
+                            .split(',')
+                            .map(function (item) {
+                                return item.trim();
+                            });
+                        setAttributes({ filters: normalizeFilterTokens(tokens) });
+                    },
+                    help: __('Utilisez le format `taxonomy:slug` séparé par des virgules.', 'mon-articles'),
+                })
+            );
+
+            var sortingPanel = el(
+                PanelBody,
+                {
+                    key: 'sorting-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Tri & ordre', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(SelectControl, {
+                    label: __('Critère de tri', 'mon-articles'),
+                    value: attributes.sort || 'date',
+                    options: [
+                        { label: __('Date', 'mon-articles'), value: 'date' },
+                        { label: __('Titre', 'mon-articles'), value: 'title' },
+                        { label: __('Menu', 'mon-articles'), value: 'menu_order' },
+                        { label: __('Valeur méta', 'mon-articles'), value: 'meta_value' },
+                        { label: __('Popularité (commentaires)', 'mon-articles'), value: 'comment_count' },
+                        { label: __('Articles épinglés', 'mon-articles'), value: 'post__in' },
+                    ],
+                    onChange: function (value) {
+                        setAttributes({ sort: value });
+                    },
+                }),
+                el(SelectControl, {
+                    label: __('Ordre', 'mon-articles'),
+                    value: attributes.order || 'DESC',
+                    options: [
+                        { label: __('Décroissant', 'mon-articles'), value: 'DESC' },
+                        { label: __('Croissant', 'mon-articles'), value: 'ASC' },
+                    ],
+                    onChange: function (value) {
+                        setAttributes({ order: value });
+                    },
+                })
+            );
+
+            var metadataPanel = el(
+                PanelBody,
+                {
+                    key: 'metadata-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Méta-données', 'mon-articles'),
+                    initialOpen: shouldForceInspectorOpen ? true : false,
+                },
+                el(ToggleControl, {
+                    label: __('Afficher l’auteur', 'mon-articles'),
+                    checked: !!attributes.show_author,
+                    onChange: withLockedGuard('show_author', function (value) {
+                        setAttributes({ show_author: !!value });
+                    }),
+                    disabled: isAttributeLocked('show_author'),
+                }),
+                el(ToggleControl, {
+                    label: __('Afficher la date', 'mon-articles'),
+                    checked: !!attributes.show_date,
+                    onChange: withLockedGuard('show_date', function (value) {
+                        setAttributes({ show_date: !!value });
+                    }),
+                    disabled: isAttributeLocked('show_date'),
+                }),
+                el(ToggleControl, {
+                    label: __('Afficher la catégorie', 'mon-articles'),
+                    checked: !!attributes.show_category,
+                    onChange: withLockedGuard('show_category', function (value) {
+                        setAttributes({ show_category: !!value });
+                    }),
+                    disabled: isAttributeLocked('show_category'),
+                })
+            );
+
+            var colorPanelSection = null;
+            if (colorSettingsPanel) {
+                colorPanelSection = el(
+                    'div',
+                    {
+                        key: 'colors-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                        className: 'my-articles-inspector-panel__color' + (shouldForceInspectorOpen ? ' is-search-active' : ''),
+                    },
+                    colorSettingsPanel
+                );
+            }
+
+            var inspectorSections = [];
+            inspectorSections.push({
+                id: 'module',
+                title: __('Module', 'mon-articles'),
+                keywords: [__('module', 'mon-articles'), __('instance', 'mon-articles'), __('modèle', 'mon-articles'), __('preset', 'mon-articles')],
+                component: modulePanel,
+                getSearchTokens: function () {
+                    return moduleSearchTokens;
+                },
+            });
+
+            if (moduleStatusPanel) {
+                inspectorSections.push({
+                    id: 'status',
+                    title: __('État du module', 'mon-articles'),
+                    keywords: [__('statut', 'mon-articles'), __('fraîcheur', 'mon-articles'), __('insights', 'mon-articles')],
+                    component: el(
+                        Fragment,
+                        { key: 'status-panel-' + (shouldForceInspectorOpen ? 'search' : 'default') },
+                        moduleStatusPanel
+                    ),
+                });
+            }
+
+            inspectorSections.push({
+                id: 'accessibility',
+                title: __('Accessibilité', 'mon-articles'),
+                keywords: [__('aria', 'mon-articles'), __('accessibilité', 'mon-articles')],
+                component: accessibilityPanel,
+            });
+
+            inspectorSections.push({
+                id: 'appearance',
+                title: __('Affichage', 'mon-articles'),
+                keywords: [__('affichage', 'mon-articles'), __('diaporama', 'mon-articles'), __('pagination', 'mon-articles')],
+                component: appearancePanel,
+            });
+
+            if (colorPanelSection) {
+                inspectorSections.push({
+                    id: 'colors',
+                    title: __('Couleurs', 'mon-articles'),
+                    keywords: [__('couleurs', 'mon-articles'), __('palette', 'mon-articles'), __('style', 'mon-articles')],
+                    component: colorPanelSection,
+                });
+            }
+
+            inspectorSections.push({
+                id: 'layout',
+                title: __('Disposition', 'mon-articles'),
+                keywords: [__('colonnes', 'mon-articles'), __('disposition', 'mon-articles'), __('grille', 'mon-articles')],
+                component: layoutPanel,
+            });
+
+            inspectorSections.push({
+                id: 'spacing',
+                title: __('Espacements & typographie', 'mon-articles'),
+                keywords: [__('espacements', 'mon-articles'), __('typographie', 'mon-articles'), __('marges', 'mon-articles')],
+                component: spacingPanel,
+            });
+
+            inspectorSections.push({
+                id: 'filters',
+                title: __('Filtres additionnels', 'mon-articles'),
+                keywords: [__('filtres', 'mon-articles'), __('taxonomie', 'mon-articles'), __('recherche', 'mon-articles')],
+                component: filtersPanel,
+            });
+
+            inspectorSections.push({
+                id: 'sorting',
+                title: __('Tri & ordre', 'mon-articles'),
+                keywords: [__('tri', 'mon-articles'), __('ordre', 'mon-articles')],
+                component: sortingPanel,
+            });
+
+            inspectorSections.push({
+                id: 'metadata',
+                title: __('Méta-données', 'mon-articles'),
+                keywords: [__('auteur', 'mon-articles'), __('date', 'mon-articles'), __('catégorie', 'mon-articles')],
+                component: metadataPanel,
+            });
+
+            var visibleSections = inspectorSections.filter(function (section) {
+                if (!section || !section.component) {
+                    return false;
+                }
+
+                if (!normalizedInspectorSearch) {
+                    return true;
+                }
+
+                var tokens = [];
+                if (section.title) {
+                    tokens.push(section.title);
+                }
+                if (Array.isArray(section.keywords)) {
+                    tokens = tokens.concat(section.keywords);
+                }
+                if (typeof section.getSearchTokens === 'function') {
+                    var extra = section.getSearchTokens();
+                    if (Array.isArray(extra)) {
+                        tokens = tokens.concat(extra);
+                    }
+                }
+
+                return tokens.some(function (token) {
+                    return token && typeof token === 'string' && token.toLowerCase().indexOf(normalizedInspectorSearch) !== -1;
+                });
+            });
+
+            var searchField = null;
+            if (SearchControl) {
+                searchField = el(SearchControl, {
+                    label: __('Rechercher un réglage', 'mon-articles'),
+                    value: inspectorSearch,
+                    onChange: function (value) {
+                        setInspectorSearch(value);
+                    },
+                    placeholder: __('Filtrer les sections…', 'mon-articles'),
+                });
+            } else {
+                searchField = el(TextControl, {
+                    label: __('Rechercher un réglage', 'mon-articles'),
+                    value: inspectorSearch,
+                    onChange: function (value) {
+                        setInspectorSearch(value);
+                    },
+                });
+            }
+
+            var inspectorBody = visibleSections.length
+                ? visibleSections.map(function (section) {
+                      return el(
+                          'div',
+                          {
+                              key: section.id,
+                              className: 'my-articles-inspector-panel__section' + (shouldForceInspectorOpen ? ' is-search-mode' : ''),
+                              'data-section': section.id,
+                          },
+                          section.component
+                      );
+                  })
+                : [
+                      el(
+                          Notice,
+                          { key: 'empty-search', status: 'info', isDismissible: false },
+                          __('Aucun réglage ne correspond à votre recherche.', 'mon-articles')
+                      ),
+                  ];
+
+            var inspectorControls = el(
+                InspectorControls,
+                {},
                 el(
-                    PanelBody,
-                    { title: __('Disposition', 'mon-articles'), initialOpen: false },
-                    el(RangeControl, {
-                        label: __('Colonnes (mobile)', 'mon-articles'),
-                        value: ensureNumber(attributes.columns_mobile, 1),
-                        min: 1,
-                        max: 3,
-                        allowReset: true,
-                        onChange: withLockedGuard('columns_mobile', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 1;
-                            }
-                            setAttributes({ columns_mobile: value });
-                        }),
-                        disabled: isListMode || isAttributeLocked('columns_mobile'),
-                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
-                    }),
-                    el(RangeControl, {
-                        label: __('Colonnes (tablette)', 'mon-articles'),
-                        value: ensureNumber(attributes.columns_tablet, 2),
-                        min: 1,
-                        max: 4,
-                        allowReset: true,
-                        onChange: withLockedGuard('columns_tablet', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 2;
-                            }
-                            setAttributes({ columns_tablet: value });
-                        }),
-                        disabled: isListMode || isAttributeLocked('columns_tablet'),
-                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
-                    }),
-                    el(RangeControl, {
-                        label: __('Colonnes (desktop)', 'mon-articles'),
-                        value: ensureNumber(attributes.columns_desktop, 3),
-                        min: 1,
-                        max: 6,
-                        allowReset: true,
-                        onChange: withLockedGuard('columns_desktop', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 3;
-                            }
-                            setAttributes({ columns_desktop: value });
-                        }),
-                        disabled: isListMode || isAttributeLocked('columns_desktop'),
-                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
-                    }),
-                    el(RangeControl, {
-                        label: __('Colonnes (ultra-large)', 'mon-articles'),
-                        value: ensureNumber(attributes.columns_ultrawide, 4),
-                        min: 1,
-                        max: 8,
-                        allowReset: true,
-                        onChange: withLockedGuard('columns_ultrawide', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 4;
-                            }
-                            setAttributes({ columns_ultrawide: value });
-                        }),
-                        disabled: isListMode || isAttributeLocked('columns_ultrawide'),
-                        help: isListMode ? __('Disponible pour Grille et Diaporama.', 'mon-articles') : null,
-                    }),
-                    el(RangeControl, {
-                        label: __('Espacement des vignettes (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.gap_size, 25),
-                        min: 0,
-                        max: 50,
-                        allowReset: true,
-                        onChange: withLockedGuard('gap_size', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 25;
-                            }
-                            setAttributes({ gap_size: value });
-                        }),
-                        disabled: isListMode || isAttributeLocked('gap_size'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Espacement vertical (liste)', 'mon-articles'),
-                        value: ensureNumber(attributes.list_item_gap, 25),
-                        min: 0,
-                        max: 50,
-                        allowReset: true,
-                        onChange: withLockedGuard('list_item_gap', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 25;
-                            }
-                            setAttributes({ list_item_gap: value });
-                        }),
-                        disabled: !isListMode || isAttributeLocked('list_item_gap'),
-                    })
-                ),
-                el(
-                    PanelBody,
-                    { title: __('Espacements & typographie', 'mon-articles'), initialOpen: false },
-                    el(RangeControl, {
-                        label: __('Marge intérieure haute (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.module_padding_top, 0),
-                        min: 0,
-                        max: 200,
-                        allowReset: true,
-                        onChange: withLockedGuard('module_padding_top', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ module_padding_top: value });
-                        }),
-                        disabled: isAttributeLocked('module_padding_top'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Marge intérieure basse (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.module_padding_bottom, 0),
-                        min: 0,
-                        max: 200,
-                        allowReset: true,
-                        onChange: withLockedGuard('module_padding_bottom', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ module_padding_bottom: value });
-                        }),
-                        disabled: isAttributeLocked('module_padding_bottom'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Marge intérieure gauche (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.module_padding_left, 0),
-                        min: 0,
-                        max: 200,
-                        allowReset: true,
-                        onChange: withLockedGuard('module_padding_left', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ module_padding_left: value });
-                        }),
-                        disabled: isAttributeLocked('module_padding_left'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Marge intérieure droite (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.module_padding_right, 0),
-                        min: 0,
-                        max: 200,
-                        allowReset: true,
-                        onChange: withLockedGuard('module_padding_right', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ module_padding_right: value });
-                        }),
-                        disabled: isAttributeLocked('module_padding_right'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Arrondi des bordures (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.border_radius, 12),
-                        min: 0,
-                        max: 50,
-                        allowReset: true,
-                        onChange: withLockedGuard('border_radius', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 12;
-                            }
-                            setAttributes({ border_radius: value });
-                        }),
-                        disabled: isAttributeLocked('border_radius'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Taille du titre (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.title_font_size, 16),
-                        min: 10,
-                        max: 40,
-                        allowReset: true,
-                        onChange: withLockedGuard('title_font_size', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 16;
-                            }
-                            setAttributes({ title_font_size: value });
-                        }),
-                        disabled: isAttributeLocked('title_font_size'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Taille des métadonnées (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.meta_font_size, 14),
-                        min: 8,
-                        max: 24,
-                        allowReset: true,
-                        onChange: withLockedGuard('meta_font_size', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 14;
-                            }
-                            setAttributes({ meta_font_size: value });
-                        }),
-                        disabled: isAttributeLocked('meta_font_size'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Taille de l’extrait (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.excerpt_font_size, 14),
-                        min: 8,
-                        max: 28,
-                        allowReset: true,
-                        onChange: withLockedGuard('excerpt_font_size', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 14;
-                            }
-                            setAttributes({ excerpt_font_size: value });
-                        }),
-                        disabled: !attributes.show_excerpt || isAttributeLocked('excerpt_font_size'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Padding contenu liste – haut (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.list_content_padding_top, 0),
-                        min: 0,
-                        max: 100,
-                        allowReset: true,
-                        onChange: withLockedGuard('list_content_padding_top', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ list_content_padding_top: value });
-                        }),
-                        disabled: !isListMode || isAttributeLocked('list_content_padding_top'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Padding contenu liste – droite (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.list_content_padding_right, 0),
-                        min: 0,
-                        max: 100,
-                        allowReset: true,
-                        onChange: withLockedGuard('list_content_padding_right', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ list_content_padding_right: value });
-                        }),
-                        disabled: !isListMode || isAttributeLocked('list_content_padding_right'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Padding contenu liste – bas (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.list_content_padding_bottom, 0),
-                        min: 0,
-                        max: 100,
-                        allowReset: true,
-                        onChange: withLockedGuard('list_content_padding_bottom', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ list_content_padding_bottom: value });
-                        }),
-                        disabled: !isListMode || isAttributeLocked('list_content_padding_bottom'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Padding contenu liste – gauche (px)', 'mon-articles'),
-                        value: ensureNumber(attributes.list_content_padding_left, 0),
-                        min: 0,
-                        max: 100,
-                        allowReset: true,
-                        onChange: withLockedGuard('list_content_padding_left', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ list_content_padding_left: value });
-                        }),
-                        disabled: !isListMode || isAttributeLocked('list_content_padding_left'),
-                    })
-                ),
-                colorSettingsPanel,
-                el(
-                    PanelBody,
-                    { title: __('Filtres additionnels', 'mon-articles'), initialOpen: false },
-                    el(FormTokenField, {
-                        label: __('Taxonomies forcées', 'mon-articles'),
-                        value: normalizeFilterTokens(attributes.filters || []),
-                        onChange: function (tokens) {
-                            setAttributes({ filters: normalizeFilterTokens(tokens) });
-                        },
-                        placeholder: __('Exemple : category:news', 'mon-articles'),
-                        help: __('Ajoutez des couples « taxonomie:slug » pour restreindre définitivement la requête.', 'mon-articles'),
-                    })
-                ),
-                el(
-                    PanelBody,
-                    { title: __('Tri & ordre', 'mon-articles'), initialOpen: false },
-                    el(SelectControl, {
-                        label: __('Ordre de tri', 'mon-articles'),
-                        value: attributes.sort || attributes.orderby || 'date',
-                        options: [
-                            { label: __('Date de publication', 'mon-articles'), value: 'date' },
-                            { label: __('Titre', 'mon-articles'), value: 'title' },
-                            { label: __('Ordre du menu', 'mon-articles'), value: 'menu_order' },
-                            { label: __('Méta personnalisée', 'mon-articles'), value: 'meta_value' },
-                            { label: __('Nombre de commentaires', 'mon-articles'), value: 'comment_count' },
-                            { label: __('Ordre personnalisé (post__in)', 'mon-articles'), value: 'post__in' },
-                        ],
-                        onChange: function (value) {
-                            setAttributes({ sort: value, orderby: value });
-                        },
-                    }),
-                    el(SelectControl, {
-                        label: __('Sens du tri', 'mon-articles'),
-                        value: attributes.order || 'DESC',
-                        options: [
-                            { label: __('Décroissant (Z → A)', 'mon-articles'), value: 'DESC' },
-                            { label: __('Croissant (A → Z)', 'mon-articles'), value: 'ASC' },
-                        ],
-                        onChange: function (value) {
-                            setAttributes({ order: value });
-                        },
-                    }),
-                    'meta_value' === (attributes.sort || attributes.orderby || 'date')
-                        ? el(TextControl, {
-                              label: __('Clé de méta personnalisée', 'mon-articles'),
-                              value: attributes.meta_key || '',
-                              onChange: function (value) {
-                                  setAttributes({ meta_key: value || '' });
-                              },
-                              help: __('Renseignez la clé utilisée pour le tri par méta.', 'mon-articles'),
-                          })
-                        : null
-                ),
-                el(
-                    PanelBody,
-                    { title: __('Méta-données', 'mon-articles'), initialOpen: false },
-                    el(ToggleControl, {
-                        label: __('Activer la recherche par mots-clés', 'mon-articles'),
-                        checked: !!attributes.enable_keyword_search,
-                        onChange: withLockedGuard('enable_keyword_search', function (value) {
-                            setAttributes({ enable_keyword_search: !!value });
-                        }),
-                        disabled: isAttributeLocked('enable_keyword_search'),
-                    }),
-                    el(ToggleControl, {
-                        label: __('Afficher le filtre de catégories', 'mon-articles'),
-                        checked: !!attributes.show_category_filter,
-                        onChange: withLockedGuard('show_category_filter', function (value) {
-                            setAttributes({ show_category_filter: !!value });
-                        }),
-                        disabled: isAttributeLocked('show_category_filter'),
-                    }),
-                    el(SelectControl, {
-                        label: __('Alignement du filtre', 'mon-articles'),
-                        value: attributes.filter_alignment || 'right',
-                        options: [
-                            { label: __('Gauche', 'mon-articles'), value: 'left' },
-                            { label: __('Centre', 'mon-articles'), value: 'center' },
-                            { label: __('Droite', 'mon-articles'), value: 'right' },
-                        ],
-                        onChange: withLockedGuard('filter_alignment', function (value) {
-                            setAttributes({ filter_alignment: value });
-                        }),
-                        disabled: !attributes.show_category_filter || isAttributeLocked('filter_alignment'),
-                    }),
-                    el(TextControl, {
-                        label: __('Libellé ARIA du filtre de catégories', 'mon-articles'),
-                        value: attributes.category_filter_aria_label || '',
-                        onChange: function (value) {
-                            setAttributes({ category_filter_aria_label: value || '' });
-                        },
-                        help: __('Laissez vide pour générer automatiquement une étiquette basée sur le titre du module.', 'mon-articles'),
-                        disabled: !attributes.show_category_filter,
-                    }),
-                    el(ToggleControl, {
-                        label: __('Afficher la catégorie', 'mon-articles'),
-                        checked: !!attributes.show_category,
-                        onChange: withLockedGuard('show_category', function (value) {
-                            setAttributes({ show_category: !!value });
-                        }),
-                        disabled: isAttributeLocked('show_category'),
-                    }),
-                    el(ToggleControl, {
-                        label: __('Afficher l’auteur', 'mon-articles'),
-                        checked: !!attributes.show_author,
-                        onChange: withLockedGuard('show_author', function (value) {
-                            setAttributes({ show_author: !!value });
-                        }),
-                        disabled: isAttributeLocked('show_author'),
-                    }),
-                    el(ToggleControl, {
-                        label: __('Afficher la date', 'mon-articles'),
-                        checked: !!attributes.show_date,
-                        onChange: withLockedGuard('show_date', function (value) {
-                            setAttributes({ show_date: !!value });
-                        }),
-                        disabled: isAttributeLocked('show_date'),
-                    }),
-                    el(ToggleControl, {
-                        label: __('Afficher l’extrait', 'mon-articles'),
-                        checked: !!attributes.show_excerpt,
-                        onChange: withLockedGuard('show_excerpt', function (value) {
-                            setAttributes({ show_excerpt: !!value });
-                        }),
-                        disabled: isAttributeLocked('show_excerpt'),
-                    }),
-                    el(RangeControl, {
-                        label: __('Longueur de l’extrait', 'mon-articles'),
-                        value: ensureNumber(attributes.excerpt_length, 25),
-                        min: 0,
-                        max: 100,
-                        onChange: withLockedGuard('excerpt_length', function (value) {
-                            if (typeof value !== 'number') {
-                                value = 0;
-                            }
-                            setAttributes({ excerpt_length: value });
-                        }),
-                        disabled: !attributes.show_excerpt || isAttributeLocked('excerpt_length'),
-                    })
+                    Panel,
+                    { className: 'my-articles-inspector-panel' },
+                    el('div', { className: 'my-articles-inspector-panel__search' }, searchField),
+                    inspectorBody
                 )
             );
 
-            var previewContent;
+            var previewContent = null;
+            var placeholderChildren = [];
 
             if (!attributes.instanceId) {
-                var placeholderChildren = [];
+                placeholderChildren.push(
+                    el('p', { key: 'intro' }, __('Sélectionnez un module dans la barre latérale.', 'mon-articles'))
+                );
 
-                if (listData && listData.isResolving && instances.length === 0) {
-                    placeholderChildren.push(el(Spinner, { key: 'spinner' }));
-                } else if (instances.length === 0) {
+                if (!attributes.onboarding_complete) {
                     placeholderChildren.push(
-                        el('p', { key: 'no-instances' }, __('Aucune instance « mon_affichage » n’a été trouvée.', 'mon-articles'))
+                        el(
+                            'p',
+                            { key: 'onboarding-hint' },
+                            __('Besoin d’aide ? Lancez la visite guidée depuis la section « Module ».', 'mon-articles')
+                        )
                     );
-                } else {
+                }
+            } else if (!instances.length && listData && listData.isResolving) {
+                placeholderChildren.push(
+                    el('p', { key: 'loading' }, __('Chargement des modules…', 'mon-articles'))
+                );
+            }
+
+            if (!attributes.instanceId || !selectedData || !selectedData.selectedInstance) {
+                if (placeholderChildren.length === 0) {
                     placeholderChildren.push(
                         el('p', { key: 'instructions' }, __('Sélectionnez un module dans la barre latérale.', 'mon-articles'))
                     );
@@ -1739,7 +2356,7 @@
                     { status: 'warning', isDismissible: false },
                     __('Le module sélectionné est introuvable.', 'mon-articles')
                 );
-            } else if (PreviewPane) {
+            } else if (PreviewCanvas) {
                 var title = selectedData.selectedInstance.title && selectedData.selectedInstance.title.rendered
                     ? selectedData.selectedInstance.title.rendered
                     : __('(Sans titre)', 'mon-articles');
@@ -1747,12 +2364,17 @@
                     'div',
                     { className: 'my-articles-block-preview' },
                     el('p', { className: 'my-articles-block-preview__title' }, title),
-                    el(PreviewPane, {
-                        key: 'preview-pane',
+                    el(PreviewCanvas, {
+                        key: 'preview-canvas',
                         className: 'my-articles-block-preview__pane',
                         instanceId: attributes.instanceId,
                         attributes: attributes,
                         displayMode: displayMode,
+                        viewport: effectivePreviewViewport,
+                        onViewportChange: function (nextViewport) {
+                            setPreviewViewport(nextViewport);
+                        },
+                        pilotMode: isPilotMode,
                     })
                 );
             } else {

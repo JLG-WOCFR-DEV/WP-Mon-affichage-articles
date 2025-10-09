@@ -4,13 +4,15 @@ describe('filter endpoint interactions', () => {
 
     const setupDom = () => {
         document.body.innerHTML = `
-            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date" data-sort-param="my_articles_sort_42">
-                <ul class="my-articles-filter-nav">
-                    <li class="active"><button data-category="all" aria-pressed="true">Tous</button></li>
-                    <li><button data-category="news">Actualités</button></li>
+            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date" data-sort-param="my_articles_sort_42" data-results-target="my-articles-results-42" aria-busy="false">
+                <ul class="my-articles-filter-nav" role="tablist">
+                    <li class="active" role="presentation"><button role="tab" id="my-articles-tab-42-all" data-category="all" aria-controls="my-articles-results-42" aria-selected="true" tabindex="0">Tous</button></li>
+                    <li role="presentation"><button role="tab" id="my-articles-tab-42-news" data-category="news" aria-controls="my-articles-results-42" aria-selected="false" tabindex="-1">Actualités</button></li>
                 </ul>
-                <div class="my-articles-grid-content">
-                    <article class="my-article-item">Initial</article>
+                <div id="my-articles-results-42" class="my-articles-results" data-my-articles-role="results" aria-live="polite" aria-busy="false">
+                    <div class="my-articles-grid-content">
+                        <article class="my-article-item">Initial</article>
+                    </div>
                 </div>
             </div>
         `;
