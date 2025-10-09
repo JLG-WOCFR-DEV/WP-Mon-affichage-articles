@@ -19,6 +19,11 @@
             "type": "integer",
             "default": 0
         },
+        "onboarding_complete": {
+            "type": "boolean",
+            "default": false,
+            "description": "Indique si l’onboarding guidé a été finalisé pour ce bloc."
+        },
         "display_mode": {
             "type": "string",
             "default": "grid"

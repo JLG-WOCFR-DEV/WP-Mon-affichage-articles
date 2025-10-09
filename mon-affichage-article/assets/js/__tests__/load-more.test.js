@@ -5,9 +5,11 @@ describe('load-more endpoint interactions', () => {
 
     const setupDom = () => {
         document.body.innerHTML = `
-            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date">
-                <div class="my-articles-grid-content">
-                    <article class="my-article-item">Initial</article>
+            <div class="my-articles-wrapper" data-instance-id="42" data-sort="date" data-results-target="my-articles-results-42" aria-busy="false">
+                <div id="my-articles-results-42" class="my-articles-results" data-my-articles-role="results" aria-live="polite" aria-busy="false">
+                    <div class="my-articles-grid-content">
+                        <article class="my-article-item">Initial</article>
+                    </div>
                 </div>
                 <div class="my-articles-load-more-container">
                     <button
