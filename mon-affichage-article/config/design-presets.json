@@ -3,7 +3,11 @@
         "label": "Personnalisé",
         "locked": false,
         "description": "Conservez vos propres réglages de couleurs et d’espacements.",
-        "values": {}
+        "values": {},
+        "tags": [
+            "Libre",
+            "Personnalisé"
+        ]
     },
     "lcv-classique": {
         "label": "Classique LCV",
@@ -34,7 +38,12 @@
             "list_content_padding_right": 16,
             "list_content_padding_bottom": 16,
             "list_content_padding_left": 16
-        }
+        },
+        "tags": [
+            "Grille",
+            "Clair",
+            "Institutionnel"
+        ]
     },
     "dark-spotlight": {
         "label": "Projecteur sombre",
@@ -65,7 +74,12 @@
             "list_content_padding_right": 20,
             "list_content_padding_bottom": 20,
             "list_content_padding_left": 20
-        }
+        },
+        "tags": [
+            "Grille",
+            "Sombre",
+            "Immersif"
+        ]
     },
     "editorial-focus": {
         "label": "Focus éditorial",
@@ -99,7 +113,12 @@
             "list_content_padding_left": 12,
             "show_excerpt": 1,
             "excerpt_length": 22
-        }
+        },
+        "tags": [
+            "Liste",
+            "Éditorial",
+            "Guidé"
+        ]
     },
     "headless-air": {
         "label": "Headless Air",
@@ -134,7 +153,12 @@
             "pinned_badge_bg_color": "#3b82f6",
             "pinned_badge_text_color": "#ffffff",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Clair",
+            "Transitions douces"
+        ]
     },
     "shadcn-contrast": {
         "label": "Shadcn Contrast",
@@ -169,7 +193,12 @@
             "pinned_badge_bg_color": "#bef264",
             "pinned_badge_text_color": "#111827",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Sombre",
+            "Contraste élevé"
+        ]
     },
     "radix-modular": {
         "label": "Radix Modular",
@@ -204,7 +233,12 @@
             "pinned_badge_bg_color": "#6366f1",
             "pinned_badge_text_color": "#ffffff",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Clair",
+            "Modulaire"
+        ]
     },
     "bootstrap-classic": {
         "label": "Bootstrap Classic",
@@ -239,7 +273,12 @@
             "pinned_badge_bg_color": "#ffc107",
             "pinned_badge_text_color": "#0d1b2a",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Clair",
+            "Corporate"
+        ]
     },
     "semantic-soft": {
         "label": "Semantic Soft",
@@ -274,7 +313,12 @@
             "pinned_badge_bg_color": "#fde68a",
             "pinned_badge_text_color": "#4338ca",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Pastel",
+            "UI moderne"
+        ]
     },
     "anime-motion": {
         "label": "Anime Motion",
@@ -309,6 +353,11 @@
             "pinned_badge_bg_color": "#38bdf8",
             "pinned_badge_text_color": "#0f172a",
             "show_excerpt": 1
-        }
+        },
+        "tags": [
+            "Grille",
+            "Sombre",
+            "Néon"
+        ]
     }
 }

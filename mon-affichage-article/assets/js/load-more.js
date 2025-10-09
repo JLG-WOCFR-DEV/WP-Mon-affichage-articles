@@ -184,6 +184,73 @@
         }
     }
 
+    function getResultsContainer(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        var targetId = wrapper.attr('data-results-target');
+        if (targetId && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+            try {
+                var directNode = document.getElementById(targetId);
+                if (directNode) {
+                    return $(directNode);
+                }
+            } catch (error) {
+                // Ignore lookup errors and fallback to selector matching.
+            }
+        }
+
+        var results = wrapper.find('[data-my-articles-role="results"]').first();
+        if (results.length) {
+            return results;
+        }
+
+        return $();
+    }
+
+    function setBusyState(wrapper, isBusy) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var busyValue = isBusy ? 'true' : 'false';
+        wrapper.attr('aria-busy', busyValue);
+
+        var results = getResultsContainer(wrapper);
+        if (results.length) {
+            results.attr('aria-busy', busyValue);
+
+            if (isBusy) {
+                results.attr('data-loading', 'true');
+            } else {
+                results.removeAttr('data-loading');
+            }
+        }
+    }
+
+    function getTimeMarker() {
+        if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+            return performance.now();
+        }
+
+        return Date.now();
+    }
+
+    function createDurationTracker() {
+        var start = getTimeMarker();
+        return function () {
+            var end = getTimeMarker();
+            var duration = end - start;
+
+            if (!isFinite(duration) || duration < 0) {
+                duration = 0;
+            }
+
+            return duration;
+        };
+    }
+
     function resolveSearchLabel(key, fallback) {
         if (typeof window !== 'undefined' && window.myArticlesFilter && Object.prototype.hasOwnProperty.call(window.myArticlesFilter, key)) {
             var value = window.myArticlesFilter[key];
@@ -1099,7 +1166,18 @@
         }
 
         var wrapper = button.closest('.my-articles-wrapper');
-        var contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
+        var contentArea = getResultsContainer(wrapper);
+
+        if (contentArea.length) {
+            var inner = contentArea.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper').first();
+            if (inner.length) {
+                contentArea = inner;
+            }
+        }
+
+        if (!contentArea.length) {
+            contentArea = wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
+        }
 
         var originalButtonText = button.data('original-text');
         if (!originalButtonText) {
@@ -1188,7 +1266,7 @@
             }
         }
 
-        function handleErrorResponse(jqXHR, response) {
+        function handleErrorResponse(jqXHR, response, durationMs) {
             finalizeRequest();
 
             var parsedErrorMessage = extractAjaxErrorMessage(jqXHR, response);
@@ -1203,12 +1281,15 @@
                 disableAutoLoad(button, 'error', true);
             }
 
+            var safeDuration = typeof durationMs === 'number' && isFinite(durationMs) ? Math.max(durationMs, 0) : null;
+
             instrumentationDetail.errorMessage = parsedErrorMessage || fallbackMessage;
             instrumentationDetail.status = extractAjaxErrorStatus(jqXHR, response);
             instrumentationDetail.errorCode = extractAjaxErrorCode(jqXHR, response) || '';
             instrumentationDetail.hadNonceRefresh = hasRetried;
             instrumentationDetail.response = response && response.data ? response.data : response;
             instrumentationDetail.jqXHR = jqXHR ? { status: jqXHR.status, statusText: jqXHR.statusText } : null;
+            instrumentationDetail.durationMs = safeDuration;
             emitLoadMoreInteraction('error', instrumentationDetail);
 
             debugLog('load-more', 'request:error', instrumentationDetail);
@@ -1218,11 +1299,11 @@
             }
         }
 
-        function handleSuccessResponse(response) {
+        function handleSuccessResponse(response, durationMs) {
             finalizeRequest();
 
             if (!response || !response.data) {
-                handleErrorResponse(null, response);
+                handleErrorResponse(null, response, durationMs);
                 return;
             }
 
@@ -1307,7 +1388,8 @@
             }
             instrumentationDetail.hadNonceRefresh = hasRetried;
             instrumentationDetail.errorMessage = '';
-            instrumentationDetail.status = 0;
+            instrumentationDetail.status = 200;
+            instrumentationDetail.durationMs = typeof durationMs === 'number' && isFinite(durationMs) ? Math.max(durationMs, 0) : null;
             emitLoadMoreInteraction('success', instrumentationDetail);
 
             debugLog('load-more', 'request:success', instrumentationDetail);
@@ -1404,6 +1486,7 @@
 
         function sendAjaxRequest() {
             var nonceHeader = loadMoreSettings && loadMoreSettings.restNonce ? loadMoreSettings.restNonce : '';
+            var trackDuration = createDurationTracker();
 
             $.ajax({
                 url: requestUrl,
@@ -1428,7 +1511,7 @@
                         if (previousArticleCount > 0) {
                             wrapper.addClass('is-loading-more');
                         }
-                        wrapper.attr('aria-busy', 'true');
+                        setBusyState(wrapper, true);
                         wrapper.addClass('is-loading');
                     }
                     clearFeedback(wrapper);
@@ -1436,8 +1519,9 @@
                     debugLog('load-more', 'request:send', instrumentationDetail);
                 },
                 success: function (response) {
+                    var durationMs = trackDuration();
                     if (response && response.success) {
-                        handleSuccessResponse(response);
+                        handleSuccessResponse(response, durationMs);
                         return;
                     }
 
@@ -1449,15 +1533,16 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                handleErrorResponse(null, response);
+                                handleErrorResponse(null, response, durationMs);
                             });
 
                         return;
                     }
 
-                    handleErrorResponse(null, response);
+                    handleErrorResponse(null, response, durationMs);
                 },
                 error: function (jqXHR) {
+                    var durationMs = trackDuration();
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         instrumentationDetail.hadNonceRefresh = true;
@@ -1466,20 +1551,25 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                handleErrorResponse(jqXHR);
+                                handleErrorResponse(jqXHR, null, durationMs);
                             });
 
                         return;
                     }
 
-                    handleErrorResponse(jqXHR);
+                    handleErrorResponse(jqXHR, null, durationMs);
                 },
                 complete: function () {
+                    var durationMs = trackDuration();
                     if (wrapper && wrapper.length) {
-                        wrapper.attr('aria-busy', 'false');
+                        setBusyState(wrapper, false);
                         wrapper.removeClass('is-loading');
                         wrapper.removeClass('is-loading-more');
                     }
+
+                    instrumentationDetail.lastDurationMs = typeof durationMs === 'number' && isFinite(durationMs)
+                        ? Math.max(durationMs, 0)
+                        : null;
                 }
             });
         }

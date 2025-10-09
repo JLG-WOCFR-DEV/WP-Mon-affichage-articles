@@ -88,14 +88,14 @@ final class RenderArticlesContainerTest extends TestCase
         $method->setAccessible(true);
 
         ob_start();
-        $method->invoke($shortcode, null, null, array(), 0);
+        $method->invoke($shortcode, null, null, array(), 0, 'my-articles-results-1');
         $html = ob_get_clean();
 
         $this->assertStringContainsString('role="region"', $html);
         $this->assertStringContainsString('aria-roledescription="carousel"', $html);
         $this->assertStringContainsString('aria-label="Carrousel des articles"', $html);
         $this->assertStringContainsString('class="swiper-pagination" aria-label="Pagination du carrousel"', $html);
-        $this->assertStringContainsString('class="swiper-button-next" aria-label="Aller à la diapositive suivante"', $html);
-        $this->assertStringContainsString('class="swiper-button-prev" aria-label="Revenir à la diapositive précédente"', $html);
+        $this->assertStringContainsString('<button type="button" class="swiper-button-next" aria-label="Aller à la diapositive suivante" aria-controls="my-articles-results-1"></button>', $html);
+        $this->assertStringContainsString('<button type="button" class="swiper-button-prev" aria-label="Revenir à la diapositive précédente" aria-controls="my-articles-results-1"></button>', $html);
     }
 }

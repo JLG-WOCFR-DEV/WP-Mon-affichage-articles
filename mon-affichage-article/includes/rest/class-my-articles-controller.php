@@ -573,6 +573,44 @@ class My_Articles_Controller extends WP_REST_Controller {
 
         $normalized_options = My_Articles_Shortcode::normalize_instance_options( array_merge( $options_meta, $overrides ) );
 
+        $last_summary = My_Articles_Shortcode::get_last_render_summary();
+        $summary_matches_instance = is_array( $last_summary )
+            && isset( $last_summary['instance_id'] )
+            && (int) $last_summary['instance_id'] === (int) $instance_id;
+
+        $summary_metrics = array();
+        $summary_options = array();
+
+        if ( $summary_matches_instance ) {
+            if ( isset( $last_summary['metrics'] ) && is_array( $last_summary['metrics'] ) ) {
+                foreach ( $last_summary['metrics'] as $metric_key => $metric_value ) {
+                    if ( is_scalar( $metric_value ) ) {
+                        if ( is_bool( $metric_value ) ) {
+                            $summary_metrics[ $metric_key ] = (bool) $metric_value;
+                        } elseif ( is_numeric( $metric_value ) ) {
+                            $summary_metrics[ $metric_key ] = (int) $metric_value;
+                        } else {
+                            $summary_metrics[ $metric_key ] = sanitize_text_field( (string) $metric_value );
+                        }
+                    }
+                }
+            }
+
+            if ( isset( $last_summary['options'] ) && is_array( $last_summary['options'] ) ) {
+                foreach ( $last_summary['options'] as $option_key => $option_value ) {
+                    if ( is_bool( $option_value ) ) {
+                        $summary_options[ $option_key ] = (bool) $option_value;
+                    } elseif ( is_scalar( $option_value ) ) {
+                        if ( is_numeric( $option_value ) ) {
+                            $summary_options[ $option_key ] = (int) $option_value;
+                        } else {
+                            $summary_options[ $option_key ] = sanitize_text_field( (string) $option_value );
+                        }
+                    }
+                }
+            }
+        }
+
         $instance_title = get_the_title( $instance_id );
         $metadata       = array(
             'instance_id'            => $instance_id,
@@ -584,6 +622,14 @@ class My_Articles_Controller extends WP_REST_Controller {
             'thumbnail_aspect_ratio' => isset( $normalized_options['thumbnail_aspect_ratio'] ) ? sanitize_text_field( (string) $normalized_options['thumbnail_aspect_ratio'] ) : '',
             'has_content'            => ( '' !== trim( wp_strip_all_tags( (string) $html ) ) ),
         );
+
+        if ( ! empty( $summary_metrics ) ) {
+            $metadata['metrics'] = $summary_metrics;
+        }
+
+        if ( ! empty( $summary_options ) ) {
+            $metadata['options_snapshot'] = $summary_options;
+        }
 
         return rest_ensure_response(
             array(
