@@ -677,6 +677,10 @@
 .my-articles-slideshow .swiper-container .swiper-button-next {
     right: 20px;
     left: auto;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
 }
 
 .my-articles-slideshow .swiper-container .swiper-button-prev {
@@ -757,6 +761,10 @@
 .my-articles-wrapper .swiper-button-next,
 .my-articles-wrapper .swiper-button-prev {
     color: var(--my-articles-title-color);
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
 }
 
 .my-articles-wrapper .swiper-pagination-bullet {

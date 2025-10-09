@@ -14,6 +14,7 @@ class My_Articles_Shortcode {
     private static $matching_pinned_ids_cache = array();
     private static $design_presets = null;
     private static $thumbnail_aspect_ratio_choices = null;
+    private static $last_render_summary = array();
 
     public static function get_thumbnail_aspect_ratio_choices() {
         if ( null === self::$thumbnail_aspect_ratio_choices ) {
@@ -50,6 +51,10 @@ class My_Articles_Shortcode {
         }
 
         return self::$design_presets;
+    }
+
+    public static function get_last_render_summary() {
+        return self::$last_render_summary;
     }
 
     private static function ensure_lazyload_fallback_script() {
@@ -233,11 +238,20 @@ JS;
                 'locked'      => false,
                 'values'      => array(),
                 'description' => __( 'Conservez vos propres réglages de couleurs et d’espacements.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Libre', 'mon-articles' ),
+                    __( 'Personnalisé', 'mon-articles' ),
+                ),
             ),
             'lcv-classique' => array(
                 'label'       => __( 'Classique LCV', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Fond clair légèrement bleuté, cartes arrondies et typographie lisible.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Clair', 'mon-articles' ),
+                    __( 'Institutionnel', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#f3f4f6',
                     'vignette_bg_color'           => '#ffffff',
@@ -269,6 +283,11 @@ JS;
                 'label'       => __( 'Projecteur sombre', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Contraste élevé, idéal pour des pages sombres ou des encarts immersifs.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Sombre', 'mon-articles' ),
+                    __( 'Immersif', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#111827',
                     'vignette_bg_color'           => '#1f2937',
@@ -300,6 +319,11 @@ JS;
                 'label'       => __( 'Focus éditorial', 'mon-articles' ),
                 'locked'      => true,
                 'description' => __( 'Présentation magazine sobre, optimisée pour les listes avec extraits courts.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Liste', 'mon-articles' ),
+                    __( 'Éditorial', 'mon-articles' ),
+                    __( 'Guidé', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'display_mode'                => 'list',
                     'module_bg_color'             => '#ffffff',
@@ -334,6 +358,11 @@ JS;
                 'label'       => __( 'Headless Air', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Palette neutre et accent bleu inspirés de Headless UI, avec transitions douces.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Clair', 'mon-articles' ),
+                    __( 'Transitions douces', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#f8fafc',
                     'vignette_bg_color'           => '#ffffff',
@@ -369,6 +398,11 @@ JS;
                 'label'       => __( 'Shadcn Contrast', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Contraste marqué, fond sombre et accents chartreuse inspirés de shadcn/ui.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Sombre', 'mon-articles' ),
+                    __( 'Contraste élevé', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#05070f',
                     'vignette_bg_color'           => '#0f172a',
@@ -404,6 +438,11 @@ JS;
                 'label'       => __( 'Radix Modular', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Tokens modulaires et hiérarchie claire inspirés de Radix UI.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Clair', 'mon-articles' ),
+                    __( 'Modulaire', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#f9fafb',
                     'vignette_bg_color'           => '#ffffff',
@@ -439,6 +478,11 @@ JS;
                 'label'       => __( 'Bootstrap Classic', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Palette Bootstrap avec bleu primaire et badges contrastés.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Clair', 'mon-articles' ),
+                    __( 'Corporate', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#ffffff',
                     'vignette_bg_color'           => '#f8f9fa',
@@ -474,6 +518,11 @@ JS;
                 'label'       => __( 'Semantic Soft', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Pastels doux et labels arrondis dans l’esprit de Semantic UI.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Pastel', 'mon-articles' ),
+                    __( 'UI moderne', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#fcfcfd',
                     'vignette_bg_color'           => '#ffffff',
@@ -509,6 +558,11 @@ JS;
                 'label'       => __( 'Anime Motion', 'mon-articles' ),
                 'locked'      => false,
                 'description' => __( 'Ambiance néon et contrastes dynamiques inspirés d’Anime.js.', 'mon-articles' ),
+                'tags'        => array(
+                    __( 'Grille', 'mon-articles' ),
+                    __( 'Sombre', 'mon-articles' ),
+                    __( 'Néon', 'mon-articles' ),
+                ),
                 'values'      => array(
                     'module_bg_color'             => '#111827',
                     'vignette_bg_color'           => '#0f172a',
@@ -1693,6 +1747,7 @@ JS;
     }
 
     public function render_shortcode( $atts ) {
+        self::$last_render_summary = array();
         $atts = shortcode_atts(
             array(
                 'id'        => 0,
@@ -1998,6 +2053,37 @@ JS;
             wp_enqueue_script( 'my-articles-responsive-layout' );
         }
 
+        $summary_metrics = array(
+            'total_results'          => (int) $initial_total_results,
+            'total_pinned_available' => (int) $total_matching_pinned,
+            'rendered_pinned'        => count( (array) $state['rendered_pinned_ids'] ),
+            'total_regular'          => (int) $total_regular_posts,
+            'per_page'               => (int) $effective_posts_per_page,
+            'render_limit'           => (int) $render_limit,
+            'is_unlimited'           => (bool) $is_unlimited,
+            'should_limit_display'   => (bool) $should_limit_display,
+            'unlimited_batch_size'   => (int) $state['unlimited_batch_size'],
+            'regular_posts_needed'   => (int) $regular_posts_needed,
+            'filters_available'      => is_array( $available_categories ) ? count( $available_categories ) : 0,
+            'active_filters'         => isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
+                ? count( $options['active_tax_filters'] )
+                : 0,
+        );
+
+        $summary_options = array(
+            'display_mode'          => sanitize_key( $options['display_mode'] ),
+            'pagination_mode'       => sanitize_key( $options['pagination_mode'] ),
+            'load_more_auto'        => ! empty( $options['load_more_auto'] ),
+            'show_category_filter'  => ! empty( $options['show_category_filter'] ),
+            'enable_keyword_search' => ! empty( $options['enable_keyword_search'] ),
+        );
+
+        self::$last_render_summary = array(
+            'instance_id' => $id,
+            'metrics'     => $summary_metrics,
+            'options'     => $summary_options,
+        );
+
         ob_start();
         $this->render_inline_styles( $options, $id );
 
@@ -2014,6 +2100,7 @@ JS;
             $active_filters_json = '[]';
         }
 
+        $results_region_id = 'my-articles-results-' . $id;
         $wrapper_attributes = array(
             'id'                   => 'my-articles-wrapper-' . $id,
             'class'                => $wrapper_class,
@@ -2034,6 +2121,7 @@ JS;
             'aria-live'            => 'polite',
             'aria-label'           => $resolved_aria_label,
             'aria-busy'            => 'false',
+            'data-results-target'  => $results_region_id,
         );
 
         $wrapper_attribute_strings = array();
@@ -2097,6 +2185,8 @@ JS;
             echo '</form>';
         }
 
+        $active_tab_id = '';
+
         if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
             $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
             $nav_attributes = array(
@@ -2113,14 +2203,31 @@ JS;
                 $nav_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
             }
 
-            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '><ul>';
+            $tablist_id = 'my-articles-tabs-' . $id;
+            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '><ul role="tablist" id="' . esc_attr( $tablist_id ) . '">';
             $default_cat   = $options['term'] ?? '';
             $is_all_active = '' === $default_cat || 'all' === $default_cat;
-            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '"><button type="button" data-category="all" aria-pressed="' . ( $is_all_active ? 'true' : 'false' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button></li>';
+
+            $all_tab_id = 'my-articles-tab-' . $id . '-all';
+            if ( $is_all_active ) {
+                $active_tab_id = $all_tab_id;
+            }
+
+            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '" role="presentation">';
+            echo '<button type="button" role="tab" id="' . esc_attr( $all_tab_id ) . '" data-category="all" aria-controls="' . esc_attr( $results_region_id ) . '" aria-selected="' . ( $is_all_active ? 'true' : 'false' ) . '" tabindex="' . ( $is_all_active ? '0' : '-1' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button>';
+            echo '</li>';
 
             foreach ( $available_categories as $category ) {
                 $is_active = ( $default_cat === $category->slug );
-                echo '<li class="' . ( $is_active ? 'active' : '' ) . '"><button type="button" data-category="' . esc_attr( $category->slug ) . '" aria-pressed="' . ( $is_active ? 'true' : 'false' ) . '">' . esc_html( $category->name ) . '</button></li>';
+                $tab_id    = 'my-articles-tab-' . $id . '-' . $category->slug;
+
+                if ( $is_active ) {
+                    $active_tab_id = $tab_id;
+                }
+
+                echo '<li class="' . ( $is_active ? 'active' : '' ) . '" role="presentation">';
+                echo '<button type="button" role="tab" id="' . esc_attr( $tab_id ) . '" data-category="' . esc_attr( $category->slug ) . '" aria-controls="' . esc_attr( $results_region_id ) . '" aria-selected="' . ( $is_active ? 'true' : 'false' ) . '" tabindex="' . ( $is_active ? '0' : '-1' ) . '">' . esc_html( $category->name ) . '</button>';
+                echo '</li>';
             }
 
             echo '</ul></nav>';
@@ -2138,19 +2245,38 @@ JS;
             $posts_per_page_for_slideshow = 0;
         }
 
+        $results_attributes = array(
+            'id'                  => $results_region_id,
+            'class'               => 'my-articles-results',
+            'role'                => 'tabpanel',
+            'data-my-articles-role' => 'results',
+            'aria-live'           => 'polite',
+            'aria-busy'           => 'false',
+        );
+
+        if ( ! empty( $active_tab_id ) ) {
+            $results_attributes['aria-labelledby'] = $active_tab_id;
+        }
+
+        echo '<div ' . implode( ' ', array_map( function ( $attribute, $value ) {
+            return sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+        }, array_keys( $results_attributes ), $results_attributes ) ) . '>';
+
         if ($options['display_mode'] === 'slideshow') {
-            $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page_for_slideshow);
+            $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id);
         } else if ($options['display_mode'] === 'list') {
-            $displayed_pinned_ids = $this->render_list($pinned_query, $articles_query, $options, $posts_per_page_for_render);
+            $displayed_pinned_ids = $this->render_list($pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id);
             if ( ! is_array( $displayed_pinned_ids ) ) {
                 $displayed_pinned_ids = array();
             }
         } else {
-            $displayed_pinned_ids = $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page_for_render);
+            $displayed_pinned_ids = $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id);
             if ( ! is_array( $displayed_pinned_ids ) ) {
                 $displayed_pinned_ids = array();
             }
         }
+
+        echo '</div>';
 
         if ( $paged === 1 ) {
             $first_page_projected_pinned = count( $displayed_pinned_ids );
@@ -2248,14 +2374,27 @@ JS;
         return ob_get_clean();
     }
     
-    private function render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, $container_class ) {
+    private function render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, $container_class, $results_region_id = '' ) {
         $has_rendered_posts   = false;
         $render_limit         = max( 0, (int) $posts_per_page );
         $should_limit         = $render_limit > 0;
         $rendered_count       = 0;
         $displayed_pinned_ids = array();
 
-        echo '<div class="' . esc_attr( $container_class ) . '">';
+        $container_attributes = array(
+            'class' => $container_class,
+        );
+
+        if ( $results_region_id ) {
+            $container_attributes['data-controls'] = $results_region_id;
+        }
+
+        $container_attribute_strings = array();
+        foreach ( $container_attributes as $attribute => $value ) {
+            $container_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+        }
+
+        echo '<div ' . implode( ' ', $container_attribute_strings ) . '>';
 
         echo $this->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
 
@@ -2329,15 +2468,15 @@ JS;
         return ob_get_clean();
     }
 
-    private function render_list($pinned_query, $regular_query, $options, $posts_per_page) {
-        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-list-content' );
+    private function render_list($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-list-content', $results_region_id );
     }
 
-    private function render_grid($pinned_query, $regular_query, $options, $posts_per_page) {
-        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content' );
+    private function render_grid($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content', $results_region_id );
     }
 
-    private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page) {
+    private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
         $is_unlimited       = (int) $posts_per_page <= 0;
         $total_posts_needed = $is_unlimited ? PHP_INT_MAX : (int) $posts_per_page;
 
@@ -2383,9 +2522,14 @@ JS;
             echo '<div class="swiper-pagination" aria-label="' . $pagination_label . '"></div>';
         }
 
+        $controls_attribute = '';
+        if ( $results_region_id ) {
+            $controls_attribute = ' aria-controls="' . esc_attr( $results_region_id ) . '"';
+        }
+
         if ( $show_navigation ) {
-            echo '<div class="swiper-button-next" aria-label="' . $next_slide_label . '"></div>';
-            echo '<div class="swiper-button-prev" aria-label="' . $previous_slide_label . '"></div>';
+            echo '<button type="button" class="swiper-button-next" aria-label="' . $next_slide_label . '"' . $controls_attribute . '></button>';
+            echo '<button type="button" class="swiper-button-prev" aria-label="' . $previous_slide_label . '"' . $controls_attribute . '></button>';
         }
         echo '</div>';
         echo '</div>';

@@ -116,6 +116,16 @@ class My_Articles_Enqueue {
                         $description = $preset['description'];
                     }
 
+                    $tags = array();
+
+                    if ( is_array( $preset ) && isset( $preset['tags'] ) && is_array( $preset['tags'] ) ) {
+                        foreach ( $preset['tags'] as $tag ) {
+                            if ( is_scalar( $tag ) ) {
+                                $tags[] = (string) $tag;
+                            }
+                        }
+                    }
+
                     $values = array();
 
                     if ( is_array( $preset ) && isset( $preset['values'] ) && is_array( $preset['values'] ) ) {
@@ -130,6 +140,7 @@ class My_Articles_Enqueue {
                         'label'       => $label,
                         'description' => $description,
                         'locked'      => ! empty( $preset['locked'] ),
+                        'tags'        => $tags,
                         'values'      => $values,
                     );
                 }
