@@ -1,24 +1,36 @@
-# Code Review
+# Revue ergonomique et technique de « Tuiles – LCV »
 
-## Points principaux
+## Ergonomie & présentation des options
+- La page d'administration juxtapose plus de vingt champs hétérogènes (catégorie par défaut, colonnes, marges, couleurs, instrumentation, etc.) sur un seul écran sans hiérarchie ni dépendances conditionnelles, ce qui surcharge l'utilisateur par rapport aux configurateurs professionnels qui segmentent par cas d'usage ou proposent des parcours guidés.【F:mon-affichage-article/includes/class-my-articles-settings.php†L212-L248】
+- Les contrôles numériques/couleurs sont rendus sous leur forme brute (`<input type="number">`, color picker natif) sans aperçu immédiat du rendu ou description contextuelle, obligeant des allers-retours entre l'écran d'options et l'éditeur/bloc pour valider l'effet réel.【F:mon-affichage-article/includes/class-my-articles-settings.php†L294-L316】
 
-- ✅ **Clé de cache ambiguë pour les réponses filtrées** : les fragments sont désormais normalisés et nommés via la classe `My_Articles_Response_Cache_Key`, garantissant des clés distinctes entre recherche et tri.【F:mon-affichage-article/mon-affichage-articles.php†L470-L552】【F:mon-affichage-article/includes/class-my-articles-response-cache-key.php†L1-L115】
-- ✅ **Sécurité du cache côté chargement progressif** : le même traitement s'applique aux routes « load more » avec tri, filtres et identifiants épinglés ordonnés et préfixés pour éviter toute collision.【F:mon-affichage-article/mon-affichage-articles.php†L760-L852】
+**Pistes d'amélioration**
+- Regrouper les options en sous-sections repliables (contenu, disposition, identité visuelle, instrumentation) avec un sommaire latéral ou un panneau à onglets secondaires, et masquer dynamiquement les réglages non pertinents selon le mode choisi (grille, liste, diaporama).
+- Ajouter un panneau d'aperçu côté admin (iframe, `wp.element` + `@wordpress/components`) qui reflète en temps réel les ajustements de couleurs/espacements pour réduire la charge cognitive.
 
-## Nouvelles capacités QA & observabilité
+## UX / UI côté front
+- Le texte d'appel « Lire la suite » est rendu via un simple `<span>` sans lien ni focus clavier, ce qui rompt les attentes utilisateur et empêche un lecteur d'écran de l'annoncer comme action.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2470-L2516】
+- L'état vide renvoie un paragraphe inline fortement stylé en dur, sans classes ni tonalité visuelle cohérente avec le reste des cartes, ce qui donne une impression moins aboutie qu'une interface pro.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2328-L2335】
 
-- `tests/ResponseCacheKeyTest.php` couvre la non-régression sur les collisions connues et la stabilité des fragments.【F:tests/ResponseCacheKeyTest.php†L1-L64】
-- Le filtre `my_articles_cache_fragments` permet d'ajouter des fragments customisés tout en respectant la nomenclature officielle.【F:mon-affichage-article/mon-affichage-articles.php†L470-L552】【F:README.md†L37-L44】
-- Lorsque `MY_ARTICLES_DEBUG_CACHE` est défini à `true`, chaque hit/miss/promotion est loggé dans `WP_DEBUG_LOG`, fournissant une base pour le futur dashboard instrumentation.【F:mon-affichage-article/mon-affichage-articles.php†L1116-L1179】
+**Pistes d'amélioration**
+- Transformer l'appel « Lire la suite » en lien secondaire (`<a>` ou `<button>` accessible) pointant vers l'article ou permettant d'afficher l'intégralité du contenu, et prévoir un style focus cohérent.
+- Externaliser l'état vide dans un composant dédié (classe BEM + variables CSS) pour l'aligner sur la charte et permettre la traduction/illustration.
 
-## Prochaines étapes
+## Accessibilité
+- La zone de suggestions de recherche est construite avec un conteneur `role="list"` mais chaque suggestion est un `<button role="listitem">`, combinaison non valide pour les lecteurs d'écran et sans annonce de visibilité (pas d'`aria-expanded` sur le champ).【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2079-L2084】【F:mon-affichage-article/assets/js/filter.js†L447-L465】【F:mon-affichage-article/assets/js/filter.js†L1524-L1581】
+- Le bouton « Charger plus » ne communique pas la relation avec la liste ciblée (absence d'`aria-controls` ou d'`aria-describedby`) et repose uniquement sur un changement de texte pour signaler le chargement, ce qui limite la compréhension pour les technologies d'assistance.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2168-L2235】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
 
-- Continuer à enrichir `tests/REGRESSIONS.md` avec un scénario WP-CLI complet de purge après déploiement (documentation amorcée).【F:tests/REGRESSIONS.md†L1-L26】
-- Étendre la télémétrie aux temps de rendu serveur (corrélation avec les événements front) lors de la mise en place du dashboard instrumentation.
+**Pistes d'amélioration**
+- Recomposer les suggestions en `<ul><li><button></button></li></ul>` ou utiliser `role="listbox"`/`role="option"` avec gestion d'`aria-expanded`, et annoncer l'ouverture/fermeture via `aria-live`.
+- Associer le bouton de pagination progressive à la grille avec `aria-controls` et fournir un `aria-label` dynamique (« Charger 6 articles supplémentaires sur 12 ») pour clarifier l'état courant.
 
-## Plan d'action proposé
+## Performance & fiabilité
+- Chaque instance injecte un bloc de styles inline complet via `wp_add_inline_style`, ce qui peut dupliquer plusieurs dizaines de lignes CSS quand on place plusieurs modules sur la même page, contrairement aux design systems pro qui factorisent les tokens et n'injectent que les deltas nécessaires.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2847-L2936】
+- Les scripts `filter.js` et `load-more.js` dupliquent la même logique d'instrumentation (gestion des canaux console/dataLayer/fetch), ce qui alourdit le bundle et multiplie les risques de divergence lors d'une évolution.【F:mon-affichage-article/assets/js/filter.js†L9-L154】【F:mon-affichage-article/assets/js/load-more.js†L112-L160】
+- Les requêtes AJAX ne sont jamais annulées quand l'utilisateur enchaîne rapidement filtres et recherches : si deux réponses arrivent hors ordre, la plus lente peut écraser le dernier état affiché, ce qui nuit à la fiabilité perçue.【F:mon-affichage-article/assets/js/filter.js†L1235-L1319】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
 
-- **Étape 1 — Refactor** : introduire une classe `My_Articles_Response_Cache_Key` responsable de la normalisation des fragments et du hash final. Cette classe doit être couverte par des tests unitaires (`tests/ResponseCacheKeyTest.php`).
-- **Étape 2 — Documentation** : compléter `tests/REGRESSIONS.md` avec un scénario manuel décrivant la purge des caches existants après déploiement et les commandes WP-CLI associées.【F:tests/REGRESSIONS.md†L1-L26】
-- **Étape 3 — Observabilité** : journaliser les hits/miss dans `WP_DEBUG_LOG` (ou un canal dédié) lorsque la constante `MY_ARTICLES_DEBUG_CACHE` est active afin d'alimenter un futur tableau de bord instrumentation.【F:docs/roadmap-technique.md†L8-L84】
+**Pistes d'amélioration**
+- Remplacer l'injection CSS full par un système de classes utilitaires (ou CSS custom properties globales) et limiter l'inline aux seules variables personnalisées. On peut aussi sérialiser les styles spécifiques à la configuration dans un fichier généré et mis en cache (via `wp_enqueue_style` ou `asset.php`) pour supprimer les répétitions et rapprocher le fonctionnement d'un design system moderne.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2847-L2936】
+- Extraire les fonctions communes d'instrumentation et de gestion du nonce dans un module partagé (ESM ou IIFE importé par les deux bundles) afin de factoriser la logique `console/dataLayer/fetch`, réduire la taille totale et aligner la télémétrie entre filtrage et chargement progressif. L'outil de build (Rollup/Webpack) peut produire un « chunk » partagé inclus par les deux scripts pour éviter la duplication.【F:mon-affichage-article/assets/js/filter.js†L9-L154】【F:mon-affichage-article/assets/js/load-more.js†L112-L160】
+- Stocker le `jqXHR`/`AbortController` courant pour annuler la requête précédente avant d'en lancer une nouvelle, et ignorer les réponses obsolètes via un identifiant incrémental pour sécuriser l'état de l'UI.【F:mon-affichage-article/assets/js/filter.js†L1235-L1319】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
 

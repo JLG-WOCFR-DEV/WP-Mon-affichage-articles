@@ -3,8 +3,47 @@
     'use strict';
 
     var loadMoreSettings = (typeof myArticlesLoadMore !== 'undefined') ? myArticlesLoadMore : {};
-    var pendingNonceDeferred = null;
     var DEBUG_STORAGE_KEY = 'myArticlesDebug';
+    var sharedRuntime = (function () {
+        var globalScope = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : {});
+        var shared = globalScope && globalScope.myArticlesShared ? globalScope.myArticlesShared : null;
+
+        if (typeof module === 'object' && module.exports) {
+            try {
+                shared = require('./shared-runtime');
+
+                if (shared && typeof shared.default === 'object') {
+                    shared = shared.default;
+                }
+            } catch (error) {
+                shared = shared || (globalScope && globalScope.myArticlesShared ? globalScope.myArticlesShared : null);
+            }
+        }
+
+        return shared || {};
+    }());
+
+    var eventEmitter = (sharedRuntime && typeof sharedRuntime.createEventEmitter === 'function')
+        ? sharedRuntime.createEventEmitter(function () {
+            return loadMoreSettings;
+        })
+        : null;
+
+    var nonceManager = (sharedRuntime && typeof sharedRuntime.createNonceManager === 'function')
+        ? sharedRuntime.createNonceManager($, {
+            getSettings: function () {
+                return loadMoreSettings;
+            },
+            mirrors: [
+                function () {
+                    return (typeof window !== 'undefined' && window.myArticlesLoadMore) ? window.myArticlesLoadMore : null;
+                },
+                function () {
+                    return (typeof window !== 'undefined' && window.myArticlesFilter) ? window.myArticlesFilter : null;
+                }
+            ]
+        })
+        : null;
 
     function getStoredDebugConfig() {
         if (typeof window === 'undefined') {
@@ -109,151 +148,40 @@
         }
     }
 
-    var INSTRUMENTATION_DEFAULTS = {
-        enabled: false,
-        channel: 'console',
-        fetchUrl: ''
-    };
-
-    function getInstrumentationSettings() {
-        var config = loadMoreSettings && typeof loadMoreSettings.instrumentation === 'object'
-            ? loadMoreSettings.instrumentation
-            : null;
-
-        if (!config) {
-            return INSTRUMENTATION_DEFAULTS;
-        }
-
-        var channel = typeof config.channel === 'string' ? config.channel : INSTRUMENTATION_DEFAULTS.channel;
-        var enabled = !!config.enabled;
-        var fetchUrl = typeof config.fetchUrl === 'string' ? config.fetchUrl : '';
-
-        if (!fetchUrl && loadMoreSettings && typeof loadMoreSettings.restRoot === 'string') {
-            fetchUrl = loadMoreSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/track';
-        }
-
-        return {
-            enabled: enabled,
-            channel: channel,
-            fetchUrl: fetchUrl,
-            callback: typeof config.callback === 'function' ? config.callback : null
-        };
-    }
-
-    function dispatchCustomEvent(eventName, detail) {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        var eventDetail = detail || {};
-        var customEvent;
-
-        try {
-            if (typeof window.CustomEvent === 'function') {
-                customEvent = new CustomEvent(eventName, { detail: eventDetail });
-            } else if (typeof document !== 'undefined' && document && typeof document.createEvent === 'function') {
-                customEvent = document.createEvent('CustomEvent');
-                customEvent.initCustomEvent(eventName, false, false, eventDetail);
-            }
-
-            if (customEvent && typeof window.dispatchEvent === 'function') {
-                window.dispatchEvent(customEvent);
-            }
-        } catch (error) {
-            if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                console.error(error);
-            }
-        }
-    }
-
-    function runEventCallbacks(eventName, detail) {
-        if (loadMoreSettings && typeof loadMoreSettings.onEvent === 'function') {
-            try {
-                loadMoreSettings.onEvent(eventName, detail);
-            } catch (error) {
-                if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                    console.error(error);
-                }
-            }
-        }
-
-        var instrumentation = getInstrumentationSettings();
-        if (instrumentation.callback) {
-            try {
-                instrumentation.callback(eventName, detail);
-            } catch (error) {
-                if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                    console.error(error);
-                }
-            }
-        }
-    }
-
-    function routeInstrumentation(eventName, detail) {
-        var instrumentation = getInstrumentationSettings();
-
-        if (!instrumentation.enabled) {
-            return;
-        }
-
-        var payload = {
-            event: eventName,
-            detail: detail
-        };
-
-        if (instrumentation.channel === 'dataLayer') {
-            if (typeof window !== 'undefined') {
-                window.dataLayer = window.dataLayer || [];
-                try {
-                    window.dataLayer.push(payload);
-                } catch (error) {
-                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                        console.error(error);
-                    }
-                }
-            }
-
-            return;
-        }
-
-        if (instrumentation.channel === 'fetch') {
-            if (typeof window !== 'undefined' && typeof window.fetch === 'function' && instrumentation.fetchUrl) {
-                var headers = { 'Content-Type': 'application/json' };
-                if (loadMoreSettings && typeof loadMoreSettings.restNonce === 'string' && loadMoreSettings.restNonce.length) {
-                    headers['X-WP-Nonce'] = loadMoreSettings.restNonce;
-                }
-
-                try {
-                    window.fetch(instrumentation.fetchUrl, {
-                        method: 'POST',
-                        headers: headers,
-                        credentials: 'same-origin',
-                        body: JSON.stringify(payload)
-                    }).catch(function () {
-                        return null;
-                    });
-                } catch (error) {
-                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                        console.error(error);
-                    }
-                }
-            }
-
-            return;
-        }
-
-        if (typeof console !== 'undefined' && typeof console.log === 'function') {
-            console.log('[my-articles]', eventName, detail);
-        }
-    }
-
     function emitLoadMoreInteraction(phase, detail) {
         var payload = $.extend({ phase: phase }, detail || {});
         var eventName = 'my-articles:load-more';
 
-        dispatchCustomEvent(eventName, payload);
-        runEventCallbacks(eventName, payload);
-        routeInstrumentation(eventName, payload);
+        if (eventEmitter && typeof eventEmitter.emit === 'function') {
+            eventEmitter.emit(eventName, payload);
+            return;
+        }
+
+        if (sharedRuntime && typeof sharedRuntime.dispatchCustomEvent === 'function') {
+            sharedRuntime.dispatchCustomEvent(eventName, payload);
+        } else if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function' && typeof window.dispatchEvent === 'function') {
+            try {
+                window.dispatchEvent(new CustomEvent(eventName, { detail: payload }));
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+
+        if (loadMoreSettings && typeof loadMoreSettings.onEvent === 'function') {
+            try {
+                loadMoreSettings.onEvent(eventName, payload);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
+        }
+
+        if (typeof console !== 'undefined' && typeof console.log === 'function') {
+            console.log('[my-articles]', eventName, payload);
+        }
     }
 
     function resolveSearchLabel(key, fallback) {
@@ -323,100 +251,21 @@
         output.attr('data-count', resolvedTotal);
     }
 
-    function getNonceEndpoint(settings) {
-        if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
-            return settings.nonceEndpoint;
-        }
-
-        if (settings && typeof settings.restRoot === 'string' && settings.restRoot.length > 0) {
-            return settings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/nonce';
-        }
-
-        return '';
-    }
-
-    function extractNonceFromResponse(response) {
-        if (!response || typeof response !== 'object') {
-            return '';
-        }
-
-        if (typeof response.nonce === 'string' && response.nonce.length > 0) {
-            return response.nonce;
-        }
-
-        if (response.data && typeof response.data.nonce === 'string' && response.data.nonce.length > 0) {
-            return response.data.nonce;
-        }
-
-        return '';
-    }
-
-    function applyRefreshedNonce(settings, nonce) {
-        if (!nonce) {
-            return;
-        }
-
-        if (settings && typeof settings === 'object') {
-            settings.restNonce = nonce;
-        }
-
-        if (typeof window !== 'undefined') {
-            var loadMoreSettingsGlobal = window.myArticlesLoadMore;
-            if (loadMoreSettingsGlobal && typeof loadMoreSettingsGlobal === 'object') {
-                loadMoreSettingsGlobal.restNonce = nonce;
-            }
-
-            var filterSettingsGlobal = window.myArticlesFilter;
-            if (filterSettingsGlobal && typeof filterSettingsGlobal === 'object') {
-                filterSettingsGlobal.restNonce = nonce;
-            }
-        }
-    }
-
     function refreshRestNonce(settings) {
-        if (pendingNonceDeferred) {
-            return pendingNonceDeferred.promise();
+        if (nonceManager && typeof nonceManager.refreshNonce === 'function') {
+            return nonceManager.refreshNonce(settings);
         }
 
         var deferred = $.Deferred();
-        pendingNonceDeferred = deferred;
-
-        var endpoint = getNonceEndpoint(settings);
-
-        if (!endpoint) {
-            deferred.reject(new Error('Missing nonce endpoint'));
-            pendingNonceDeferred = null;
-
-            return deferred.promise();
-        }
-
-        $.ajax({
-            url: endpoint,
-            type: 'GET',
-            success: function (response) {
-                var nonce = extractNonceFromResponse(response);
-
-                if (nonce) {
-                    applyRefreshedNonce(settings, nonce);
-                    deferred.resolve(nonce);
-
-                    return;
-                }
-
-                deferred.reject(new Error('Invalid nonce payload'));
-            },
-            error: function () {
-                deferred.reject(new Error('Nonce request failed'));
-            },
-            complete: function () {
-                pendingNonceDeferred = null;
-            }
-        });
-
+        deferred.reject(new Error('Nonce manager unavailable'));
         return deferred.promise();
     }
 
     function isInvalidNonceResponse(jqXHR, response) {
+        if (nonceManager && typeof nonceManager.isInvalidNonceResponse === 'function') {
+            return nonceManager.isInvalidNonceResponse(jqXHR, response);
+        }
+
         var payload = response || null;
 
         if (!payload && jqXHR && jqXHR.responseJSON && typeof jqXHR.responseJSON === 'object') {

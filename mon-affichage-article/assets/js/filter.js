@@ -3,250 +3,126 @@
     'use strict';
 
     var filterSettings = (typeof myArticlesFilter !== 'undefined') ? myArticlesFilter : {};
-    var pendingNonceDeferred = null;
     var SEARCH_DEBOUNCE_DELAY = 400;
 
-    var INSTRUMENTATION_DEFAULTS = {
-        enabled: false,
-        channel: 'console',
-        fetchUrl: ''
-    };
+    var sharedRuntime = (function () {
+        var globalScope = typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : {});
+        var shared = globalScope && globalScope.myArticlesShared ? globalScope.myArticlesShared : null;
 
-    function getInstrumentationSettings() {
-        var config = filterSettings && typeof filterSettings.instrumentation === 'object'
-            ? filterSettings.instrumentation
-            : null;
+        if (typeof module === 'object' && module.exports) {
+            try {
+                shared = require('./shared-runtime');
 
-        if (!config) {
-            return INSTRUMENTATION_DEFAULTS;
+                if (shared && typeof shared.default === 'object') {
+                    shared = shared.default;
+                }
+            } catch (error) {
+                shared = shared || (globalScope && globalScope.myArticlesShared ? globalScope.myArticlesShared : null);
+            }
         }
 
-        var channel = typeof config.channel === 'string' ? config.channel : INSTRUMENTATION_DEFAULTS.channel;
-        var enabled = !!config.enabled;
-        var fetchUrl = typeof config.fetchUrl === 'string' ? config.fetchUrl : '';
+        return shared || {};
+    }());
 
-        if (!fetchUrl && filterSettings && typeof filterSettings.restRoot === 'string') {
-            fetchUrl = filterSettings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/track';
+    var eventEmitter = (sharedRuntime && typeof sharedRuntime.createEventEmitter === 'function')
+        ? sharedRuntime.createEventEmitter(function () {
+            return filterSettings;
+        })
+        : null;
+
+    var nonceManager = (sharedRuntime && typeof sharedRuntime.createNonceManager === 'function')
+        ? sharedRuntime.createNonceManager($, {
+            getSettings: function () {
+                return filterSettings;
+            },
+            mirrors: [
+                function () {
+                    return (typeof window !== 'undefined' && window.myArticlesFilter) ? window.myArticlesFilter : null;
+                },
+                function () {
+                    return (typeof window !== 'undefined' && window.myArticlesLoadMore) ? window.myArticlesLoadMore : null;
+                }
+            ]
+        })
+        : null;
+
+    var activeFilterRequest = null;
+    var activeFilterRequestToken = 0;
+    var activeFilterRequestDetail = null;
+    var filterRequestSequence = 0;
+
+    function cancelActiveFilterRequest(reason) {
+        if (!activeFilterRequest || typeof activeFilterRequest.abort !== 'function') {
+            return false;
         }
 
-        return {
-            enabled: enabled,
-            channel: channel,
-            fetchUrl: fetchUrl,
-            callback: typeof config.callback === 'function' ? config.callback : null
-        };
-    }
-
-    function dispatchCustomEvent(eventName, detail) {
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        var eventDetail = detail || {};
-        var customEvent;
+        var detail = activeFilterRequestDetail ? $.extend({}, activeFilterRequestDetail) : {};
+        detail.reason = reason || 'superseded';
 
         try {
-            if (typeof window.CustomEvent === 'function') {
-                customEvent = new CustomEvent(eventName, { detail: eventDetail });
-            } else if (typeof document !== 'undefined' && document && typeof document.createEvent === 'function') {
-                customEvent = document.createEvent('CustomEvent');
-                customEvent.initCustomEvent(eventName, false, false, eventDetail);
-            }
+            activeFilterRequest.abort();
+        } catch (error) {}
 
-            if (customEvent && typeof window.dispatchEvent === 'function') {
-                window.dispatchEvent(customEvent);
-            }
-        } catch (error) {
-            if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                console.error(error);
-            }
-        }
-    }
+        emitFilterInteraction('cancelled', detail);
 
-    function runEventCallbacks(eventName, detail) {
-        if (filterSettings && typeof filterSettings.onEvent === 'function') {
-            try {
-                filterSettings.onEvent(eventName, detail);
-            } catch (error) {
-                if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                    console.error(error);
-                }
-            }
-        }
+        activeFilterRequest = null;
+        activeFilterRequestToken = 0;
+        activeFilterRequestDetail = null;
 
-        var instrumentation = getInstrumentationSettings();
-        if (instrumentation.callback) {
-            try {
-                instrumentation.callback(eventName, detail);
-            } catch (error) {
-                if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                    console.error(error);
-                }
-            }
-        }
-    }
-
-    function routeInstrumentation(eventName, detail) {
-        var instrumentation = getInstrumentationSettings();
-
-        if (!instrumentation.enabled) {
-            return;
-        }
-
-        var payload = {
-            event: eventName,
-            detail: detail
-        };
-
-        if (instrumentation.channel === 'dataLayer') {
-            if (typeof window !== 'undefined') {
-                window.dataLayer = window.dataLayer || [];
-                try {
-                    window.dataLayer.push(payload);
-                } catch (error) {
-                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                        console.error(error);
-                    }
-                }
-            }
-
-            return;
-        }
-
-        if (instrumentation.channel === 'fetch') {
-            if (typeof window !== 'undefined' && typeof window.fetch === 'function' && instrumentation.fetchUrl) {
-                var headers = { 'Content-Type': 'application/json' };
-                if (filterSettings && typeof filterSettings.restNonce === 'string' && filterSettings.restNonce.length) {
-                    headers['X-WP-Nonce'] = filterSettings.restNonce;
-                }
-
-                try {
-                    window.fetch(instrumentation.fetchUrl, {
-                        method: 'POST',
-                        headers: headers,
-                        credentials: 'same-origin',
-                        body: JSON.stringify(payload)
-                    }).catch(function () {
-                        return null;
-                    });
-                } catch (error) {
-                    if (typeof console !== 'undefined' && typeof console.error === 'function') {
-                        console.error(error);
-                    }
-                }
-            }
-
-            return;
-        }
-
-        if (typeof console !== 'undefined' && typeof console.log === 'function') {
-            console.log('[my-articles]', eventName, detail);
-        }
+        return true;
     }
 
     function emitFilterInteraction(phase, detail) {
         var payload = $.extend({ phase: phase }, detail || {});
         var eventName = 'my-articles:filter';
 
-        dispatchCustomEvent(eventName, payload);
-        runEventCallbacks(eventName, payload);
-        routeInstrumentation(eventName, payload);
-    }
-
-    function getNonceEndpoint(settings) {
-        if (settings && typeof settings.nonceEndpoint === 'string' && settings.nonceEndpoint.length > 0) {
-            return settings.nonceEndpoint;
-        }
-
-        if (settings && typeof settings.restRoot === 'string' && settings.restRoot.length > 0) {
-            return settings.restRoot.replace(/\/+$/, '') + '/my-articles/v1/nonce';
-        }
-
-        return '';
-    }
-
-    function extractNonceFromResponse(response) {
-        if (!response || typeof response !== 'object') {
-            return '';
-        }
-
-        if (typeof response.nonce === 'string' && response.nonce.length > 0) {
-            return response.nonce;
-        }
-
-        if (response.data && typeof response.data.nonce === 'string' && response.data.nonce.length > 0) {
-            return response.data.nonce;
-        }
-
-        return '';
-    }
-
-    function applyRefreshedNonce(settings, nonce) {
-        if (!nonce) {
+        if (eventEmitter && typeof eventEmitter.emit === 'function') {
+            eventEmitter.emit(eventName, payload);
             return;
         }
 
-        if (settings && typeof settings === 'object') {
-            settings.restNonce = nonce;
+        if (sharedRuntime && typeof sharedRuntime.dispatchCustomEvent === 'function') {
+            sharedRuntime.dispatchCustomEvent(eventName, payload);
+        } else if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function' && typeof window.dispatchEvent === 'function') {
+            try {
+                window.dispatchEvent(new CustomEvent(eventName, { detail: payload }));
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
+            }
         }
 
-        if (typeof window !== 'undefined') {
-            var filterSettingsGlobal = window.myArticlesFilter;
-            if (filterSettingsGlobal && typeof filterSettingsGlobal === 'object') {
-                filterSettingsGlobal.restNonce = nonce;
+        if (filterSettings && typeof filterSettings.onEvent === 'function') {
+            try {
+                filterSettings.onEvent(eventName, payload);
+            } catch (error) {
+                if (typeof console !== 'undefined' && typeof console.error === 'function') {
+                    console.error(error);
+                }
             }
+        }
 
-            var loadMoreSettingsGlobal = window.myArticlesLoadMore;
-            if (loadMoreSettingsGlobal && typeof loadMoreSettingsGlobal === 'object') {
-                loadMoreSettingsGlobal.restNonce = nonce;
-            }
+        if (typeof console !== 'undefined' && typeof console.log === 'function') {
+            console.log('[my-articles]', eventName, payload);
         }
     }
 
     function refreshRestNonce(settings) {
-        if (pendingNonceDeferred) {
-            return pendingNonceDeferred.promise();
+        if (nonceManager && typeof nonceManager.refreshNonce === 'function') {
+            return nonceManager.refreshNonce(settings);
         }
 
         var deferred = $.Deferred();
-        pendingNonceDeferred = deferred;
-
-        var endpoint = getNonceEndpoint(settings);
-
-        if (!endpoint) {
-            deferred.reject(new Error('Missing nonce endpoint'));
-            pendingNonceDeferred = null;
-
-            return deferred.promise();
-        }
-
-        $.ajax({
-            url: endpoint,
-            type: 'GET',
-            success: function (response) {
-                var nonce = extractNonceFromResponse(response);
-
-                if (nonce) {
-                    applyRefreshedNonce(settings, nonce);
-                    deferred.resolve(nonce);
-
-                    return;
-                }
-
-                deferred.reject(new Error('Invalid nonce payload'));
-            },
-            error: function () {
-                deferred.reject(new Error('Nonce request failed'));
-            },
-            complete: function () {
-                pendingNonceDeferred = null;
-            }
-        });
-
+        deferred.reject(new Error('Nonce manager unavailable'));
         return deferred.promise();
     }
 
     function isInvalidNonceResponse(jqXHR, response) {
+        if (nonceManager && typeof nonceManager.isInvalidNonceResponse === 'function') {
+            return nonceManager.isInvalidNonceResponse(jqXHR, response);
+        }
+
         var payload = response || null;
 
         if (!payload && jqXHR && jqXHR.responseJSON && typeof jqXHR.responseJSON === 'object') {
@@ -1145,6 +1021,9 @@
     function sendFilterRequest(wrapper, requestData, callbacks) {
         callbacks = callbacks || {};
 
+        var cancelReason = typeof callbacks.cancelReason === 'string' ? callbacks.cancelReason : 'superseded';
+        cancelActiveFilterRequest(cancelReason);
+
         var requestUrl = getFilterEndpoint(filterSettings);
         var hasRetried = false;
 
@@ -1233,6 +1112,8 @@
         }
 
         function performRequest() {
+            var requestToken = ++filterRequestSequence;
+            var wasAborted = false;
             var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
 
             $.ajax({
@@ -1242,7 +1123,10 @@
                     'X-WP-Nonce': nonceHeader
                 },
                 data: requestData,
-                beforeSend: function () {
+                beforeSend: function (currentJqXHR) {
+                    activeFilterRequest = currentJqXHR;
+                    activeFilterRequestToken = requestToken;
+                    activeFilterRequestDetail = $.extend({}, requestDetail);
                     emitFilterInteraction('request', requestDetail);
 
                     if (typeof callbacks.beforeSend === 'function') {
@@ -1250,6 +1134,10 @@
                     }
                 },
                 success: function (response) {
+                    if (wasAborted) {
+                        return;
+                    }
+
                     if (response && response.success) {
                         var responseData = response.data || {};
                         emitSuccess(responseData);
@@ -1284,7 +1172,12 @@
                         callbacks.onError(null, response);
                     }
                 },
-                error: function (jqXHR) {
+                error: function (jqXHR, textStatus) {
+                    if (textStatus === 'abort') {
+                        wasAborted = true;
+                        return;
+                    }
+
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         refreshRestNonce(filterSettings)
@@ -1308,12 +1201,23 @@
                         callbacks.onError(jqXHR);
                     }
                 },
-                complete: function () {
+                complete: function (completedJqXHR, textStatus) {
+                    if (activeFilterRequestToken === requestToken && activeFilterRequest === completedJqXHR) {
+                        activeFilterRequest = null;
+                        activeFilterRequestToken = 0;
+                        activeFilterRequestDetail = null;
+                    }
+
+                    if (wasAborted || textStatus === 'abort') {
+                        return;
+                    }
+
                     if (typeof callbacks.onComplete === 'function') {
                         callbacks.onComplete();
                     }
                 }
             });
+
         }
 
         performRequest();
@@ -1340,6 +1244,7 @@
         var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
         sendFilterRequest(wrapper, requestData, {
+            cancelReason: 'search-update',
             beforeSend: function () {
                 wrapper.attr('aria-busy', 'true');
                 wrapper.addClass('is-loading');
@@ -1496,6 +1401,7 @@
         var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
         sendFilterRequest(wrapper, requestData, {
+            cancelReason: 'category-change',
             beforeSend: function () {
                 wrapper.attr('aria-busy', 'true');
                 wrapper.addClass('is-loading');
