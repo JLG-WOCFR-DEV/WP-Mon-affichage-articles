@@ -46,6 +46,32 @@
         })
         : null;
 
+    var activeFilterRequest = null;
+    var activeFilterRequestToken = 0;
+    var activeFilterRequestDetail = null;
+    var filterRequestSequence = 0;
+
+    function cancelActiveFilterRequest(reason) {
+        if (!activeFilterRequest || typeof activeFilterRequest.abort !== 'function') {
+            return false;
+        }
+
+        var detail = activeFilterRequestDetail ? $.extend({}, activeFilterRequestDetail) : {};
+        detail.reason = reason || 'superseded';
+
+        try {
+            activeFilterRequest.abort();
+        } catch (error) {}
+
+        emitFilterInteraction('cancelled', detail);
+
+        activeFilterRequest = null;
+        activeFilterRequestToken = 0;
+        activeFilterRequestDetail = null;
+
+        return true;
+    }
+
     function emitFilterInteraction(phase, detail) {
         var payload = $.extend({ phase: phase }, detail || {});
         var eventName = 'my-articles:filter';
@@ -1085,6 +1111,9 @@
     function sendFilterRequest(wrapper, requestData, callbacks) {
         callbacks = callbacks || {};
 
+        var cancelReason = typeof callbacks.cancelReason === 'string' ? callbacks.cancelReason : 'superseded';
+        cancelActiveFilterRequest(cancelReason);
+
         var requestUrl = getFilterEndpoint(filterSettings);
         var hasRetried = false;
 
@@ -1177,6 +1206,8 @@
         }
 
         function performRequest() {
+            var requestToken = ++filterRequestSequence;
+            var wasAborted = false;
             var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
             var trackDuration = createDurationTracker();
 
@@ -1187,7 +1218,10 @@
                     'X-WP-Nonce': nonceHeader
                 },
                 data: requestData,
-                beforeSend: function () {
+                beforeSend: function (currentJqXHR) {
+                    activeFilterRequest = currentJqXHR;
+                    activeFilterRequestToken = requestToken;
+                    activeFilterRequestDetail = $.extend({}, requestDetail);
                     emitFilterInteraction('request', requestDetail);
 
                     if (typeof callbacks.beforeSend === 'function') {
@@ -1195,7 +1229,10 @@
                     }
                 },
                 success: function (response) {
-                    var durationMs = trackDuration();
+                    if (wasAborted) {
+                        return;
+                    }
+
                     if (response && response.success) {
                         var responseData = response.data || {};
                         emitSuccess(responseData, durationMs);
@@ -1230,8 +1267,12 @@
                         callbacks.onError(null, response);
                     }
                 },
-                error: function (jqXHR) {
-                    var durationMs = trackDuration();
+                error: function (jqXHR, textStatus) {
+                    if (textStatus === 'abort') {
+                        wasAborted = true;
+                        return;
+                    }
+
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         refreshRestNonce(filterSettings)
@@ -1255,13 +1296,23 @@
                         callbacks.onError(jqXHR);
                     }
                 },
-                complete: function () {
-                    var durationMs = trackDuration();
+                complete: function (completedJqXHR, textStatus) {
+                    if (activeFilterRequestToken === requestToken && activeFilterRequest === completedJqXHR) {
+                        activeFilterRequest = null;
+                        activeFilterRequestToken = 0;
+                        activeFilterRequestDetail = null;
+                    }
+
+                    if (wasAborted || textStatus === 'abort') {
+                        return;
+                    }
+
                     if (typeof callbacks.onComplete === 'function') {
                         callbacks.onComplete(durationMs);
                     }
                 }
             });
+
         }
 
         performRequest();
@@ -1288,6 +1339,7 @@
         var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
         sendFilterRequest(wrapper, requestData, {
+            cancelReason: 'search-update',
             beforeSend: function () {
                 wrapper.attr('aria-busy', 'true');
                 wrapper.addClass('is-loading');
@@ -1475,6 +1527,7 @@
         var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
         sendFilterRequest(wrapper, requestData, {
+            cancelReason: 'category-change',
             beforeSend: function () {
                 setBusyState(wrapper, true);
                 wrapper.addClass('is-loading');
