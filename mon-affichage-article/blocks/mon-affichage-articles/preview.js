@@ -317,7 +317,45 @@
         return '';
     }
 
-    function PreviewPane(props) {
+
+    function useThemeTokens() {
+        var _useState = useState({ colors: [] });
+        var themeTokens = _useState[0];
+        var setThemeTokens = _useState[1];
+
+        useEffect(function () {
+            if (!wp || !wp.data || !wp.data.select) {
+                return;
+            }
+
+            try {
+                var selector = wp.data.select('core/block-editor');
+                if (!selector || typeof selector.getSettings !== 'function') {
+                    return;
+                }
+                var settings = selector.getSettings();
+                var palette = [];
+                if (
+                    settings &&
+                    settings.__experimentalFeatures &&
+                    settings.__experimentalFeatures.color &&
+                    settings.__experimentalFeatures.color.palette &&
+                    settings.__experimentalFeatures.color.palette.theme
+                ) {
+                    palette = settings.__experimentalFeatures.color.palette.theme;
+                } else if (settings && Array.isArray(settings.colors)) {
+                    palette = settings.colors;
+                }
+                setThemeTokens({ colors: Array.isArray(palette) ? palette : [] });
+            } catch (error) {
+                // Silent fallback: keep default tokens.
+            }
+        }, []);
+
+        return themeTokens;
+    }
+
+    function PreviewCanvas(props) {
         var instanceId = props.instanceId ? parseInt(props.instanceId, 10) : 0;
         if (isNaN(instanceId)) {
             instanceId = 0;
@@ -328,6 +366,9 @@
         var requestRef = useRef(0);
         var isMountedRef = useRef(true);
         var displayModeProp = typeof props.displayMode === 'string' ? props.displayMode : 'grid';
+        var providedViewport = typeof props.viewport === 'string' ? props.viewport : null;
+        var onViewportChange = typeof props.onViewportChange === 'function' ? props.onViewportChange : null;
+        var pilotModeEnabled = !!props.pilotMode;
 
         var _useState = useState({
             status: initialStatus,
@@ -341,6 +382,17 @@
         var _useState2 = useState(0);
         var refreshToken = _useState2[0];
         var setRefreshToken = _useState2[1];
+
+        var _useState3 = useState(providedViewport);
+        var localViewport = _useState3[0];
+        var setLocalViewport = _useState3[1];
+
+        useEffect(
+            function () {
+                setLocalViewport(providedViewport);
+            },
+            [providedViewport]
+        );
 
         var attributesKey;
         try {
@@ -478,9 +530,32 @@
             [previewState.status, previewState.html, previewState.metadata, displayModeProp]
         );
 
-        var className = 'my-articles-preview-pane';
+        var appliedViewport = providedViewport !== null ? providedViewport : localViewport;
+        var className = 'my-articles-preview-canvas my-articles-preview-pane';
         if (props.className) {
             className += ' ' + props.className;
+        }
+        if (appliedViewport) {
+            className += ' is-viewport-' + appliedViewport;
+        }
+        if (pilotModeEnabled) {
+            className += ' is-pilot-mode';
+        }
+
+        var themeTokens = useThemeTokens();
+        var primaryColor = null;
+        var secondaryColor = null;
+        if (themeTokens && Array.isArray(themeTokens.colors) && themeTokens.colors.length) {
+            primaryColor = themeTokens.colors[0] && themeTokens.colors[0].color ? themeTokens.colors[0].color : null;
+            secondaryColor = themeTokens.colors[1] && themeTokens.colors[1].color ? themeTokens.colors[1].color : null;
+        }
+
+        var style = {};
+        if (primaryColor) {
+            style['--my-articles-theme-primary'] = primaryColor;
+        }
+        if (secondaryColor) {
+            style['--my-articles-theme-secondary'] = secondaryColor;
         }
 
         var resolvedDisplayMode = displayModeProp;
@@ -538,9 +613,127 @@
             );
         }
 
-        return el('div', { className: className }, children);
-    }
+        var overlayChildren = [];
 
+        var viewportOptions = [
+            { value: null, label: __('Auto', 'mon-articles'), icon: 'controls-repeat' },
+            { value: 'mobile', label: __('Mobile', 'mon-articles'), icon: 'smartphone' },
+            { value: 'tablet', label: __('Tablette', 'mon-articles'), icon: 'tablet' },
+            { value: 'desktop', label: __('Ordinateur', 'mon-articles'), icon: 'desktop' },
+        ];
+
+        overlayChildren.push(
+            el(
+                'div',
+                { key: 'viewport', className: 'my-articles-preview-canvas__viewport-switcher' },
+                viewportOptions.map(function (option) {
+                    var isActive = appliedViewport === option.value || (!appliedViewport && option.value === null);
+                    return el(
+                        Button,
+                        {
+                            key: option.value === null ? 'auto' : option.value,
+                            icon: option.icon,
+                            label: option.label,
+                            isSmall: true,
+                            variant: isActive ? 'primary' : 'tertiary',
+                            onClick: function () {
+                                if (onViewportChange) {
+                                    onViewportChange(option.value);
+                                } else {
+                                    setLocalViewport(option.value);
+                                }
+                            },
+                        },
+                        option.label
+                    );
+                })
+            )
+        );
+
+        if (themeTokens && Array.isArray(themeTokens.colors) && themeTokens.colors.length) {
+            overlayChildren.push(
+                el(
+                    'div',
+                    { key: 'tokens', className: 'my-articles-preview-canvas__tokens' },
+                    themeTokens.colors.slice(0, 3).map(function (color, index) {
+                        var swatchStyle = {};
+                        if (color && color.color) {
+                            swatchStyle.backgroundColor = color.color;
+                        }
+                        return el('span', { key: 'token-' + index, className: 'my-articles-preview-canvas__token', style: swatchStyle });
+                    })
+                )
+            );
+        }
+
+        if (pilotModeEnabled && previewState.metadata && previewState.metadata.metrics) {
+            var metrics = previewState.metadata.metrics;
+            var optionsSnapshot = previewState.metadata.options_snapshot || {};
+            var metricItems = [];
+
+            if (typeof metrics.total_results !== 'undefined') {
+                metricItems.push({ key: 'total', label: __('Articles affichés', 'mon-articles'), value: metrics.total_results });
+            }
+            if (typeof metrics.rendered_pinned !== 'undefined') {
+                metricItems.push({ key: 'pinned', label: __('Articles épinglés visibles', 'mon-articles'), value: metrics.rendered_pinned });
+            }
+            if (typeof metrics.filters_available !== 'undefined') {
+                metricItems.push({ key: 'filters', label: __('Filtres disponibles', 'mon-articles'), value: metrics.filters_available });
+            }
+            if (typeof metrics.per_page !== 'undefined') {
+                metricItems.push({ key: 'per_page', label: __('Articles par page', 'mon-articles'), value: metrics.per_page });
+            }
+            if (typeof metrics.total_regular !== 'undefined') {
+                metricItems.push({ key: 'regular', label: __('Articles standards', 'mon-articles'), value: metrics.total_regular });
+            }
+
+            var pilotList = metricItems.map(function (item) {
+                return el(
+                    'li',
+                    { key: item.key, className: 'my-articles-preview-canvas__metric' },
+                    el('span', { className: 'my-articles-preview-canvas__metric-label' }, item.label),
+                    el('span', { className: 'my-articles-preview-canvas__metric-value' }, String(item.value))
+                );
+            });
+
+            var modeBadges = [];
+            if (optionsSnapshot.display_mode) {
+                modeBadges.push(optionsSnapshot.display_mode);
+            }
+            if (optionsSnapshot.pagination_mode) {
+                modeBadges.push(optionsSnapshot.pagination_mode);
+            }
+            if (optionsSnapshot.load_more_auto) {
+                modeBadges.push(__('Auto « Charger plus »', 'mon-articles'));
+            }
+            if (optionsSnapshot.show_category_filter) {
+                modeBadges.push(__('Filtre catégorie actif', 'mon-articles'));
+            }
+            if (optionsSnapshot.enable_keyword_search) {
+                modeBadges.push(__('Recherche activée', 'mon-articles'));
+            }
+
+            overlayChildren.push(
+                el(
+                    'div',
+                    { key: 'pilot', className: 'my-articles-preview-canvas__pilot' },
+                    el('div', { className: 'my-articles-preview-canvas__pilot-badges' },
+                        modeBadges.map(function (badge, index) {
+                            return el('span', { key: 'badge-' + index, className: 'my-articles-preview-canvas__pilot-badge' }, badge);
+                        })
+                    ),
+                    el('ul', { className: 'my-articles-preview-canvas__metrics' }, pilotList)
+                )
+            );
+        }
+
+        if (overlayChildren.length) {
+            children.push(el('div', { key: 'overlay', className: 'my-articles-preview-canvas__overlay' }, overlayChildren));
+        }
+
+        return el('div', { className: className, style: style }, children);
+    }
     window.myArticlesBlocks = window.myArticlesBlocks || {};
-    window.myArticlesBlocks.PreviewPane = PreviewPane;
+    window.myArticlesBlocks.PreviewCanvas = PreviewCanvas;
+    window.myArticlesBlocks.PreviewPane = PreviewCanvas;
 })(window.wp);

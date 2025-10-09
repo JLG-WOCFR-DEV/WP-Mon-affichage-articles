@@ -288,12 +288,81 @@
         return '';
     }
 
+    function getResultsContainer(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        var targetId = wrapper.attr('data-results-target');
+        if (targetId && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+            try {
+                var directNode = document.getElementById(targetId);
+                if (directNode) {
+                    return $(directNode);
+                }
+            } catch (error) {
+                // Fallback to selector lookup if getElementById fails.
+            }
+        }
+
+        var results = wrapper.find('[data-my-articles-role="results"]').first();
+        if (results.length) {
+            return results;
+        }
+
+        return $();
+    }
+
     function getContentArea(wrapper) {
         if (!wrapper || !wrapper.length) {
             return $();
         }
 
+        var results = getResultsContainer(wrapper);
+        if (results.length) {
+            var innerResults = results.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper').first();
+
+            if (innerResults.length) {
+                return innerResults;
+            }
+
+            return results;
+        }
+
         return wrapper.find('.my-articles-grid-content, .my-articles-list-content, .swiper-wrapper');
+    }
+
+    function syncResultsLabel(wrapper, tabId) {
+        var results = getResultsContainer(wrapper);
+        if (!results.length) {
+            return;
+        }
+
+        if (tabId) {
+            results.attr('aria-labelledby', tabId);
+        } else {
+            results.removeAttr('aria-labelledby');
+        }
+    }
+
+    function setBusyState(wrapper, isBusy) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var busyValue = isBusy ? 'true' : 'false';
+        wrapper.attr('aria-busy', busyValue);
+
+        var results = getResultsContainer(wrapper);
+        if (results.length) {
+            results.attr('aria-busy', busyValue);
+
+            if (isBusy) {
+                results.attr('data-loading', 'true');
+            } else {
+                results.removeAttr('data-loading');
+            }
+        }
     }
 
     function getSearchForm(wrapper) {
@@ -1142,6 +1211,27 @@
         return true;
     }
 
+    function getTimeMarker() {
+        if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+            return performance.now();
+        }
+
+        return Date.now();
+    }
+
+    function createDurationTracker() {
+        var start = getTimeMarker();
+        return function () {
+            var end = getTimeMarker();
+            var duration = end - start;
+            if (!isFinite(duration) || duration < 0) {
+                duration = 0;
+            }
+
+            return duration;
+        };
+    }
+
     function sendFilterRequest(wrapper, requestData, callbacks) {
         callbacks = callbacks || {};
 
@@ -1176,16 +1266,18 @@
             ? filterSettings.errorText
             : 'Une erreur est survenue.';
 
-        function emitError(jqXHR, response) {
+        function emitError(jqXHR, response, durationMs) {
+            var safeDuration = typeof durationMs === 'number' && isFinite(durationMs) ? Math.max(durationMs, 0) : null;
             emitFilterInteraction('error', $.extend({}, requestDetail, {
                 errorMessage: extractAjaxErrorMessage(jqXHR, response) || defaultErrorMessage,
                 status: extractAjaxErrorStatus(jqXHR, response),
                 errorCode: extractAjaxErrorCode(jqXHR, response) || '',
-                hadNonceRefresh: hasRetried
+                hadNonceRefresh: hasRetried,
+                durationMs: safeDuration
             }));
         }
 
-        function emitSuccess(responseData) {
+        function emitSuccess(responseData, durationMs) {
             var totalPages = parseInt(responseData.total_pages, 10);
             if (isNaN(totalPages)) {
                 totalPages = 0;
@@ -1228,12 +1320,15 @@
                 renderedRegularCount: renderedRegular,
                 renderedPinnedCount: renderedPinned,
                 totalRegular: parseInt(responseData.total_regular, 10) || 0,
-                totalPinned: parseInt(responseData.total_pinned, 10) || 0
+                totalPinned: parseInt(responseData.total_pinned, 10) || 0,
+                status: 200,
+                durationMs: typeof durationMs === 'number' && isFinite(durationMs) ? Math.max(durationMs, 0) : null
             }));
         }
 
         function performRequest() {
             var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
+            var trackDuration = createDurationTracker();
 
             $.ajax({
                 url: requestUrl,
@@ -1250,9 +1345,10 @@
                     }
                 },
                 success: function (response) {
+                    var durationMs = trackDuration();
                     if (response && response.success) {
                         var responseData = response.data || {};
-                        emitSuccess(responseData);
+                        emitSuccess(responseData, durationMs);
 
                         if (typeof callbacks.onSuccess === 'function') {
                             callbacks.onSuccess(responseData, response);
@@ -1268,7 +1364,7 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(null, response);
+                                emitError(null, response, durationMs);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(null, response);
@@ -1278,13 +1374,14 @@
                         return;
                     }
 
-                    emitError(null, response);
+                    emitError(null, response, durationMs);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(null, response);
                     }
                 },
                 error: function (jqXHR) {
+                    var durationMs = trackDuration();
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         refreshRestNonce(filterSettings)
@@ -1292,7 +1389,7 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(jqXHR);
+                                emitError(jqXHR, null, durationMs);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(jqXHR);
@@ -1302,15 +1399,16 @@
                         return;
                     }
 
-                    emitError(jqXHR);
+                    emitError(jqXHR, null, durationMs);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(jqXHR);
                     }
                 },
                 complete: function () {
+                    var durationMs = trackDuration();
                     if (typeof callbacks.onComplete === 'function') {
-                        callbacks.onComplete();
+                        callbacks.onComplete(durationMs);
                     }
                 }
             });
@@ -1435,13 +1533,44 @@
         }
     }
 
-    $(document).on('click', '.my-articles-filter-nav button, .my-articles-filter-nav a', function (e) {
+    function activateFilterTab(navList, filterItem, filterLink) {
+        if (!navList || !navList.length) {
+            return;
+        }
+
+        navList.find('li').removeClass('active');
+
+        var tabs = navList.find('[role="tab"]');
+        tabs.attr('aria-selected', 'false');
+        tabs.attr('tabindex', '-1');
+
+        if (filterItem && filterItem.length) {
+            filterItem.addClass('active');
+        }
+
+        if (filterLink && filterLink.length) {
+            filterLink.attr('aria-selected', 'true');
+            filterLink.attr('tabindex', '0');
+        }
+    }
+
+    function getTabId(tabElement) {
+        if (!tabElement || !tabElement.length) {
+            return '';
+        }
+
+        var tabId = tabElement.attr('id');
+        return typeof tabId === 'string' ? tabId : '';
+    }
+
+    $(document).on('click', '.my-articles-filter-nav [role="tab"]', function (e) {
         e.preventDefault();
 
         var filterLink = $(this);
         var filterItem = filterLink.closest('li');
         var navList = filterItem.closest('ul');
         var previousActiveItem = navList.find('li.active').first();
+        var previousActiveTab = previousActiveItem.find('[role="tab"]').first();
         var wrapper = filterLink.closest('.my-articles-wrapper');
         var instanceId = wrapper.data('instance-id');
 
@@ -1462,10 +1591,8 @@
             }
         }
 
-        navList.find('li').removeClass('active');
-        navList.find('button, a').attr('aria-pressed', 'false');
-        filterItem.addClass('active');
-        filterLink.attr('aria-pressed', 'true');
+        activateFilterTab(navList, filterItem, filterLink);
+        syncResultsLabel(wrapper, getTabId(filterLink));
 
         var categoryData = filterLink.data('category');
         var categorySlug = '';
@@ -1485,19 +1612,21 @@
         var fallbackMessage = (filterSettings && filterSettings.errorText) ? filterSettings.errorText : 'Une erreur est survenue. Veuillez réessayer plus tard.';
 
         function restorePreviousFilterState() {
-            filterItem.removeClass('active');
-            filterLink.attr('aria-pressed', 'false');
-            if (previousActiveItem && previousActiveItem.length) {
-                previousActiveItem.addClass('active');
-                previousActiveItem.find('button, a').first().attr('aria-pressed', 'true');
+            var fallbackTab = previousActiveTab;
+
+            if (!fallbackTab || !fallbackTab.length) {
+                fallbackTab = navList.find('[role="tab"]').first();
             }
+
+            activateFilterTab(navList, previousActiveItem, fallbackTab);
+            syncResultsLabel(wrapper, getTabId(fallbackTab));
         }
 
         var requestData = buildFilterRequestData(wrapper, instanceId, categorySlug, searchValue);
 
         sendFilterRequest(wrapper, requestData, {
             beforeSend: function () {
-                wrapper.attr('aria-busy', 'true');
+                setBusyState(wrapper, true);
                 wrapper.addClass('is-loading');
                 clearFeedback(wrapper);
             },
@@ -1515,10 +1644,63 @@
                 showError(wrapper, errorMessage);
             },
             onComplete: function () {
-                wrapper.attr('aria-busy', 'false');
+                setBusyState(wrapper, false);
                 wrapper.removeClass('is-loading');
             }
         });
+    });
+
+    $(document).on('keydown', '.my-articles-filter-nav [role="tab"]', function (event) {
+        var key = event.key;
+        var isHorizontalNavigation = key === 'ArrowLeft' || key === 'ArrowRight' || key === 'ArrowUp' || key === 'ArrowDown';
+        var isHomeEnd = key === 'Home' || key === 'End';
+
+        if (!isHorizontalNavigation && !isHomeEnd) {
+            return;
+        }
+
+        var currentTab = $(this);
+        var navList = currentTab.closest('ul');
+        if (!navList.length) {
+            return;
+        }
+
+        var tabs = navList.find('[role="tab"]');
+        if (!tabs.length) {
+            return;
+        }
+
+        var currentIndex = tabs.index(currentTab);
+        if (currentIndex < 0) {
+            currentIndex = 0;
+        }
+
+        var targetIndex = currentIndex;
+
+        if (key === 'ArrowLeft' || key === 'ArrowUp') {
+            targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+        } else if (key === 'ArrowRight' || key === 'ArrowDown') {
+            targetIndex = (currentIndex + 1) % tabs.length;
+        } else if (key === 'Home') {
+            targetIndex = 0;
+        } else if (key === 'End') {
+            targetIndex = tabs.length - 1;
+        }
+
+        event.preventDefault();
+
+        var targetTab = tabs.eq(targetIndex);
+        if (!targetTab.length) {
+            return;
+        }
+
+        tabs.attr('tabindex', '-1');
+        targetTab.attr('tabindex', '0');
+        targetTab.trigger('focus');
+
+        if (targetIndex !== currentIndex) {
+            targetTab.trigger('click');
+        }
     });
 
     $(document).on('submit', '.my-articles-search-form', function (e) {

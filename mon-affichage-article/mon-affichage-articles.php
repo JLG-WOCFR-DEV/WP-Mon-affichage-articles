@@ -45,6 +45,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-response-cache-key.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-telemetry.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
 
         $this->rest_controller = new My_Articles_Controller( $this );
@@ -72,6 +73,7 @@ final class Mon_Affichage_Articles {
         My_Articles_Block::get_instance();
         My_Articles_Enqueue::get_instance();
         My_Articles_Frontend_Data::get_instance();
+        My_Articles_Telemetry::init();
     }
 
     /**
