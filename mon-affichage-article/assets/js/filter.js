@@ -1211,6 +1211,14 @@
             var nonceHeader = filterSettings && filterSettings.restNonce ? filterSettings.restNonce : '';
             var trackDuration = createDurationTracker();
 
+            function isStaleFilterResponse() {
+                if (requestToken === activeFilterRequestToken) {
+                    return false;
+                }
+
+                return filterRequestSequence > requestToken;
+            }
+
             $.ajax({
                 url: requestUrl,
                 type: 'POST',
@@ -1230,6 +1238,10 @@
                 },
                 success: function (response) {
                     if (wasAborted) {
+                        return;
+                    }
+
+                    if (isStaleFilterResponse()) {
                         return;
                     }
 
@@ -1254,9 +1266,9 @@
                                 emitError(null, response, durationMs);
 
                                 if (typeof callbacks.onError === 'function') {
-                                    callbacks.onError(null, response);
-                                }
-                            });
+                                callbacks.onError(null, response);
+                            }
+                        });
 
                         return;
                     }
@@ -1270,6 +1282,10 @@
                 error: function (jqXHR, textStatus) {
                     if (textStatus === 'abort') {
                         wasAborted = true;
+                        return;
+                    }
+
+                    if (isStaleFilterResponse()) {
                         return;
                     }
 
@@ -1304,6 +1320,10 @@
                     }
 
                     if (wasAborted || textStatus === 'abort') {
+                        return;
+                    }
+
+                    if (isStaleFilterResponse()) {
                         return;
                     }
 

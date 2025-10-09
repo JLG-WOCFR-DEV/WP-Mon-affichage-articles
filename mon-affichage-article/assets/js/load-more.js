@@ -45,6 +45,83 @@
         })
         : null;
 
+    var activeLoadMoreRequests = {};
+    var latestLoadMoreRequestTokenByInstance = {};
+    var loadMoreRequestSequence = 0;
+    var loadMoreRequestKeySeed = 0;
+
+    function getLoadMoreInstanceKey(button, instanceId) {
+        if (instanceId) {
+            return 'instance-' + instanceId;
+        }
+
+        if (button && button.length) {
+            var existingKey = button.data('load-more-request-key');
+
+            if (!existingKey) {
+                loadMoreRequestKeySeed += 1;
+                existingKey = 'button-' + loadMoreRequestKeySeed;
+                button.data('load-more-request-key', existingKey);
+            }
+
+            return existingKey;
+        }
+
+        return 'global';
+    }
+
+    function cancelActiveLoadMoreRequest(instanceKey, reason) {
+        if (!instanceKey) {
+            return false;
+        }
+
+        var tracker = activeLoadMoreRequests[instanceKey];
+
+        if (!tracker) {
+            return false;
+        }
+
+        var cancelled = false;
+        var detail = $.extend({
+            reason: reason || 'superseded'
+        }, tracker.detail || {});
+
+        if (tracker.jqXHR && typeof tracker.jqXHR.abort === 'function') {
+            try {
+                tracker.jqXHR.abort();
+                cancelled = true;
+            } catch (error) {}
+        } else if (tracker.controller && typeof tracker.controller.abort === 'function') {
+            try {
+                tracker.controller.abort();
+                cancelled = true;
+            } catch (controllerError) {}
+        }
+
+        if (cancelled) {
+            emitLoadMoreInteraction('cancelled', detail);
+            debugLog('load-more', 'request:cancelled', detail);
+        }
+
+        activeLoadMoreRequests[instanceKey] = null;
+
+        return cancelled;
+    }
+
+    function isStaleLoadMoreResponse(instanceKey, requestToken) {
+        if (!instanceKey || !requestToken) {
+            return false;
+        }
+
+        var latestToken = latestLoadMoreRequestTokenByInstance[instanceKey];
+
+        if (!latestToken) {
+            return false;
+        }
+
+        return requestToken !== latestToken;
+    }
+
     function getStoredDebugConfig() {
         if (typeof window === 'undefined') {
             return null;
@@ -182,8 +259,6 @@
         if (typeof console !== 'undefined' && typeof console.log === 'function') {
             console.log('[my-articles]', eventName, payload);
         }
-
-        return Date.now();
     }
 
     function resolveSearchLabel(key, fallback) {
@@ -1149,6 +1224,12 @@
 
         var fallbackMessage = loadMoreSettings.errorText || 'Une erreur est survenue. Veuillez réessayer plus tard.';
 
+        var instanceKey = getLoadMoreInstanceKey(button, instanceId);
+        var cancelReason = typeof context.cancelReason === 'string'
+            ? context.cancelReason
+            : (context.userInitiated ? 'user-action' : (context.auto ? 'auto-trigger' : 'superseded'));
+        var requestToken = 0;
+
         var instrumentationDetail = {
             instanceId: instanceId,
             requestedPage: requestedPage,
@@ -1186,6 +1267,13 @@
 
             return;
         }
+
+        requestToken = ++loadMoreRequestSequence;
+        instrumentationDetail.requestToken = requestToken;
+
+        latestLoadMoreRequestTokenByInstance[instanceKey] = requestToken;
+
+        cancelActiveLoadMoreRequest(instanceKey, cancelReason);
 
         var hasRetried = false;
 
@@ -1421,7 +1509,11 @@
 
         function sendAjaxRequest() {
             var nonceHeader = loadMoreSettings && loadMoreSettings.restNonce ? loadMoreSettings.restNonce : '';
-            var trackDuration = createDurationTracker();
+            var requestSnapshot = $.extend({}, instrumentationDetail, {
+                cancelReason: cancelReason,
+                instanceKey: instanceKey,
+                requestToken: requestToken
+            });
 
             $.ajax({
                 url: requestUrl,
@@ -1438,7 +1530,7 @@
                     sort: sortValue,
                     filters: filters
                 },
-                beforeSend: function () {
+                beforeSend: function (currentJqXHR) {
                     var loadingText = loadMoreSettings.loadingText || originalButtonText;
                     button.text(loadingText);
                     button.prop('disabled', true);
@@ -1450,11 +1542,19 @@
                         wrapper.addClass('is-loading');
                     }
                     clearFeedback(wrapper);
+                    activeLoadMoreRequests[instanceKey] = {
+                        jqXHR: currentJqXHR,
+                        token: requestToken,
+                        detail: requestSnapshot
+                    };
                     emitLoadMoreInteraction('request', instrumentationDetail);
                     debugLog('load-more', 'request:send', instrumentationDetail);
                 },
                 success: function (response) {
-                    var durationMs = trackDuration();
+                    if (isStaleLoadMoreResponse(instanceKey, requestToken)) {
+                        return;
+                    }
+
                     if (response && response.success) {
                         handleSuccessResponse(response, durationMs);
                         return;
@@ -1476,8 +1576,15 @@
 
                     handleErrorResponse(null, response, durationMs);
                 },
-                error: function (jqXHR) {
-                    var durationMs = trackDuration();
+                error: function (jqXHR, textStatus) {
+                    if (textStatus === 'abort') {
+                        return;
+                    }
+
+                    if (isStaleLoadMoreResponse(instanceKey, requestToken)) {
+                        return;
+                    }
+
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         instrumentationDetail.hadNonceRefresh = true;
@@ -1494,8 +1601,21 @@
 
                     handleErrorResponse(jqXHR, null, durationMs);
                 },
-                complete: function () {
-                    var durationMs = trackDuration();
+                complete: function (completedJqXHR, textStatus) {
+                    var tracker = activeLoadMoreRequests[instanceKey];
+
+                    if (tracker && tracker.token === requestToken && tracker.jqXHR === completedJqXHR) {
+                        activeLoadMoreRequests[instanceKey] = null;
+                    }
+
+                    if (textStatus === 'abort') {
+                        return;
+                    }
+
+                    if (isStaleLoadMoreResponse(instanceKey, requestToken)) {
+                        return;
+                    }
+
                     if (wrapper && wrapper.length) {
                         setBusyState(wrapper, false);
                         wrapper.removeClass('is-loading');
