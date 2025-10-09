@@ -10,16 +10,7 @@ use ReflectionClass;
 
 final class RenderInlineStylesTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        global $wp_styles;
-
-        $wp_styles = new \WP_Styles();
-    }
-
-    public function test_render_inline_styles_records_scoped_css(): void
+    public function test_render_inline_styles_returns_custom_property_declarations(): void
     {
         $options = array(
             'module_bg_color' => '#123456',
@@ -32,20 +23,12 @@ final class RenderInlineStylesTest extends TestCase
         $method = $reflection->getMethod('render_inline_styles');
         $method->setAccessible(true);
 
-        $method->invoke($instance, $options, 321);
+        $styles = $method->invoke($instance, $options, 321);
 
-        global $wp_styles;
-
-        $this->assertArrayHasKey('my-articles-styles', $wp_styles->inline_styles);
-        $this->assertNotEmpty($wp_styles->inline_styles['my-articles-styles']);
-
-        $css = implode("\n", $wp_styles->inline_styles['my-articles-styles']);
-
-        $this->assertStringContainsString('#my-articles-wrapper-321 {', $css);
-        $this->assertStringContainsString('background-color: #123456;', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321 .my-article-item { background-color: #654321; }', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-grid .my-article-item .article-title-wrapper,', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-slideshow .my-article-item .article-title-wrapper,', $css);
-        $this->assertStringContainsString('#my-articles-wrapper-321.my-articles-list .my-article-item .article-content-wrapper { background-color: #abcdef; }', $css);
+        $this->assertIsString($styles);
+        $this->assertStringContainsString('--my-articles-surface-color: #123456;', $styles);
+        $this->assertStringContainsString('--my-articles-card-surface-color: #654321;', $styles);
+        $this->assertStringContainsString('--my-articles-title-surface-color: #abcdef;', $styles);
+        $this->assertStringContainsString('--my-articles-thumbnail-aspect-ratio: 16/9;', $styles);
     }
 }
