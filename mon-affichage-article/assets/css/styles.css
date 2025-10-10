@@ -935,10 +935,25 @@
 }
 
 .my-article-item .my-article-excerpt .my-article-read-more {
-    display: inline-block;
-    margin-left: 5px;
-    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-left: 8px;
+    font-weight: 600;
     color: var(--my-articles-title-color);
+    text-decoration: none;
+}
+
+.my-article-item .my-article-excerpt .my-article-read-more:hover,
+.my-article-item .my-article-excerpt .my-article-read-more:focus {
+    color: var(--my-articles-meta-hover-color, var(--my-articles-title-color));
+    text-decoration: underline;
+}
+
+.my-article-item .my-article-excerpt .my-article-read-more:focus-visible {
+    outline: 2px solid var(--my-articles-focus-ring-color, currentColor);
+    outline-offset: 2px;
+    border-radius: var(--my-articles-radius-sm, 6px);
 }
 
 .my-article-item .article-meta span:not(:last-child)::after {

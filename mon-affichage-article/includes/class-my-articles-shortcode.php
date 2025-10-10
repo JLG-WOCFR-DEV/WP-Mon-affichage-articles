@@ -2485,6 +2485,7 @@ JS;
         $raw_title     = get_the_title();
         $title_attr    = esc_attr( $raw_title );
         $title_display = esc_html( $raw_title );
+        $title_plain   = trim( wp_strip_all_tags( $raw_title ) );
         $term_names    = array();
 
         if ( $options['show_category'] && ! empty( $taxonomy ) ) {
@@ -2535,9 +2536,10 @@ JS;
                 <?php
                 if (!empty($options['show_excerpt'])) {
                     $excerpt_length  = isset($options['excerpt_length']) ? (int) $options['excerpt_length'] : 0;
-                    $raw_excerpt     = get_the_excerpt();
-                    $trimmed_excerpt = '';
-                    $has_read_more   = ! empty($options['excerpt_more_text']);
+                    $raw_excerpt       = get_the_excerpt();
+                    $trimmed_excerpt   = '';
+                    $read_more_text    = isset( $options['excerpt_more_text'] ) ? trim( wp_strip_all_tags( (string) $options['excerpt_more_text'] ) ) : '';
+                    $has_read_more     = '' !== $read_more_text;
 
                     if ($excerpt_length > 0) {
                         $trimmed_excerpt = wp_trim_words($raw_excerpt, $excerpt_length, $excerpt_more);
@@ -2554,8 +2556,24 @@ JS;
                         }
 
                         if ($has_read_more) {
+                            $read_more_label = $read_more_text;
+
+                            if ( '' !== $title_plain ) {
+                                $read_more_label = sprintf(
+                                    /* translators: 1: Read more link text, 2: article title. */
+                                    __( '%1$s: %2$s', 'mon-articles' ),
+                                    $read_more_text,
+                                    $title_plain
+                                );
+                            }
                             ?>
-                            <span class="my-article-read-more"><?php echo esc_html($options['excerpt_more_text']); ?></span>
+                            <a
+                                class="my-article-read-more"
+                                href="<?php echo $escaped_link; ?>"
+                                aria-label="<?php echo esc_attr( $read_more_label ); ?>"
+                            >
+                                <?php echo esc_html( $read_more_text ); ?>
+                            </a>
                             <?php
                         }
                         ?>

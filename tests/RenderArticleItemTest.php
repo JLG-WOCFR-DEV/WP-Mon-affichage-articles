@@ -124,7 +124,11 @@ final class RenderArticleItemTest extends TestCase
 
         $this->assertIsString($output);
         $this->assertStringContainsString('<div class="my-article-excerpt">', $output);
+        $this->assertStringContainsString('<a', $output);
         $this->assertStringContainsString('class="my-article-read-more"', $output);
+        $this->assertStringContainsString('href="http://example.com/post/current"', $output);
+        $this->assertStringContainsString('aria-label="Lire la suite: Sample Title"', $output);
+        $this->assertStringNotContainsString('<span class="my-article-read-more"', $output);
         $this->assertStringNotContainsString('…', $output);
     }
 }
