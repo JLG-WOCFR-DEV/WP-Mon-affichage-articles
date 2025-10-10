@@ -8,6 +8,7 @@ describe('slideshow utilities', () => {
                 .forEach((key) => {
                     delete window[key];
                 });
+            delete window.myArticlesSwiperSettings;
             delete window.mySwiperInstances;
         }
     });
@@ -55,22 +56,24 @@ describe('slideshow utilities', () => {
         const swiperConstructor = jest.fn(() => swiperInstance);
         global.Swiper = swiperConstructor;
 
-        window.myArticlesSwiperSettings_123 = {
-            columns_mobile: 1,
-            columns_tablet: 2,
-            columns_desktop: 3,
-            columns_ultrawide: 4,
-            gap_size: 16,
-            container_selector: '#my-articles-wrapper-123 .swiper-container',
-            a11y_prev_slide_message: 'Précédente',
-            a11y_next_slide_message: 'Suivante',
-            a11y_first_slide_message: 'Première',
-            a11y_last_slide_message: 'Dernière',
-            a11y_pagination_bullet_message: 'Aller à {{index}}',
-            a11y_slide_label_message: 'Diapositive {{index}}/{{slidesLength}}',
-            a11y_container_message: 'Navigation clavier activée',
-            a11y_container_role_description: 'Carrousel',
-            a11y_item_role_description: 'Diapositive',
+        window.myArticlesSwiperSettings = {
+            123: {
+                columns_mobile: 1,
+                columns_tablet: 2,
+                columns_desktop: 3,
+                columns_ultrawide: 4,
+                gap_size: 16,
+                container_selector: '#my-articles-wrapper-123 .swiper-container',
+                a11y_prev_slide_message: 'Précédente',
+                a11y_next_slide_message: 'Suivante',
+                a11y_first_slide_message: 'Première',
+                a11y_last_slide_message: 'Dernière',
+                a11y_pagination_bullet_message: 'Aller à {{index}}',
+                a11y_slide_label_message: 'Diapositive {{index}}/{{slidesLength}}',
+                a11y_container_message: 'Navigation clavier activée',
+                a11y_container_role_description: 'Carrousel',
+                a11y_item_role_description: 'Diapositive',
+            },
         };
 
         jest.resetModules();

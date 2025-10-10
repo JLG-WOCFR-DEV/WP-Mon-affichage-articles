@@ -61,15 +61,31 @@
             return;
         }
 
-        const settingsName = 'myArticlesSwiperSettings_' + instanceId;
-        const settings = window[settingsName];
+        const legacySettingsName = 'myArticlesSwiperSettings_' + instanceId;
+        const registry = window.myArticlesSwiperSettings;
+        const legacySettings = window[legacySettingsName];
+        const targets = [];
 
-        if (settings) {
+        if (registry && typeof registry === 'object') {
+            if (!registry[instanceId] && legacySettings) {
+                registry[instanceId] = legacySettings;
+            }
+
+            if (registry[instanceId]) {
+                targets.push(registry[instanceId]);
+            }
+        }
+
+        if (legacySettings && targets.indexOf(legacySettings) === -1) {
+            targets.push(legacySettings);
+        }
+
+        targets.forEach(function (settings) {
             settings.columns_mobile = effectiveColumns.mobile;
             settings.columns_tablet = effectiveColumns.tablet;
             settings.columns_desktop = effectiveColumns.desktop;
             settings.columns_ultrawide = effectiveColumns.ultrawide;
-        }
+        });
 
         if (!window.mySwiperInstances || !window.mySwiperInstances[instanceId]) {
             return;
