@@ -1839,6 +1839,7 @@ JS;
         $requested_category = isset( $requested_values['category'] ) ? $requested_values['category'] : '';
         $requested_search   = isset( $requested_values['search'] ) ? $requested_values['search'] : '';
         $requested_sort     = isset( $requested_values['sort'] ) ? $requested_values['sort'] : '';
+        $requested_page     = isset( $requested_values['page'] ) ? (int) $requested_values['page'] : 1;
 
         $category_query_var = isset( $request_query_vars['category'] ) ? $request_query_vars['category'] : 'my_articles_cat_' . $id;
         $search_query_var   = isset( $request_query_vars['search'] ) ? $request_query_vars['search'] : 'my_articles_search_' . $id;
@@ -1904,7 +1905,11 @@ JS;
             self::ensure_lazyload_fallback_script();
         }
 
-        $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
+        if ( $requested_page < 1 ) {
+            $requested_page = 1;
+        }
+
+        $paged = $requested_page;
 
         $all_excluded_ids = isset( $options['all_excluded_ids'] ) ? (array) $options['all_excluded_ids'] : array();
 
@@ -1961,6 +1966,7 @@ JS;
             'active_filters'         => isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
                 ? count( $options['active_tax_filters'] )
                 : 0,
+            'current_page'           => (int) $paged,
         );
 
         $summary_options = array(
