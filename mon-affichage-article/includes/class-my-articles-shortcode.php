@@ -16,6 +16,11 @@ class My_Articles_Shortcode {
     private static $thumbnail_aspect_ratio_choices = null;
     private static $last_render_summary = array();
 
+    /**
+     * @var My_Articles_Shortcode_Data_Preparer
+     */
+    private $data_preparer;
+
     public static function get_thumbnail_aspect_ratio_choices() {
         if ( null === self::$thumbnail_aspect_ratio_choices ) {
             self::$thumbnail_aspect_ratio_choices = array(
@@ -1188,7 +1193,17 @@ JS;
     }
 
     private function __construct() {
+        $this->data_preparer = new My_Articles_Shortcode_Data_Preparer( $this );
         add_shortcode( 'mon_affichage_articles', array( $this, 'render_shortcode' ) );
+    }
+
+    /**
+     * Returns the service responsible for preparing normalized shortcode data.
+     *
+     * @return My_Articles_Shortcode_Data_Preparer
+     */
+    public function get_data_preparer() {
+        return $this->data_preparer;
     }
 
     public static function get_default_options() {
@@ -1807,199 +1822,76 @@ JS;
             return '';
         }
 
-        $options_meta = get_post_meta( $id, '_my_articles_settings', true );
-        if ( ! is_array( $options_meta ) ) {
-            $options_meta = array();
+        $preparation = $this->get_data_preparer()->prepare( $id, $overrides );
+
+        if ( is_wp_error( $preparation ) ) {
+            return '';
         }
 
-        if ( ! empty( $overrides ) ) {
-            $options_meta = array_merge( $options_meta, $overrides );
-        }
+        $options            = isset( $preparation['options'] ) ? $preparation['options'] : array();
+        $requested_values   = isset( $preparation['requested'] ) && is_array( $preparation['requested'] )
+            ? $preparation['requested']
+            : array();
+        $request_query_vars = isset( $preparation['request_query_vars'] ) && is_array( $preparation['request_query_vars'] )
+            ? $preparation['request_query_vars']
+            : array();
 
-        $default_aria_label = trim( wp_strip_all_tags( get_the_title( $id ) ) );
-        if ( '' === $default_aria_label ) {
-            /* translators: %d: module (post) ID. */
-            $default_aria_label = sprintf( __( 'Module d\'articles %d', 'mon-articles' ), $id );
-        }
+        $requested_category = isset( $requested_values['category'] ) ? $requested_values['category'] : '';
+        $requested_search   = isset( $requested_values['search'] ) ? $requested_values['search'] : '';
+        $requested_sort     = isset( $requested_values['sort'] ) ? $requested_values['sort'] : '';
+
+        $category_query_var = isset( $request_query_vars['category'] ) ? $request_query_vars['category'] : 'my_articles_cat_' . $id;
+        $search_query_var   = isset( $request_query_vars['search'] ) ? $request_query_vars['search'] : 'my_articles_search_' . $id;
+        $sort_query_var     = isset( $request_query_vars['sort'] ) ? $request_query_vars['sort'] : 'my_articles_sort_' . $id;
+        $paged_var          = isset( $request_query_vars['paged'] ) ? $request_query_vars['paged'] : 'paged_' . $id;
+
+        $available_categories = isset( $options['available_categories'] ) ? $options['available_categories'] : array();
 
         $resolved_aria_label = '';
-        if ( isset( $options_meta['aria_label'] ) && is_string( $options_meta['aria_label'] ) ) {
-            $resolved_aria_label = trim( sanitize_text_field( $options_meta['aria_label'] ) );
+        if ( isset( $options['aria_label'] ) && is_string( $options['aria_label'] ) ) {
+            $resolved_aria_label = trim( $options['aria_label'] );
         }
 
         if ( '' === $resolved_aria_label ) {
-            $resolved_aria_label = sanitize_text_field( $default_aria_label );
-        }
+            $fallback_label = trim( wp_strip_all_tags( get_the_title( $id ) ) );
 
-        $options_meta['aria_label'] = $resolved_aria_label;
-
-        /* translators: %s: module accessible label. */
-        $default_filter_aria_label = sprintf( __( 'Filtre des catégories pour %s', 'mon-articles' ), $resolved_aria_label );
-
-        $resolved_filter_aria_label = '';
-        if ( isset( $options_meta['category_filter_aria_label'] ) && is_string( $options_meta['category_filter_aria_label'] ) ) {
-            $resolved_filter_aria_label = trim( sanitize_text_field( $options_meta['category_filter_aria_label'] ) );
-        }
-
-        if ( '' === $resolved_filter_aria_label ) {
-            $resolved_filter_aria_label = $default_filter_aria_label;
-        }
-
-        $options_meta['category_filter_aria_label'] = $resolved_filter_aria_label;
-
-        $has_filter_categories = false;
-        if ( isset( $options_meta['filter_categories'] ) ) {
-            $raw_filter_categories = $options_meta['filter_categories'];
-
-            if ( is_string( $raw_filter_categories ) ) {
-                $raw_filter_categories = explode( ',', $raw_filter_categories );
+            if ( '' === $fallback_label ) {
+                /* translators: %d: module (post) ID. */
+                $fallback_label = sprintf( __( "Module d'articles %d", 'mon-articles' ), $id );
             }
 
-            if ( is_array( $raw_filter_categories ) ) {
-                $normalized_filter_categories = array_values( array_filter( array_map( 'absint', $raw_filter_categories ) ) );
-                $has_filter_categories       = ! empty( $normalized_filter_categories );
-            }
+            $resolved_aria_label = $fallback_label;
         }
 
-        $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
-
-        $category_query_var   = 'my_articles_cat_' . $id;
-        $search_query_var     = 'my_articles_search_' . $id;
-        $sort_query_var       = 'my_articles_sort_' . $id;
-        $requested_category   = '';
-        $requested_search     = '';
-        $requested_sort       = '';
-
-        if ( $allows_requested_category && isset( $_GET[ $category_query_var ] ) ) {
-            $raw_requested_category = wp_unslash( $_GET[ $category_query_var ] );
-
-            if ( is_scalar( $raw_requested_category ) ) {
-                $requested_category = sanitize_title( (string) $raw_requested_category );
-            } elseif ( is_array( $raw_requested_category ) ) {
-                foreach ( $raw_requested_category as $raw_requested_category_value ) {
-                    if ( is_scalar( $raw_requested_category_value ) ) {
-                        $requested_category = sanitize_title( (string) $raw_requested_category_value );
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ( isset( $_GET[ $search_query_var ] ) ) {
-            $raw_requested_search = wp_unslash( $_GET[ $search_query_var ] );
-
-            if ( is_scalar( $raw_requested_search ) ) {
-                $requested_search = sanitize_text_field( (string) $raw_requested_search );
-            } elseif ( is_array( $raw_requested_search ) ) {
-                foreach ( $raw_requested_search as $raw_requested_search_value ) {
-                    if ( is_scalar( $raw_requested_search_value ) ) {
-                        $requested_search = sanitize_text_field( (string) $raw_requested_search_value );
-                        break;
-                    }
-                }
-            }
-        }
-
-        if ( isset( $_GET[ $sort_query_var ] ) ) {
-            $raw_requested_sort = wp_unslash( $_GET[ $sort_query_var ] );
-
-            if ( is_scalar( $raw_requested_sort ) ) {
-                $requested_sort = sanitize_key( (string) $raw_requested_sort );
-            } elseif ( is_array( $raw_requested_sort ) ) {
-                foreach ( $raw_requested_sort as $raw_requested_sort_value ) {
-                    if ( is_scalar( $raw_requested_sort_value ) ) {
-                        $requested_sort = sanitize_key( (string) $raw_requested_sort_value );
-                        break;
-                    }
-                }
-            }
-        }
-
-        $normalize_context = array(
-            'allow_external_requested_category' => $allows_requested_category,
-        );
-
-        if ( '' !== $requested_category ) {
-            $normalize_context['requested_category'] = $requested_category;
-        }
-
-        if ( '' !== $requested_search ) {
-            $normalize_context['requested_search'] = $requested_search;
-        }
-
-        if ( '' !== $requested_sort ) {
-            $normalize_context['requested_sort'] = $requested_sort;
-        }
-
-        $options = self::normalize_instance_options(
-            $options_meta,
-            $normalize_context
-        );
-
-        $resolved_taxonomy = $options['resolved_taxonomy'];
-        $available_categories = $options['available_categories'];
-
-        $rest_nonce          = wp_create_nonce( 'wp_rest' );
-        $rest_root           = esc_url_raw( rest_url() );
-        $filter_rest_endpoint      = esc_url_raw( rest_url( 'my-articles/v1/filter' ) );
-        $load_more_rest_endpoint   = esc_url_raw( rest_url( 'my-articles/v1/load-more' ) );
-        $nonce_refresh_endpoint    = esc_url_raw( rest_url( 'my-articles/v1/nonce' ) );
-
-        $global_instrumentation = my_articles_get_instrumentation_settings();
-        $instrumentation_payload = array(
-            'enabled' => ! empty( $global_instrumentation['enabled'] ),
-            'channel' => $global_instrumentation['channel'],
-            'fetchUrl' => esc_url_raw( rest_url( 'my-articles/v1/track' ) ),
-        );
+        $script_payloads = isset( $preparation['script_data'] ) && is_array( $preparation['script_data'] )
+            ? $preparation['script_data']
+            : array();
 
         if ( ! empty( $options['show_category_filter'] ) || ! empty( $options['enable_keyword_search'] ) ) {
             wp_enqueue_script( 'my-articles-filter' );
-
-            My_Articles_Enqueue::get_instance()->register_script_data(
-                'my-articles-filter',
-                'myArticlesFilter',
-                [
-                    'endpoint'      => $filter_rest_endpoint,
-                    'restRoot'      => $rest_root,
-                    'restNonce'     => $rest_nonce,
-                    'nonceEndpoint' => $nonce_refresh_endpoint,
-                    'errorText'     => __( 'Erreur AJAX.', 'mon-articles' ),
-                    'countSingle' => __( '%s article affiché.', 'mon-articles' ),
-                    'countPlural' => __( '%s articles affichés.', 'mon-articles' ),
-                    'countNone'   => __( 'Aucun article à afficher.', 'mon-articles' ),
-                    'countPartialSingle' => __( 'Affichage de %1$s article sur %2$s.', 'mon-articles' ),
-                    'countPartialPlural' => __( 'Affichage de %1$s articles sur %2$s.', 'mon-articles' ),
-                    'instrumentation' => $instrumentation_payload,
-                ]
-            );
         }
 
-        if ( $options['pagination_mode'] === 'load_more' ) {
+        if ( isset( $options['pagination_mode'] ) && 'load_more' === $options['pagination_mode'] ) {
             wp_enqueue_script( 'my-articles-load-more' );
-
-            My_Articles_Enqueue::get_instance()->register_script_data(
-                'my-articles-load-more',
-                'myArticlesLoadMore',
-                array(
-                    'endpoint'        => $load_more_rest_endpoint,
-                    'restRoot'        => $rest_root,
-                    'restNonce'       => $rest_nonce,
-                    'nonceEndpoint'   => $nonce_refresh_endpoint,
-                    'loadingText'     => __( 'Chargement...', 'mon-articles' ),
-                    'loadMoreText'    => esc_html__( 'Charger plus', 'mon-articles' ),
-                    'errorText'       => __( 'Erreur AJAX.', 'mon-articles' ),
-                    'totalSingle'     => __( '%s article affiché au total.', 'mon-articles' ),
-                    'totalPlural'     => __( '%s articles affichés au total.', 'mon-articles' ),
-                    'addedSingle'     => __( '%s article ajouté.', 'mon-articles' ),
-                    'addedPlural'     => __( '%s articles ajoutés.', 'mon-articles' ),
-                    'noAdditional'    => __( 'Aucun article supplémentaire.', 'mon-articles' ),
-                    'none'            => __( 'Aucun article à afficher.', 'mon-articles' ),
-                    'instrumentation' => $instrumentation_payload,
-                )
-            );
         }
 
-        if ( $options['pagination_mode'] === 'numbered' ) {
+        if ( ! empty( $script_payloads ) ) {
+            $enqueue = My_Articles_Enqueue::get_instance();
+
+            foreach ( $script_payloads as $payload ) {
+                if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                    continue;
+                }
+
+                $enqueue->register_script_data(
+                    $payload['handle'],
+                    $payload['object'],
+                    (array) $payload['data']
+                );
+            }
+        }
+
+        if ( isset( $options['pagination_mode'] ) && 'numbered' === $options['pagination_mode'] ) {
             wp_enqueue_script( 'my-articles-scroll-fix' );
         }
 
@@ -2012,7 +1904,6 @@ JS;
             self::ensure_lazyload_fallback_script();
         }
 
-        $paged_var = 'paged_' . $id;
         $paged = isset($_GET[$paged_var]) ? absint( wp_unslash( $_GET[$paged_var] ) ) : 1;
 
         $all_excluded_ids = isset( $options['all_excluded_ids'] ) ? (array) $options['all_excluded_ids'] : array();
