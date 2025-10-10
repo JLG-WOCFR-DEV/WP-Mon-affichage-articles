@@ -76,6 +76,9 @@ class My_Articles_Shortcode_Data_Preparer {
 
         $requested_search = $this->read_request_value( $request, $query_vars['search'], 'sanitize_text_field' );
         $requested_sort   = $this->read_request_value( $request, $query_vars['sort'], array( $this, 'sanitize_sort_value' ) );
+        $requested_page   = $this->normalize_requested_page(
+            $this->read_request_value( $request, $query_vars['paged'] )
+        );
 
         $cache_key = $this->build_cache_key(
             $instance_id,
@@ -152,6 +155,7 @@ class My_Articles_Shortcode_Data_Preparer {
                 'category' => $requested_category,
                 'search'   => $requested_search,
                 'sort'     => $requested_sort,
+                'page'     => $requested_page,
             ),
             'request_query_vars'        => $query_vars,
             'allows_requested_category' => (bool) $allows_requested_category,
@@ -409,6 +413,26 @@ class My_Articles_Shortcode_Data_Preparer {
         }
 
         return '';
+    }
+
+    /**
+     * Normalizes the requested page number ensuring it is always positive.
+     *
+     * @param string $value Raw page value extracted from the request.
+     * @return int
+     */
+    private function normalize_requested_page( $value ) {
+        if ( '' === $value ) {
+            return 1;
+        }
+
+        $page = absint( $value );
+
+        if ( $page < 1 ) {
+            return 1;
+        }
+
+        return $page;
     }
 
     /**
