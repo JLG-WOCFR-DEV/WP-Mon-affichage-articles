@@ -1255,6 +1255,7 @@ JS;
             'slideshow_delay' => 5000,
             'slideshow_pause_on_interaction' => 1,
             'slideshow_pause_on_mouse_enter' => 1,
+            'slideshow_respect_reduced_motion' => 1,
             'slideshow_show_navigation' => 1,
             'slideshow_show_pagination' => 1,
         ];
@@ -1633,6 +1634,7 @@ JS;
         $options['slideshow_autoplay'] = ! empty( $options['slideshow_autoplay'] ) ? 1 : 0;
         $options['slideshow_pause_on_interaction'] = ! empty( $options['slideshow_pause_on_interaction'] ) ? 1 : 0;
         $options['slideshow_pause_on_mouse_enter'] = ! empty( $options['slideshow_pause_on_mouse_enter'] ) ? 1 : 0;
+        $options['slideshow_respect_reduced_motion'] = ! empty( $options['slideshow_respect_reduced_motion'] ) ? 1 : 0;
         $options['slideshow_show_navigation'] = ! empty( $options['slideshow_show_navigation'] ) ? 1 : 0;
         $options['slideshow_show_pagination'] = ! empty( $options['slideshow_show_pagination'] ) ? 1 : 0;
 
@@ -2776,6 +2778,7 @@ JS;
             'delay'                => (int) $options['slideshow_delay'],
             'pause_on_interaction' => ! empty( $options['slideshow_pause_on_interaction'] ),
             'pause_on_mouse_enter' => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
         );
 
         $localized_settings = array(
@@ -2788,6 +2791,7 @@ JS;
             'autoplay'                          => $autoplay_settings,
             'show_navigation'                   => ! empty( $options['slideshow_show_navigation'] ),
             'show_pagination'                   => ! empty( $options['slideshow_show_pagination'] ),
+            'respect_reduced_motion'            => ! empty( $options['slideshow_respect_reduced_motion'] ),
             'container_selector'                => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
             'a11y_prev_slide_message'           => __( 'Diapositive précédente', 'mon-articles' ),
             'a11y_next_slide_message'           => __( 'Diapositive suivante', 'mon-articles' ),

@@ -316,6 +316,16 @@ class My_Articles_Metaboxes {
             'default'     => 1,
             'description' => __('Gèle le carrousel quand la souris survole la zone.', 'mon-articles'),
         ]);
+        $this->render_field(
+            'slideshow_respect_reduced_motion',
+            esc_html__('Respecter « Réduire les animations »', 'mon-articles'),
+            'checkbox',
+            $opts,
+            [
+                'default'     => 1,
+                'description' => __('Suspend l’autoplay si le navigateur demande moins d’animations.', 'mon-articles'),
+            ]
+        );
         $this->render_field('slideshow_show_navigation', esc_html__('Afficher les flèches de navigation', 'mon-articles'), 'checkbox', $opts, [
             'default' => 1,
         ]);
@@ -885,6 +895,7 @@ class My_Articles_Metaboxes {
         $sanitized['slideshow_delay'] = $delay;
         $sanitized['slideshow_pause_on_interaction'] = isset( $input['slideshow_pause_on_interaction'] ) ? 1 : 0;
         $sanitized['slideshow_pause_on_mouse_enter'] = isset( $input['slideshow_pause_on_mouse_enter'] ) ? 1 : 0;
+        $sanitized['slideshow_respect_reduced_motion'] = isset( $input['slideshow_respect_reduced_motion'] ) ? 1 : 0;
         $sanitized['slideshow_show_navigation'] = isset( $input['slideshow_show_navigation'] ) ? 1 : 0;
         $sanitized['slideshow_show_pagination'] = isset( $input['slideshow_show_pagination'] ) ? 1 : 0;
 

@@ -656,6 +656,7 @@ class My_Articles_Controller extends WP_REST_Controller {
             'slideshow_autoplay',
             'slideshow_pause_on_interaction',
             'slideshow_pause_on_mouse_enter',
+            'slideshow_respect_reduced_motion',
             'slideshow_show_navigation',
             'slideshow_show_pagination',
             'load_more_auto',

@@ -135,3 +135,36 @@ En priorisant ces axes, Tuiles – LCV pourra rivaliser plus sereinement avec le
      - proposer des exports CSV/PNG via `wp_ajax` et intégrer un connecteur facultatif vers des outils internes (ex. Matomo) via webhooks.
    - **Livrables UI** : boutons de bascule analytics, légende des indicateurs, heatmap progressive sur les cartes, panneau latéral « Insights » avec graph sparklines et recommandations automatiques.
    - **Indicateurs de succès** : volume d'activations du mode pilotage, adoption des exports, amélioration du taux de clic moyen sur les filtres optimisés.
+
+### Comparatif accessibilité, UI et fiabilité
+
+| Dimension | Tuiles – LCV (actuel) | Extensions pro (JetEngine, WP Grid Builder, Stackable Pro) | Opportunités d’évolution |
+| --- | --- | --- | --- |
+| **Accessibilité sémantique** | Le shortcode applique des libellés ARIA configurables pour le wrapper et la barre de filtres, mais laisse l’utilisateur final rédiger chaque message manuellement.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1844-L1884】 | Les solutions premium pré-remplissent des libellés localisés, détectent l’absence de description et proposent des messages adaptés aux filtres actifs. | Ajouter un générateur de descriptions contextuelles (avec suggestions automatiques et contrôle de contraste) et des messages d’état dynamiques annoncés via `aria-live`. |
+| **Organisation des réglages** | Tous les contrôles (disposition, pagination, slideshow, accessibilité, recherche) cohabitent dans la même sidebar Gutenberg avec de multiples `PanelBody`, ce qui crée des parcours longs à scroller.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1661-L1755】 | Les extensions pro distinguent un mode « Essentiel » (affichage, contenu, interactions de base) d’un mode « Avancé » (animation, fine tuning) et intègrent une recherche instantanée. | Structurer un double panneau « Simple » vs « Expert », avec une vue condensée basée sur les presets et une vue détaillée munie de favoris et de filtres par catégorie de réglage. |
+| **Preview & design system** | L’aperçu repose sur l’injection directe du HTML rendu via `dangerouslySetInnerHTML`, sans mise à jour instantanée des composants ni simulation des tokens du thème.【F:mon-affichage-article/blocks/mon-affichage-articles/preview.js†L562-L583】 | Les extensions pro offrent un canvas React en temps réel, synchronisé avec le design system du thème et les points de rupture. | Introduire un `PreviewCanvas` déclaratif, capable de puiser dans `wp_get_global_styles()` et d’afficher des modes responsive/sombre dans l’éditeur. |
+| **Contrôle du slider** | Les options Swiper sont regroupées dans la même section que les réglages de grille, sans garde-fous d’accessibilité (pause automatique selon `prefers-reduced-motion`, focus piégé).【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1704-L1745】 | Les plugins professionnels appliquent des presets sûrs (autoplay limité, pause annoncée aux lecteurs d’écran) et affichent des alertes lorsque les paramètres deviennent risqués. | Ajouter des scénarios validés (Autoplay marketing, Témoignages, Focus accessibilité) qui ajustent automatiquement délais, pauses et navigation au clavier, avec badges d’état. |
+| **Fiabilité & cache** | Les clés de cache REST concatènent les paramètres sans namespace métier détaillé, augmentant le risque de collisions entre filtres et recherche, et aucune métrique n’est exposée en back-office.【F:mon-affichage-article/mon-affichage-articles.php†L474-L520】 | Les solutions pro tracent les hits/miss et exposent une console d’invalidation ciblée. | Introduire un service `CacheKey` dédié (namespace + hash stable) et un tableau de bord d’observabilité (compteurs, collisions, purge à la demande). |
+
+### Améliorations ciblées UI/UX & accessibilité
+
+1. **Mode Simple vs Expert dans l’éditeur**
+   - **Simple** : présenter uniquement les choix critiques (mode d’affichage, pagination, filtres) et un sélecteur de preset visuel, avec possibilité d’enregistrer un « pack » d’options préférées pour l’équipe éditoriale.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1661-L1714】
+   - **Expert** : regrouper le reste des contrôles dans un panneau accordéon avec moteur de recherche et tags (« Accessibilité », « Animations », « Performances »), à la manière des filtres contextuels déjà présents dans JetEngine.
+   - **Technique** : créer un store `wp.data` qui mémorise la dernière vue utilisée par l’utilisateur et autorise les favoris de réglages pour éviter les reconfigurations répétées.
+
+2. **Guides d’accessibilité intégrés**
+   - Profiter du champ `aria_label` existant pour afficher, dans l’inspecteur, des suggestions générées (ex. « Articles à la une – mars ») et signaler automatiquement les contrastes insuffisants via la palette admin.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1844-L1872】【F:mon-affichage-article/assets/css/admin.css†L1-L48】
+   - Ajouter un toggle « Respecter les préférences de réduction de mouvement » qui neutralise autoplay et transitions en cas de `prefers-reduced-motion`, ainsi qu’un `aria-live` pour annoncer les nouveaux articles chargés.
+
+3. **Preview immersive et testable**
+   - Remplacer l’injection HTML statique par des composants React permettant d’ajuster visuellement espacements, typographies et ordonnancement par drag & drop, avec support du mode sombre et des breakpoints natifs.【F:mon-affichage-article/blocks/mon-affichage-articles/preview.js†L562-L583】
+   - Ajouter un panneau « Audit express » qui affiche contrastes, tailles de tap target et avertissements d’accessibilité basés sur les données du design token.
+
+4. **Fiabilisation de la collecte & du cache**
+   - Encapsuler la génération des clés dans un service (`My_Articles_Cache_Key`) qui crée des fragments normalisés (`mode:grid`, `filter:category-slug`, `search:query`) et expose un compteur de collisions accessible depuis l’onglet « Maintenance ».【F:mon-affichage-article/mon-affichage-articles.php†L474-L520】
+   - Ajouter une page « Journal des erreurs » listant les réponses REST en échec, les expirations de cache et les temps de rendu des requêtes (`build_display_state`) pour aider au diagnostic.
+
+5. **Scénarios de configuration guidée**
+   - Introduire des « assistants » orientés objectifs (ex. « Magazine éditorial », « Landing produit ») qui pré-configurent pagination, recherche et filtres, tout en expliquant les compromis UX (densité des cartes, temps de chargement).【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1661-L1704】
+   - Chaque assistant pourrait proposer une check-list d’accessibilité (focus visible, labels explicites, durée d’autoplay) avant publication, inspirée des workflows pro.
