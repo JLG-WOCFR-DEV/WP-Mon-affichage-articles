@@ -143,14 +143,36 @@
         return Array.from(found);
     }
 
+    function getSwiperSettings(instanceId) {
+        if (!instanceId || !root) {
+            return null;
+        }
+
+        const registry = root.myArticlesSwiperSettings;
+        if (registry && typeof registry === 'object') {
+            const fromRegistry = registry[instanceId];
+            if (fromRegistry) {
+                return fromRegistry;
+            }
+        }
+
+        const legacyName = 'myArticlesSwiperSettings_' + instanceId;
+        const legacySettings = root[legacyName];
+
+        if (legacySettings && registry && typeof registry === 'object') {
+            registry[instanceId] = legacySettings;
+        }
+
+        return legacySettings || null;
+    }
+
     function initSwiperForWrapper(wrapper) {
         const instanceId = getInstanceId(wrapper);
         if (!instanceId) {
             return null;
         }
 
-        const settingsObjectName = 'myArticlesSwiperSettings_' + instanceId;
-        const settings = root ? root[settingsObjectName] : undefined;
+        const settings = getSwiperSettings(instanceId);
         if (!settings) {
             return null;
         }
