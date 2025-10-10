@@ -87,6 +87,7 @@ class My_Articles_Shortcode_Data_Preparer {
                 'category' => $requested_category,
                 'search'   => $requested_search,
                 'sort'     => $requested_sort,
+                'page'     => $requested_page,
             )
         );
 

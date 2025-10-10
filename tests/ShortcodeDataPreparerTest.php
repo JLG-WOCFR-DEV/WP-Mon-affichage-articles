@@ -124,4 +124,54 @@ final class ShortcodeDataPreparerTest extends TestCase
         $this->assertIsArray($prepared);
         $this->assertSame(1, $prepared['requested']['page'] ?? null);
     }
+
+    public function test_prepare_caches_unique_payloads_per_requested_page(): void
+    {
+        $instanceId = 987;
+
+        global $mon_articles_test_post_type_map,
+            $mon_articles_test_post_status_map,
+            $mon_articles_test_post_meta_map;
+
+        $mon_articles_test_post_type_map[$instanceId]   = 'mon_affichage';
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
+        $mon_articles_test_post_meta_map[$instanceId]   = array(
+            '_my_articles_settings' => array(
+                'pagination_mode'      => 'load_more',
+                'display_mode'         => 'grid',
+                'posts_per_page'       => 5,
+                'show_category_filter' => 1,
+            ),
+        );
+
+        $shortcode = My_Articles_Shortcode::get_instance();
+        $preparer  = $shortcode->get_data_preparer();
+
+        $first = $preparer->prepare(
+            $instanceId,
+            array(),
+            array(
+                'request' => array(
+                    'paged_' . $instanceId         => '2',
+                    'my_articles_sort_' . $instanceId => 'date',
+                ),
+            )
+        );
+
+        $second = $preparer->prepare(
+            $instanceId,
+            array(),
+            array(
+                'request' => array(
+                    'paged_' . $instanceId         => '3',
+                    'my_articles_sort_' . $instanceId => 'date',
+                ),
+            )
+        );
+
+        $this->assertIsArray($first);
+        $this->assertIsArray($second);
+        $this->assertSame(2, $first['requested']['page'] ?? null);
+        $this->assertSame(3, $second['requested']['page'] ?? null);
+    }
 }
