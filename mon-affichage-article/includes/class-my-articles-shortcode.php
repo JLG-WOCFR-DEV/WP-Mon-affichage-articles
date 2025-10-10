@@ -2670,38 +2670,61 @@ JS;
         wp_enqueue_style('swiper-css');
         wp_enqueue_script('swiper-js');
         wp_enqueue_script('my-articles-swiper-init');
+
         $autoplay_settings = array(
-            'enabled'              => ! empty( $options['slideshow_autoplay'] ),
-            'delay'                => (int) $options['slideshow_delay'],
-            'pause_on_interaction' => ! empty( $options['slideshow_pause_on_interaction'] ),
-            'pause_on_mouse_enter' => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
-            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
+            'enabled'                 => ! empty( $options['slideshow_autoplay'] ),
+            'delay'                   => (int) $options['slideshow_delay'],
+            'pause_on_interaction'    => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter'    => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'respect_reduced_motion'  => ! empty( $options['slideshow_respect_reduced_motion'] ),
         );
 
         $localized_settings = array(
-            'columns_mobile'                    => $options['columns_mobile'],
-            'columns_tablet'                    => $options['columns_tablet'],
-            'columns_desktop'                   => $options['columns_desktop'],
-            'columns_ultrawide'                 => $options['columns_ultrawide'],
-            'gap_size'                          => $options['gap_size'],
-            'loop'                              => ! empty( $options['slideshow_loop'] ),
-            'autoplay'                          => $autoplay_settings,
-            'show_navigation'                   => ! empty( $options['slideshow_show_navigation'] ),
-            'show_pagination'                   => ! empty( $options['slideshow_show_pagination'] ),
-            'respect_reduced_motion'            => ! empty( $options['slideshow_respect_reduced_motion'] ),
-            'container_selector'                => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
-            'a11y_prev_slide_message'           => __( 'Diapositive précédente', 'mon-articles' ),
-            'a11y_next_slide_message'           => __( 'Diapositive suivante', 'mon-articles' ),
-            'a11y_first_slide_message'          => __( 'Première diapositive', 'mon-articles' ),
-            'a11y_last_slide_message'           => __( 'Dernière diapositive', 'mon-articles' ),
-            'a11y_pagination_bullet_message'    => __( 'Aller à la diapositive {{index}}', 'mon-articles' ),
-            'a11y_slide_label_message'          => __( 'Diapositive {{index}} sur {{slidesLength}}', 'mon-articles' ),
-            'a11y_container_message'            => __( 'Ce carrousel est navigable au clavier : utilisez les flèches pour changer de diapositive.', 'mon-articles' ),
-            'a11y_container_role_description'   => __( 'Carrousel d\'articles', 'mon-articles' ),
-            'a11y_item_role_description'        => __( 'Diapositive', 'mon-articles' ),
+            'columns_mobile'                  => $options['columns_mobile'],
+            'columns_tablet'                  => $options['columns_tablet'],
+            'columns_desktop'                 => $options['columns_desktop'],
+            'columns_ultrawide'               => $options['columns_ultrawide'],
+            'gap_size'                        => $options['gap_size'],
+            'loop'                            => ! empty( $options['slideshow_loop'] ),
+            'autoplay'                        => $autoplay_settings,
+            'show_navigation'                 => ! empty( $options['slideshow_show_navigation'] ),
+            'show_pagination'                 => ! empty( $options['slideshow_show_pagination'] ),
+            'respect_reduced_motion'          => ! empty( $options['slideshow_respect_reduced_motion'] ),
+            'container_selector'              => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
+            'a11y_prev_slide_message'         => __( 'Diapositive précédente', 'mon-articles' ),
+            'a11y_next_slide_message'         => __( 'Diapositive suivante', 'mon-articles' ),
+            'a11y_first_slide_message'        => __( 'Première diapositive', 'mon-articles' ),
+            'a11y_last_slide_message'         => __( 'Dernière diapositive', 'mon-articles' ),
+            'a11y_pagination_bullet_message'  => __( 'Aller à la diapositive {{index}}', 'mon-articles' ),
+            'a11y_slide_label_message'        => __( 'Diapositive {{index}} sur {{slidesLength}}', 'mon-articles' ),
+            'a11y_container_message'          => __( 'Ce carrousel est navigable au clavier : utilisez les flèches pour changer de diapositive.', 'mon-articles' ),
+            'a11y_container_role_description' => __( 'Carrousel d\'articles', 'mon-articles' ),
+            'a11y_item_role_description'      => __( 'Diapositive', 'mon-articles' ),
         );
 
-        wp_localize_script('my-articles-swiper-init', 'myArticlesSwiperSettings_' . $instance_id, $localized_settings);
+        if ( class_exists( 'My_Articles_Enqueue' ) ) {
+            $enqueue = My_Articles_Enqueue::get_instance();
+
+            if ( $enqueue instanceof My_Articles_Enqueue ) {
+                $enqueue->register_script_data(
+                    'my-articles-swiper-init',
+                    'myArticlesSwiperSettings',
+                    array(
+                        (string) $instance_id => $localized_settings,
+                    )
+                );
+
+                return;
+            }
+        }
+
+        if ( function_exists( 'wp_localize_script' ) ) {
+            wp_localize_script(
+                'my-articles-swiper-init',
+                'myArticlesSwiperSettings_' . $instance_id,
+                $localized_settings
+            );
+        }
     }
     
     /**

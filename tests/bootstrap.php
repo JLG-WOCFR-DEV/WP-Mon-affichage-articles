@@ -741,6 +741,13 @@ if (!function_exists('add_action')) {
     }
 }
 
+if (!function_exists('did_action')) {
+    function did_action($hook_name)
+    {
+        return 0;
+    }
+}
+
 if (!function_exists('get_option')) {
     function get_option(string $option, $default = false)
     {
@@ -916,6 +923,117 @@ if (!function_exists('wp_script_add_data')) {
         }
 
         $mon_articles_test_script_data[(string) $handle][(string) $key] = $value;
+
+        return true;
+    }
+}
+
+if (!function_exists('wp_enqueue_style')) {
+    /**
+     * @param string $handle
+     * @param string $src
+     * @param array<int, string> $deps
+     * @param string|bool $ver
+     * @param string $media
+     */
+    function wp_enqueue_style($handle, $src = '', $deps = array(), $ver = false, $media = 'all'): void
+    {
+        global $mon_articles_test_enqueued_styles;
+
+        if (!is_array($mon_articles_test_enqueued_styles)) {
+            $mon_articles_test_enqueued_styles = array();
+        }
+
+        $mon_articles_test_enqueued_styles[] = array(
+            'handle' => (string) $handle,
+            'src'    => (string) $src,
+            'deps'   => is_array($deps) ? array_values($deps) : array(),
+            'ver'    => is_string($ver) ? $ver : '',
+            'media'  => (string) $media,
+        );
+    }
+}
+
+if (!function_exists('wp_enqueue_script')) {
+    /**
+     * @param string $handle
+     * @param string $src
+     * @param array<int, string> $deps
+     * @param string|bool $ver
+     * @param bool $in_footer
+     */
+    function wp_enqueue_script($handle, $src = '', $deps = array(), $ver = false, $in_footer = false): void
+    {
+        global $mon_articles_test_enqueued_scripts;
+
+        if (!is_array($mon_articles_test_enqueued_scripts)) {
+            $mon_articles_test_enqueued_scripts = array();
+        }
+
+        $mon_articles_test_enqueued_scripts[] = array(
+            'handle'    => (string) $handle,
+            'src'       => (string) $src,
+            'deps'      => is_array($deps) ? array_values($deps) : array(),
+            'ver'       => is_string($ver) ? $ver : '',
+            'in_footer' => (bool) $in_footer,
+        );
+    }
+}
+
+if (!function_exists('wp_script_is')) {
+    function wp_script_is($handle, $list = 'enqueued')
+    {
+        global $mon_articles_test_registered_scripts, $mon_articles_test_enqueued_scripts, $mon_articles_test_marked_scripts;
+
+        $handle = (string) $handle;
+        $list   = (string) $list;
+
+        if ('registered' === $list) {
+            if (is_array($mon_articles_test_registered_scripts) && isset($mon_articles_test_registered_scripts[$handle])) {
+                return true;
+            }
+
+            if (is_array($mon_articles_test_marked_scripts) && in_array($handle, $mon_articles_test_marked_scripts, true)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        if ('enqueued' === $list) {
+            if (is_array($mon_articles_test_enqueued_scripts)) {
+                foreach ($mon_articles_test_enqueued_scripts as $script) {
+                    if (($script['handle'] ?? '') === $handle) {
+                        return true;
+                    }
+                }
+            }
+
+            if (is_array($mon_articles_test_marked_scripts) && in_array($handle, $mon_articles_test_marked_scripts, true)) {
+                return true;
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+}
+
+if (!function_exists('wp_add_inline_script')) {
+    function wp_add_inline_script($handle, $data, $position = 'after')
+    {
+        global $mon_articles_test_inline_scripts;
+
+        if (!is_array($mon_articles_test_inline_scripts)) {
+            $mon_articles_test_inline_scripts = array();
+        }
+
+        $mon_articles_test_inline_scripts[] = array(
+            'handle'   => (string) $handle,
+            'data'     => (string) $data,
+            'position' => (string) $position,
+        );
 
         return true;
     }
