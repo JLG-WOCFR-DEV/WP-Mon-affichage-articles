@@ -34,6 +34,7 @@
     var ToolbarButton = components.ToolbarButton;
     var ComboboxControl = components.ComboboxControl;
     var Button = components.Button;
+    var ButtonGroup = components.ButtonGroup || null;
     var SelectControl = components.SelectControl;
     var ToggleControl = components.ToggleControl;
     var RangeControl = components.RangeControl;
@@ -765,6 +766,70 @@
             var isPilotMode = _useState8[0];
             var setPilotMode = _useState8[1];
 
+            var INSPECTOR_MODE_SIMPLE = 'simple';
+            var INSPECTOR_MODE_EXPERT = 'expert';
+            var INSPECTOR_PREFERENCE_NAMESPACE = 'mon-articles/editor';
+            var INSPECTOR_PREFERENCE_KEY = 'inspectorMode';
+
+            var _useState9 = useState(function () {
+                var fallbackMode = INSPECTOR_MODE_SIMPLE;
+                var storedMode = null;
+
+                if (wp && wp.data && typeof wp.data.select === 'function') {
+                    try {
+                        var preferencesStore = wp.data.select('core/preferences');
+                        if (preferencesStore && typeof preferencesStore.getPreferences === 'function') {
+                            var preferences = preferencesStore.getPreferences(INSPECTOR_PREFERENCE_NAMESPACE) || {};
+                            if (preferences && typeof preferences[INSPECTOR_PREFERENCE_KEY] === 'string') {
+                                storedMode = preferences[INSPECTOR_PREFERENCE_KEY];
+                            }
+                        }
+                    } catch (error) {
+                        storedMode = null;
+                    }
+                }
+
+                if (!storedMode && typeof window !== 'undefined' && window.localStorage) {
+                    try {
+                        storedMode = window.localStorage.getItem('myArticlesInspectorMode');
+                    } catch (error) {
+                        storedMode = null;
+                    }
+                }
+
+                return storedMode === INSPECTOR_MODE_EXPERT ? INSPECTOR_MODE_EXPERT : fallbackMode;
+            });
+            var inspectorMode = _useState9[0];
+            var setInspectorMode = _useState9[1];
+
+            useEffect(
+                function () {
+                    var normalizedMode = inspectorMode === INSPECTOR_MODE_EXPERT ? INSPECTOR_MODE_EXPERT : INSPECTOR_MODE_SIMPLE;
+
+                    if (wp && wp.data && typeof wp.data.dispatch === 'function') {
+                        try {
+                            var preferencesDispatch = wp.data.dispatch('core/preferences');
+                            if (preferencesDispatch && typeof preferencesDispatch.setPreferences === 'function') {
+                                var update = {};
+                                update[INSPECTOR_PREFERENCE_KEY] = normalizedMode;
+                                preferencesDispatch.setPreferences(INSPECTOR_PREFERENCE_NAMESPACE, update);
+                            }
+                        } catch (error) {
+                            // Ignore persistence errors silently.
+                        }
+                    }
+
+                    if (typeof window !== 'undefined' && window.localStorage) {
+                        try {
+                            window.localStorage.setItem('myArticlesInspectorMode', normalizedMode);
+                        } catch (error) {
+                            // noop when storage is unavailable.
+                        }
+                    }
+                },
+                [inspectorMode]
+            );
+
             var viewportLessThanMedium = typeof useViewportMatch === 'function' ? useViewportMatch('medium', '<') : false;
             var viewportLessThanLarge = typeof useViewportMatch === 'function' ? useViewportMatch('large', '<') : false;
             var autoPreviewViewport = 'desktop';
@@ -1388,6 +1453,73 @@
             var ariaLabelPlaceholder = selectedInstanceTitle;
 
             var selectedInstance = selectedData && selectedData.selectedInstance ? selectedData.selectedInstance : null;
+            var inspectorModeNormalized =
+                inspectorMode === INSPECTOR_MODE_EXPERT ? INSPECTOR_MODE_EXPERT : INSPECTOR_MODE_SIMPLE;
+            var accessibilitySuggestions = useMemo(
+                function () {
+                    var suggestions = [];
+                    var trimmedLabel = typeof attributes.aria_label === 'string' ? attributes.aria_label.trim() : '';
+
+                    if (selectedInstanceTitle) {
+                        suggestions.push(selectedInstanceTitle);
+                        suggestions.push(
+                            sprintf(__('%s – sélection éditoriale', 'mon-articles'), selectedInstanceTitle)
+                        );
+                    }
+
+                    if (selectedInstanceTitle && displayMode === 'slideshow') {
+                        suggestions.push(
+                            sprintf(__('%s – carrousel d’articles', 'mon-articles'), selectedInstanceTitle)
+                        );
+                    }
+
+                    if (selectedInstanceTitle && attributes.pagination_mode === 'load_more') {
+                        suggestions.push(
+                            sprintf(__('%s – flux infini', 'mon-articles'), selectedInstanceTitle)
+                        );
+                    }
+
+                    if (selectedInstance && (selectedInstance.modified || selectedInstance.modified_gmt)) {
+                        var updatedAt = formatDateTime(selectedInstance.modified || selectedInstance.modified_gmt);
+                        if (updatedAt) {
+                            suggestions.push(
+                                sprintf(
+                                    __('%s – mise à jour le %s', 'mon-articles'),
+                                    selectedInstanceTitle || __('Module d’articles', 'mon-articles'),
+                                    updatedAt
+                                )
+                            );
+                        }
+                    }
+
+                    suggestions.push(__('Articles mis en avant', 'mon-articles'));
+
+                    var unique = [];
+                    suggestions.forEach(function (candidate) {
+                        if (!candidate || 'string' !== typeof candidate) {
+                            return;
+                        }
+
+                        var normalized = candidate.trim();
+                        if (!normalized || normalized === trimmedLabel) {
+                            return;
+                        }
+
+                        if (unique.indexOf(normalized) === -1) {
+                            unique.push(normalized);
+                        }
+                    });
+
+                    return unique.slice(0, 4);
+                },
+                [
+                    attributes.aria_label,
+                    attributes.pagination_mode,
+                    displayMode,
+                    selectedInstance,
+                    selectedInstanceTitle,
+                ]
+            );
             var moduleStatusPanel = null;
 
             if (selectedInstance) {
@@ -1631,6 +1763,10 @@
                 )
             );
 
+            var updateAriaLabel = withLockedGuard('aria_label', function (value) {
+                setAttributes({ aria_label: value || '' });
+            });
+
             var accessibilityPanel = el(
                 PanelBody,
                 {
@@ -1641,12 +1777,40 @@
                 el(TextControl, {
                     label: __('Libellé ARIA du module', 'mon-articles'),
                     value: attributes.aria_label || '',
-                    onChange: function (value) {
-                        setAttributes({ aria_label: value || '' });
-                    },
+                    onChange: updateAriaLabel,
                     placeholder: ariaLabelPlaceholder,
                     help: __('Laissez vide pour utiliser automatiquement le titre du module.', 'mon-articles'),
-                })
+                    disabled: isAttributeLocked('aria_label'),
+                }),
+                accessibilitySuggestions.length
+                    ? el(
+                          'div',
+                          { className: 'my-articles-accessibility-suggestions' },
+                          el(
+                              'p',
+                              { className: 'my-articles-accessibility-suggestions__label' },
+                              __('Suggestions', 'mon-articles')
+                          ),
+                          el(
+                              'div',
+                              { className: 'my-articles-accessibility-suggestions__actions' },
+                              accessibilitySuggestions.map(function (suggestion) {
+                                  return el(
+                                      Button,
+                                      {
+                                          key: suggestion,
+                                          variant: 'tertiary',
+                                          onClick: function () {
+                                              updateAriaLabel(suggestion);
+                                          },
+                                          disabled: isAttributeLocked('aria_label'),
+                                      },
+                                      suggestion
+                                  );
+                              })
+                          )
+                      )
+                    : null
             );
 
             var appearancePanel = el(
@@ -1773,6 +1937,26 @@
                               }),
                               disabled: !attributes.slideshow_autoplay || isAttributeLocked('slideshow_pause_on_mouse_enter'),
                           }),
+                          el(ToggleControl, {
+                              label: __('Respecter « Réduire les animations »', 'mon-articles'),
+                              checked: attributes.slideshow_respect_reduced_motion !== false,
+                              onChange: withLockedGuard('slideshow_respect_reduced_motion', function (value) {
+                                  setAttributes({ slideshow_respect_reduced_motion: !!value });
+                              }),
+                              help: __('Neutralise l’autoplay pour les utilisateurs qui limitent les animations.', 'mon-articles'),
+                              disabled: isAttributeLocked('slideshow_respect_reduced_motion'),
+                          }),
+                          attributes.slideshow_autoplay && attributes.slideshow_respect_reduced_motion === false
+                              ? el(
+                                    Notice,
+                                    {
+                                        status: 'warning',
+                                        isDismissible: false,
+                                        className: 'my-articles-autoplay-warning',
+                                    },
+                                    __('Autoplay actif sans respecter « Réduire les animations » peut poser problème : activez la protection pour rester conforme aux bonnes pratiques d’accessibilité.', 'mon-articles')
+                                )
+                              : null,
                           el(ToggleControl, {
                               label: __('Afficher les flèches de navigation', 'mon-articles'),
                               checked: !!attributes.slideshow_show_navigation,
@@ -2239,6 +2423,23 @@
                 });
             });
 
+            if (!normalizedInspectorSearch && inspectorModeNormalized === INSPECTOR_MODE_SIMPLE) {
+                var SIMPLE_MODE_SECTION_IDS = ['module', 'appearance', 'filters', 'sorting', 'metadata', 'accessibility'];
+                var simpleOrder = {};
+                SIMPLE_MODE_SECTION_IDS.forEach(function (id, index) {
+                    simpleOrder[id] = index;
+                });
+                visibleSections = visibleSections
+                    .filter(function (section) {
+                        return SIMPLE_MODE_SECTION_IDS.indexOf(section.id) !== -1;
+                    })
+                    .sort(function (a, b) {
+                        var aIndex = simpleOrder.hasOwnProperty(a.id) ? simpleOrder[a.id] : SIMPLE_MODE_SECTION_IDS.length;
+                        var bIndex = simpleOrder.hasOwnProperty(b.id) ? simpleOrder[b.id] : SIMPLE_MODE_SECTION_IDS.length;
+                        return aIndex - bIndex;
+                    });
+            }
+
             var searchField = null;
             if (SearchControl) {
                 searchField = el(SearchControl, {
@@ -2258,6 +2459,74 @@
                     },
                 });
             }
+
+            var inspectorModeDescriptions = {};
+            inspectorModeDescriptions[INSPECTOR_MODE_SIMPLE] = __(
+                'Mode Simple : focus sur l’affichage, les filtres et le tri indispensables.',
+                'mon-articles'
+            );
+            inspectorModeDescriptions[INSPECTOR_MODE_EXPERT] = __(
+                'Mode Expert : affiche toutes les sections (couleurs, espacements, diagnostics).',
+                'mon-articles'
+            );
+
+            var modeButtonOptions = [
+                { key: INSPECTOR_MODE_SIMPLE, label: __('Simple', 'mon-articles') },
+                { key: INSPECTOR_MODE_EXPERT, label: __('Expert', 'mon-articles') },
+            ];
+
+            var modeButtons = null;
+            var buildModeButton = function (option) {
+                var isActive = inspectorModeNormalized === option.key;
+                return el(
+                    Button,
+                    {
+                        key: option.key,
+                        variant: isActive ? 'primary' : 'secondary',
+                        isPressed: isActive,
+                        'aria-pressed': isActive,
+                        onClick: function () {
+                            if (!isActive) {
+                                setInspectorMode(option.key);
+                            }
+                        },
+                    },
+                    option.label
+                );
+            };
+
+            if (ButtonGroup) {
+                modeButtons = el(
+                    ButtonGroup,
+                    {
+                        className: 'my-articles-inspector-panel__mode-buttons',
+                        'aria-label': __('Choisir un mode d’édition', 'mon-articles'),
+                    },
+                    modeButtonOptions.map(buildModeButton)
+                );
+            } else {
+                modeButtons = el(
+                    'div',
+                    { className: 'my-articles-inspector-panel__mode-buttons is-fallback' },
+                    modeButtonOptions.map(buildModeButton)
+                );
+            }
+
+            var modeDescription = inspectorModeDescriptions[inspectorModeNormalized] || '';
+
+            var modeSwitcher = el(
+                'div',
+                { className: 'my-articles-inspector-panel__mode' },
+                el(
+                    'div',
+                    { className: 'my-articles-inspector-panel__mode-header' },
+                    el('span', { className: 'my-articles-inspector-panel__mode-title' }, __('Mode d’édition', 'mon-articles')),
+                    modeButtons
+                ),
+                modeDescription
+                    ? el('p', { className: 'my-articles-inspector-panel__mode-description' }, modeDescription)
+                    : null
+            );
 
             var inspectorBody = visibleSections.length
                 ? visibleSections.map(function (section) {
@@ -2286,6 +2555,7 @@
                     Panel,
                     { className: 'my-articles-inspector-panel' },
                     el('div', { className: 'my-articles-inspector-panel__search' }, searchField),
+                    modeSwitcher,
                     inspectorBody
                 )
             );

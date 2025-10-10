@@ -116,6 +116,11 @@
             "default": true,
             "description": "Met l'autoplay en pause quand la souris survole le module."
         },
+        "slideshow_respect_reduced_motion": {
+            "type": "boolean",
+            "default": true,
+            "description": "Suspend l’autoplay lorsque l’utilisateur préfère réduire les animations."
+        },
         "slideshow_show_navigation": {
             "type": "boolean",
             "default": true,

@@ -100,6 +100,7 @@ class My_Articles_Block {
             'slideshow_autoplay'              => array( 'type' => 'bool' ),
             'slideshow_pause_on_interaction'  => array( 'type' => 'bool' ),
             'slideshow_pause_on_mouse_enter'  => array( 'type' => 'bool' ),
+            'slideshow_respect_reduced_motion' => array( 'type' => 'bool' ),
             'slideshow_show_navigation'       => array( 'type' => 'bool' ),
             'slideshow_show_pagination'       => array( 'type' => 'bool' ),
             'load_more_auto'                  => array( 'type' => 'bool' ),

@@ -26,6 +26,21 @@
         return [value];
     }
 
+    function shallowClone(object) {
+        if (!object || typeof object !== 'object') {
+            return object;
+        }
+
+        var clone = {};
+        for (var key in object) {
+            if (Object.prototype.hasOwnProperty.call(object, key)) {
+                clone[key] = object[key];
+            }
+        }
+
+        return clone;
+    }
+
     function preloadSlideMedia(slide) {
         if (!slide || typeof slide.querySelectorAll !== 'function') {
             return;
@@ -158,6 +173,20 @@
         }
 
         var autoplaySettings = settings.autoplay;
+        var respectReducedMotion = !!settings.respect_reduced_motion;
+        var reducedMotionMediaQuery = null;
+        var prefersReducedMotion = false;
+
+        if (respectReducedMotion && root && typeof root.matchMedia === 'function') {
+            try {
+                reducedMotionMediaQuery = root.matchMedia('(prefers-reduced-motion: reduce)');
+                if (reducedMotionMediaQuery && typeof reducedMotionMediaQuery.matches === 'boolean') {
+                    prefersReducedMotion = reducedMotionMediaQuery.matches;
+                }
+            } catch (error) {
+                reducedMotionMediaQuery = null;
+            }
+        }
 
         if (!autoplaySettings || typeof autoplaySettings !== 'object' || Array.isArray(autoplaySettings)) {
             var fallbackEnabled = !!settings.autoplay;
@@ -190,7 +219,7 @@
 
         const gapSize = normalizeNumber(settings.gap_size, 0);
 
-        const autoplayConfig = autoplaySettings.enabled
+        let autoplayConfig = autoplaySettings.enabled
             ? {
                   delay: typeof autoplaySettings.delay === 'number' ? autoplaySettings.delay : 5000,
                   disableOnInteraction:
@@ -203,6 +232,14 @@
                           : !!autoplaySettings.pause_on_mouse_enter,
               }
             : false;
+        const originalAutoplayConfig =
+            autoplayConfig && typeof autoplayConfig === 'object'
+                ? shallowClone(autoplayConfig)
+                : autoplayConfig;
+
+        if (prefersReducedMotion) {
+            autoplayConfig = false;
+        }
 
         const paginationConfig = settings.show_pagination
             ? {
@@ -266,6 +303,53 @@
                 },
             },
         });
+
+        if (respectReducedMotion && instance && instance.params && typeof instance.params === 'object') {
+            instance.params.autoplay = originalAutoplayConfig && typeof originalAutoplayConfig === 'object'
+                ? shallowClone(originalAutoplayConfig)
+                : originalAutoplayConfig;
+        }
+
+        if (
+            respectReducedMotion &&
+            reducedMotionMediaQuery &&
+            instance &&
+            instance.autoplay &&
+            typeof instance.autoplay === 'object'
+        ) {
+            const handlePreferenceChange = function (event) {
+                const matches = event && typeof event.matches === 'boolean' ? event.matches : false;
+
+                if (matches) {
+                    if (instance.autoplay && typeof instance.autoplay.stop === 'function') {
+                        instance.autoplay.stop();
+                    }
+                } else if (originalAutoplayConfig && typeof originalAutoplayConfig === 'object') {
+                    instance.params.autoplay = shallowClone(originalAutoplayConfig);
+                    if (instance.autoplay && typeof instance.autoplay.start === 'function') {
+                        instance.autoplay.start();
+                    }
+                }
+            };
+
+            if (prefersReducedMotion && typeof instance.autoplay.stop === 'function') {
+                instance.autoplay.stop();
+            }
+
+            if (typeof reducedMotionMediaQuery.addEventListener === 'function') {
+                reducedMotionMediaQuery.addEventListener('change', handlePreferenceChange);
+            } else if (typeof reducedMotionMediaQuery.addListener === 'function') {
+                reducedMotionMediaQuery.addListener(handlePreferenceChange);
+            }
+
+            instance.on('destroy', function () {
+                if (typeof reducedMotionMediaQuery.removeEventListener === 'function') {
+                    reducedMotionMediaQuery.removeEventListener('change', handlePreferenceChange);
+                } else if (typeof reducedMotionMediaQuery.removeListener === 'function') {
+                    reducedMotionMediaQuery.removeListener(handlePreferenceChange);
+                }
+            });
+        }
 
         instanceStore[instanceId] = instance;
         return instance;
