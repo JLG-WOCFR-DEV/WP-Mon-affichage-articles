@@ -1,0 +1,41 @@
+{
+    "id": "headless-air",
+    "label": "Headless Air",
+    "description": "Palette neutre et accent bleu inspirés de Headless UI, avec transitions douces.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#f8fafc",
+        "vignette_bg_color": "#ffffff",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#1e293b",
+        "meta_color": "#64748b",
+        "meta_color_hover": "#1d4ed8",
+        "excerpt_color": "#475569",
+        "pagination_color": "#3b82f6",
+        "shadow_color": "rgba(15,23,42,0.07)",
+        "shadow_color_hover": "rgba(59,130,246,0.18)",
+        "module_padding_top": 28,
+        "module_padding_right": 28,
+        "module_padding_bottom": 28,
+        "module_padding_left": 28,
+        "gap_size": 24,
+        "list_item_gap": 28,
+        "border_radius": 20,
+        "title_font_size": 19,
+        "meta_font_size": 14,
+        "excerpt_font_size": 15,
+        "list_content_padding_top": 18,
+        "list_content_padding_right": 18,
+        "list_content_padding_bottom": 18,
+        "list_content_padding_left": 18,
+        "pinned_border_color": "#93c5fd",
+        "pinned_badge_bg_color": "#3b82f6",
+        "pinned_badge_text_color": "#ffffff",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#f8fafc",
+        "accent": "#3b82f6",
+        "heading": "#1e293b"
+    }
+}

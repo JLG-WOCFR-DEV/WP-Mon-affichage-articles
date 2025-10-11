@@ -1,0 +1,41 @@
+{
+    "id": "bootstrap-classic",
+    "label": "Bootstrap Classic",
+    "description": "Palette Bootstrap avec bleu primaire et badges contrastés.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#ffffff",
+        "vignette_bg_color": "#f8f9fa",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#0d6efd",
+        "meta_color": "#495057",
+        "meta_color_hover": "#0a58ca",
+        "excerpt_color": "#212529",
+        "pagination_color": "#0d6efd",
+        "shadow_color": "rgba(13,110,253,0.08)",
+        "shadow_color_hover": "rgba(13,110,253,0.18)",
+        "module_padding_top": 24,
+        "module_padding_right": 24,
+        "module_padding_bottom": 24,
+        "module_padding_left": 24,
+        "gap_size": 24,
+        "list_item_gap": 28,
+        "border_radius": 12,
+        "title_font_size": 18,
+        "meta_font_size": 14,
+        "excerpt_font_size": 15,
+        "list_content_padding_top": 20,
+        "list_content_padding_right": 20,
+        "list_content_padding_bottom": 20,
+        "list_content_padding_left": 20,
+        "pinned_border_color": "#0d6efd",
+        "pinned_badge_bg_color": "#ffc107",
+        "pinned_badge_text_color": "#0d1b2a",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#ffffff",
+        "accent": "#0d6efd",
+        "heading": "#0d6efd"
+    }
+}

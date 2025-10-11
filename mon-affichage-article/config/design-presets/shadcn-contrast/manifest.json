@@ -1,0 +1,41 @@
+{
+    "id": "shadcn-contrast",
+    "label": "Shadcn Contrast",
+    "description": "Contraste marqué, fond sombre et accents chartreuse inspirés de shadcn/ui.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#05070f",
+        "vignette_bg_color": "#0f172a",
+        "title_wrapper_bg_color": "#05070f",
+        "title_color": "#f4f4f5",
+        "meta_color": "#e4e4e7",
+        "meta_color_hover": "#bef264",
+        "excerpt_color": "#f5f5f4",
+        "pagination_color": "#bef264",
+        "shadow_color": "rgba(15,23,42,0.65)",
+        "shadow_color_hover": "rgba(190,242,100,0.45)",
+        "module_padding_top": 36,
+        "module_padding_right": 36,
+        "module_padding_bottom": 36,
+        "module_padding_left": 36,
+        "gap_size": 24,
+        "list_item_gap": 32,
+        "border_radius": 18,
+        "title_font_size": 20,
+        "meta_font_size": 15,
+        "excerpt_font_size": 16,
+        "list_content_padding_top": 22,
+        "list_content_padding_right": 22,
+        "list_content_padding_bottom": 22,
+        "list_content_padding_left": 22,
+        "pinned_border_color": "#bef264",
+        "pinned_badge_bg_color": "#bef264",
+        "pinned_badge_text_color": "#111827",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#05070f",
+        "accent": "#bef264",
+        "heading": "#f4f4f5"
+    }
+}

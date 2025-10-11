@@ -1,0 +1,37 @@
+{
+    "id": "dark-spotlight",
+    "label": "Projecteur sombre",
+    "description": "Contraste élevé, idéal pour des pages sombres ou des encarts immersifs.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#111827",
+        "vignette_bg_color": "#1f2937",
+        "title_wrapper_bg_color": "#111827",
+        "title_color": "#f9fafb",
+        "meta_color": "#cbd5f5",
+        "meta_color_hover": "#ffffff",
+        "excerpt_color": "#e5e7eb",
+        "pagination_color": "#93c5fd",
+        "shadow_color": "rgba(0,0,0,0.4)",
+        "shadow_color_hover": "rgba(30,64,175,0.6)",
+        "module_padding_top": 32,
+        "module_padding_right": 32,
+        "module_padding_bottom": 32,
+        "module_padding_left": 32,
+        "gap_size": 20,
+        "list_item_gap": 32,
+        "border_radius": 20,
+        "title_font_size": 20,
+        "meta_font_size": 14,
+        "excerpt_font_size": 16,
+        "list_content_padding_top": 20,
+        "list_content_padding_right": 20,
+        "list_content_padding_bottom": 20,
+        "list_content_padding_left": 20
+    },
+    "swatch": {
+        "background": "#111827",
+        "accent": "#93c5fd",
+        "heading": "#f9fafb"
+    }
+}

@@ -1,0 +1,41 @@
+{
+    "id": "radix-modular",
+    "label": "Radix Modular",
+    "description": "Tokens modulaires et hiérarchie claire inspirés de Radix UI.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#f9fafb",
+        "vignette_bg_color": "#ffffff",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#1f2937",
+        "meta_color": "#4b5563",
+        "meta_color_hover": "#4338ca",
+        "excerpt_color": "#374151",
+        "pagination_color": "#6366f1",
+        "shadow_color": "rgba(79,70,229,0.08)",
+        "shadow_color_hover": "rgba(79,70,229,0.18)",
+        "module_padding_top": 24,
+        "module_padding_right": 24,
+        "module_padding_bottom": 24,
+        "module_padding_left": 24,
+        "gap_size": 20,
+        "list_item_gap": 24,
+        "border_radius": 16,
+        "title_font_size": 18,
+        "meta_font_size": 13,
+        "excerpt_font_size": 15,
+        "list_content_padding_top": 16,
+        "list_content_padding_right": 16,
+        "list_content_padding_bottom": 16,
+        "list_content_padding_left": 16,
+        "pinned_border_color": "#818cf8",
+        "pinned_badge_bg_color": "#6366f1",
+        "pinned_badge_text_color": "#ffffff",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#f9fafb",
+        "accent": "#6366f1",
+        "heading": "#1f2937"
+    }
+}

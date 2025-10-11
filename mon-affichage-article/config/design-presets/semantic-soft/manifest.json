@@ -1,0 +1,41 @@
+{
+    "id": "semantic-soft",
+    "label": "Semantic Soft",
+    "description": "Pastels doux et labels arrondis dans l’esprit de Semantic UI.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#fcfcfd",
+        "vignette_bg_color": "#ffffff",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#4338ca",
+        "meta_color": "#0f766e",
+        "meta_color_hover": "#1f2937",
+        "excerpt_color": "#4b5563",
+        "pagination_color": "#f97316",
+        "shadow_color": "rgba(17,24,39,0.05)",
+        "shadow_color_hover": "rgba(236,72,153,0.18)",
+        "module_padding_top": 28,
+        "module_padding_right": 28,
+        "module_padding_bottom": 28,
+        "module_padding_left": 28,
+        "gap_size": 24,
+        "list_item_gap": 26,
+        "border_radius": 16,
+        "title_font_size": 18,
+        "meta_font_size": 13,
+        "excerpt_font_size": 15,
+        "list_content_padding_top": 18,
+        "list_content_padding_right": 18,
+        "list_content_padding_bottom": 18,
+        "list_content_padding_left": 18,
+        "pinned_border_color": "#fb7185",
+        "pinned_badge_bg_color": "#fde68a",
+        "pinned_badge_text_color": "#4338ca",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#fcfcfd",
+        "accent": "#f97316",
+        "heading": "#4338ca"
+    }
+}

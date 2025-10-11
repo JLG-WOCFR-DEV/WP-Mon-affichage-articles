@@ -52,6 +52,7 @@
     var Tooltip = components.Tooltip || null;
     var Fragment = wp.element.Fragment;
     var el = wp.element.createElement;
+    var apiFetch = wp.apiFetch ? wp.apiFetch : null;
 
     if (!Spinner) {
         Spinner = function () {
@@ -294,6 +295,101 @@
         };
     }
 
+    function usePresetCatalog() {
+        var inlineCatalog = window.myArticlesDesignPresetsCatalog || null;
+        var _useState = useState(function () {
+            if (inlineCatalog && Array.isArray(inlineCatalog.presets)) {
+                return {
+                    presets: inlineCatalog.presets,
+                    version: inlineCatalog.version ? String(inlineCatalog.version) : '0',
+                    isLoading: false,
+                    error: null,
+                    source: 'inline',
+                };
+            }
+
+            return {
+                presets: [],
+                version: '0',
+                isLoading: true,
+                error: null,
+                source: null,
+            };
+        });
+
+        var catalogState = _useState[0];
+        var setCatalogState = _useState[1];
+
+        var fetchRemote = useCallback(
+            function () {
+                if (!apiFetch) {
+                    setCatalogState(function (prev) {
+                        if (!prev.isLoading) {
+                            return prev;
+                        }
+                        return Object.assign({}, prev, { isLoading: false });
+                    });
+                    return Promise.resolve();
+                }
+
+                setCatalogState(function (prev) {
+                    return Object.assign({}, prev, { isLoading: true, error: null });
+                });
+
+                var request = apiFetch({ path: '/my-articles/v1/presets' });
+
+                if (!request || typeof request.then !== 'function') {
+                    setCatalogState(function (prev) {
+                        return Object.assign({}, prev, { isLoading: false });
+                    });
+                    return Promise.resolve();
+                }
+
+                return request
+                    .then(function (result) {
+                        var presets = result && Array.isArray(result.presets) ? result.presets : [];
+                        var version = result && result.version ? String(result.version) : '0';
+
+                        setCatalogState({
+                            presets: presets,
+                            version: version,
+                            isLoading: false,
+                            error: null,
+                            source: 'remote',
+                        });
+
+                        return result;
+                    })
+                    .catch(function (error) {
+                        setCatalogState(function (prev) {
+                            return Object.assign({}, prev, { isLoading: false, error: error });
+                        });
+
+                        return error;
+                    });
+            },
+            []
+        );
+
+        useEffect(
+            function () {
+                if ('remote' === catalogState.source) {
+                    return;
+                }
+                fetchRemote();
+            },
+            [fetchRemote]
+        );
+
+        return {
+            presets: catalogState.presets,
+            version: catalogState.version,
+            isLoading: catalogState.isLoading,
+            error: catalogState.error,
+            reload: fetchRemote,
+        };
+    }
+
     function derivePresetTags(preset, presetId) {
         var tags = [];
         if (preset && Array.isArray(preset.tags)) {
@@ -346,113 +442,407 @@
 
     function PresetGallery(props) {
         var presets = Array.isArray(props.presets) ? props.presets : [];
-
-        if (!presets.length) {
-            return el(
-                Notice,
-                { status: 'info', isDismissible: false },
-                __('Aucun modèle disponible pour le moment.', 'mon-articles')
-            );
-        }
-
+        var isLoading = !!props.isLoading;
+        var error = props.error || null;
+        var onRetry = typeof props.onRetry === 'function' ? props.onRetry : null;
         var activeId = props.value || '';
         var disabled = !!props.disabled;
         var onChange = typeof props.onChange === 'function' ? props.onChange : function () {};
+        var catalogVersion = props.version ? String(props.version) : null;
+
+        var _useState7 = useState('');
+        var searchValue = _useState7[0];
+        var setSearchValue = _useState7[1];
+
+        var _useState8 = useState([]);
+        var activeTags = _useState8[0];
+        var setActiveTags = _useState8[1];
+
+        var _useState9 = useState(activeId || '');
+        var focusedId = _useState9[0];
+        var setFocusedId = _useState9[1];
+
+        useEffect(
+            function () {
+                if (activeId && focusedId !== activeId) {
+                    setFocusedId(activeId);
+                }
+            },
+            [activeId]
+        );
+
+        var normalizedSearch = searchValue ? searchValue.toLowerCase() : '';
+
+        var availableTags = useMemo(
+            function () {
+                var tags = [];
+                presets.forEach(function (preset) {
+                    if (Array.isArray(preset.tags)) {
+                        preset.tags.forEach(function (tag) {
+                            if (!tag || typeof tag !== 'string') {
+                                return;
+                            }
+                            if (tags.indexOf(tag) === -1) {
+                                tags.push(tag);
+                            }
+                        });
+                    }
+                });
+
+                tags.sort(function (a, b) {
+                    return a.localeCompare(b);
+                });
+
+                return tags;
+            },
+            [presets]
+        );
+
+        var filteredPresets = useMemo(
+            function () {
+                return presets.filter(function (preset) {
+                    var matchesSearch = true;
+                    if (normalizedSearch) {
+                        var haystack = [];
+                        if (preset.label) {
+                            haystack.push(preset.label);
+                        }
+                        if (preset.description) {
+                            haystack.push(preset.description);
+                        }
+                        if (Array.isArray(preset.tags)) {
+                            haystack = haystack.concat(preset.tags);
+                        }
+
+                        matchesSearch = haystack.some(function (value) {
+                            return value && typeof value === 'string' && value.toLowerCase().indexOf(normalizedSearch) !== -1;
+                        });
+                    }
+
+                    var matchesTags = true;
+                    if (activeTags.length) {
+                        var presetTags = Array.isArray(preset.tags) ? preset.tags : [];
+                        matchesTags = activeTags.every(function (tag) {
+                            return presetTags.indexOf(tag) !== -1;
+                        });
+                    }
+
+                    return matchesSearch && matchesTags;
+                });
+            },
+            [presets, normalizedSearch, activeTags]
+        );
+
+        var currentPreview = useMemo(
+            function () {
+                if (!focusedId) {
+                    return null;
+                }
+
+                return filteredPresets.find(function (preset) {
+                    return preset.id === focusedId;
+                }) || presets.find(function (preset) {
+                    return preset.id === focusedId;
+                }) || null;
+            },
+            [filteredPresets, presets, focusedId]
+        );
+
+        var toggleTag = useCallback(
+            function (tag) {
+                if (!tag || typeof tag !== 'string') {
+                    return;
+                }
+                setActiveTags(function (previous) {
+                    if (!Array.isArray(previous) || previous.indexOf(tag) === -1) {
+                        return (previous || []).concat([tag]);
+                    }
+                    return previous.filter(function (item) {
+                        return item !== tag;
+                    });
+                });
+            },
+            []
+        );
+
+        var searchField = SearchControl
+            ? el(SearchControl, {
+                  value: searchValue,
+                  onChange: function (value) {
+                      setSearchValue(value || '');
+                  },
+                  label: __('Rechercher un modèle', 'mon-articles'),
+                  placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
+              })
+            : el(TextControl, {
+                  value: searchValue,
+                  onChange: function (value) {
+                      setSearchValue(value || '');
+                  },
+                  label: __('Rechercher un modèle', 'mon-articles'),
+                  placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
+              });
+
+        var tagFilterBar = null;
+        if (availableTags.length) {
+            tagFilterBar = el(
+                'div',
+                { className: 'my-articles-preset-browser__tags' },
+                availableTags.map(function (tag) {
+                    var isActive = activeTags.indexOf(tag) !== -1;
+                    var tagClass = 'my-articles-preset-browser__tag';
+                    if (isActive) {
+                        tagClass += ' is-active';
+                    }
+                    return el(
+                        'button',
+                        {
+                            key: tag,
+                            type: 'button',
+                            className: tagClass,
+                            onClick: function () {
+                                toggleTag(tag);
+                            },
+                        },
+                        tag
+                    );
+                })
+            );
+        }
+
+        var gridContent = null;
+
+        if (isLoading && !presets.length) {
+            gridContent = el('div', { className: 'my-articles-preset-browser__loading' }, el(Spinner, null));
+        } else if (filteredPresets.length === 0) {
+            gridContent = el(
+                Notice,
+                { status: 'warning', isDismissible: false },
+                __('Aucun modèle ne correspond à votre recherche.', 'mon-articles')
+            );
+        } else {
+            gridContent = el(
+                'div',
+                {
+                    className: 'my-articles-preset-browser__grid',
+                    role: 'listbox',
+                    'aria-label': __('Choisir un modèle de présentation', 'mon-articles'),
+                },
+                filteredPresets.map(function (preset) {
+                    var isActive = preset.id === activeId;
+                    var cardClass = 'my-articles-preset-browser__card';
+
+                    if (isActive) {
+                        cardClass += ' is-active';
+                    }
+                    if (disabled) {
+                        cardClass += ' is-disabled';
+                    }
+
+                    var tags = Array.isArray(preset.tags) ? preset.tags : [];
+                    var hasThumbnail = preset.thumbnail && typeof preset.thumbnail === 'string';
+
+                    var previewNode = hasThumbnail
+                        ? el('img', {
+                              src: preset.thumbnail,
+                              alt: preset.label || preset.id,
+                              className: 'my-articles-preset-browser__thumbnail',
+                          })
+                        : renderPresetPreview(preset);
+
+                    return el(
+                        'button',
+                        {
+                            key: preset.id,
+                            type: 'button',
+                            className: cardClass,
+                            role: 'option',
+                            'aria-selected': isActive,
+                            'aria-pressed': isActive,
+                            onClick: function () {
+                                if (disabled || isActive) {
+                                    return;
+                                }
+                                onChange(preset.id);
+                            },
+                            onMouseEnter: function () {
+                                setFocusedId(preset.id);
+                            },
+                            onFocus: function () {
+                                setFocusedId(preset.id);
+                            },
+                            disabled: disabled,
+                        },
+                        previewNode,
+                        el(
+                            'div',
+                            { className: 'my-articles-preset-browser__card-header' },
+                            el('span', { className: 'my-articles-preset-browser__card-title' }, preset.label || preset.id),
+                            preset.locked
+                                ? el(
+                                      'span',
+                                      { className: 'my-articles-preset-browser__badge', title: __('Modèle guidé', 'mon-articles') },
+                                      '🔒'
+                                  )
+                                : null
+                        ),
+                        preset.description
+                            ? el('div', { className: 'my-articles-preset-browser__card-description' }, preset.description)
+                            : null,
+                        tags.length
+                            ? el(
+                                  'div',
+                                  { className: 'my-articles-preset-browser__card-tags' },
+                                  tags.map(function (tag) {
+                                      return el('span', { key: tag, className: 'my-articles-preset-browser__card-tag' }, tag);
+                                  })
+                              )
+                            : null
+                    );
+                })
+            );
+        }
+
+        var errorNotice = null;
+        if (error) {
+            var retryButton = null;
+            if (onRetry) {
+                retryButton = el(
+                    Button,
+                    {
+                        onClick: function () {
+                            onRetry();
+                        },
+                        variant: 'secondary',
+                    },
+                    __('Réessayer', 'mon-articles')
+                );
+            }
+
+            errorNotice = el(
+                Notice,
+                { status: 'error', isDismissible: false },
+                __('Impossible de charger les préréglages distants.', 'mon-articles'),
+                retryButton
+            );
+        }
+
+        var previewPanel = null;
+        if (currentPreview) {
+            previewPanel = el(
+                'div',
+                { className: 'my-articles-preset-browser__preview' },
+                el(
+                    'div',
+                    { className: 'my-articles-preset-browser__preview-header' },
+                    el('strong', null, currentPreview.label || currentPreview.id),
+                    currentPreview.locked
+                        ? el('span', { className: 'my-articles-preset-browser__badge' }, __('Guidé', 'mon-articles'))
+                        : null
+                ),
+                renderPresetResponsivePreview(currentPreview)
+            );
+        }
+
+        return el(
+            'div',
+            { className: 'my-articles-preset-browser' },
+            el(
+                'div',
+                { className: 'my-articles-preset-browser__toolbar' },
+                searchField,
+                tagFilterBar,
+                catalogVersion
+                    ? el('div', { className: 'my-articles-preset-browser__version' }, __('Version', 'mon-articles'), ': ', catalogVersion)
+                    : null
+            ),
+            errorNotice,
+            isLoading && presets.length
+                ? el('div', { className: 'my-articles-preset-browser__loading-inline' }, el(Spinner, null))
+                : null,
+            gridContent,
+            previewPanel
+        );
+    }
+
+    function renderPresetPreview(preset) {
+        var values = preset && preset.values ? preset.values : {};
+        var swatch = buildPresetSwatch(values);
+        var cardBackground = values.vignette_bg_color || '#ffffff';
+        var metaColor = values.meta_color || '#6b7280';
+        var accent = values.pagination_color || '#2563eb';
 
         return el(
             'div',
             {
-                className: 'my-articles-preset-gallery',
-                role: 'listbox',
-                'aria-label': __('Choisir un modèle de présentation', 'mon-articles'),
+                className: 'my-articles-preset-browser__thumbnail is-generated',
+                style: { background: swatch.background },
             },
-            presets.map(function (preset) {
-                var isActive = preset.id === activeId;
-                var cardClass = 'my-articles-preset-card';
-
-                if (isActive) {
-                    cardClass += ' is-active';
-                }
-
-                if (disabled) {
-                    cardClass += ' is-disabled';
-                }
-
-                var swatch = preset.swatch || {};
-
-                var preview = el(
-                    'span',
-                    {
-                        className: 'my-articles-preset-card__preview',
-                        style: {
-                            background: swatch.background || '#ffffff',
-                        },
-                        'aria-hidden': 'true',
-                    },
-                    el('span', {
-                        className: 'my-articles-preset-card__accent',
-                        style: { background: swatch.accent || '#2563eb' },
-                    }),
-                    el(
-                        'span',
-                        {
-                            className: 'my-articles-preset-card__heading',
-                            style: { color: swatch.heading || '#1f2937' },
-                        },
-                        'Aa'
-                    )
-                );
-
-                var tagList = null;
-                if (preset.tags && preset.tags.length) {
-                    tagList = el(
-                        'span',
-                        { className: 'my-articles-preset-card__tags' },
-                        preset.tags.map(function (tag) {
-                            return el('span', { key: tag, className: 'my-articles-preset-card__tag' }, tag);
-                        })
-                    );
-                }
-
-                var lockBadge = null;
-                if (preset.locked) {
-                    var badgeContent = __('Modèle guidé', 'mon-articles');
-                    var badgeNode = el('span', { className: 'my-articles-preset-card__badge' }, '🔒 ', badgeContent);
-                    lockBadge = Tooltip
-                        ? el(
-                              Tooltip,
-                              { text: __('Certains réglages sont verrouillés par ce modèle.', 'mon-articles') },
-                              badgeNode
-                          )
-                        : badgeNode;
-                }
-
+            [0, 1, 2].map(function (index) {
                 return el(
-                    'button',
-                    {
-                        key: preset.id,
-                        type: 'button',
-                        className: cardClass,
-                        role: 'option',
-                        'aria-selected': isActive,
-                        'aria-pressed': isActive,
-                        onClick: function () {
-                            if (disabled || isActive) {
-                                return;
-                            }
-                            onChange(preset.id);
-                        },
-                        disabled: disabled,
-                    },
-                    preview,
-                    el('span', { className: 'my-articles-preset-card__label' }, preset.label || preset.id),
-                    preset.description
-                        ? el('span', { className: 'my-articles-preset-card__description' }, preset.description)
-                        : null,
-                    tagList,
-                    lockBadge
+                    'div',
+                    { key: index, className: 'my-articles-preset-browser__thumbnail-card', style: { background: cardBackground } },
+                    el('span', {
+                        className: 'my-articles-preset-browser__thumbnail-title',
+                        style: { color: swatch.heading },
+                    }),
+                    el('span', {
+                        className: 'my-articles-preset-browser__thumbnail-meta',
+                        style: { background: metaColor },
+                    }),
+                    el('span', {
+                        className: 'my-articles-preset-browser__thumbnail-bar',
+                        style: { background: accent },
+                    })
                 );
             })
+        );
+    }
+
+    function renderPresetResponsivePreview(preset) {
+        var values = preset && preset.values ? preset.values : {};
+        var background = values.module_bg_color || '#ffffff';
+        var cardBackground = values.vignette_bg_color || '#ffffff';
+        var titleColor = values.title_color || '#1f2937';
+        var metaColor = values.meta_color || '#6b7280';
+        var accent = values.pagination_color || '#2563eb';
+
+        var buildScreen = function (key, label) {
+            return el(
+                'div',
+                { key: key, className: 'my-articles-preset-browser__screen my-articles-preset-browser__screen--' + key, style: { background: background } },
+                el('div', { className: 'my-articles-preset-browser__screen-title' }, label),
+                el(
+                    'div',
+                    { className: 'my-articles-preset-browser__screen-content' },
+                    [0, 1, 2].map(function (index) {
+                        return el(
+                            'div',
+                            { key: key + '-' + index, className: 'my-articles-preset-browser__screen-card', style: { background: cardBackground } },
+                            el('span', {
+                                className: 'my-articles-preset-browser__screen-card-title',
+                                style: { color: titleColor },
+                            }),
+                            el('span', {
+                                className: 'my-articles-preset-browser__screen-card-meta',
+                                style: { color: metaColor },
+                            }),
+                            el('span', {
+                                className: 'my-articles-preset-browser__screen-card-bar',
+                                style: { background: accent },
+                            })
+                        );
+                    })
+                )
+            );
+        };
+
+        return el(
+            'div',
+            { className: 'my-articles-preset-browser__responsive' },
+            buildScreen('desktop', __('Bureau', 'mon-articles')),
+            buildScreen('tablet', __('Tablette', 'mon-articles')),
+            buildScreen('mobile', __('Mobile', 'mon-articles'))
         );
     }
 
@@ -635,7 +1025,6 @@
         };
     }
 
-    var designPresets = window.myArticlesDesignPresets || {};
     var DESIGN_PRESET_FALLBACK = 'custom';
     var DEFAULT_THUMBNAIL_ASPECT_RATIO = '16/9';
     var THUMBNAIL_ASPECT_RATIO_OPTIONS = [
@@ -765,6 +1154,84 @@
             var _useState8 = useState(false);
             var isPilotMode = _useState8[0];
             var setPilotMode = _useState8[1];
+
+            var presetCatalog = usePresetCatalog();
+
+            var designPresets = useMemo(
+                function () {
+                    var map = {};
+
+                    if (Array.isArray(presetCatalog.presets) && presetCatalog.presets.length) {
+                        presetCatalog.presets.forEach(function (preset) {
+                            if (!preset || typeof preset.id !== 'string' || '' === preset.id) {
+                                return;
+                            }
+
+                            var values = preset.values && typeof preset.values === 'object' ? preset.values : {};
+                            map[preset.id] = {
+                                label: preset.label || preset.id,
+                                description: preset.description || '',
+                                locked: !!preset.locked,
+                                values: values,
+                                tags: derivePresetTags(preset, preset.id),
+                                swatch: buildPresetSwatch(values),
+                                thumbnail: preset.thumbnail || '',
+                            };
+                        });
+                    } else if (typeof window !== 'undefined' && window.myArticlesDesignPresets) {
+                        Object.keys(window.myArticlesDesignPresets).forEach(function (presetId) {
+                            var legacy = window.myArticlesDesignPresets[presetId] || {};
+                            if (!presetId || typeof presetId !== 'string') {
+                                return;
+                            }
+                            var legacyValues = legacy.values && typeof legacy.values === 'object' ? legacy.values : {};
+                            map[presetId] = {
+                                label: legacy.label || presetId,
+                                description: legacy.description || '',
+                                locked: !!legacy.locked,
+                                values: legacyValues,
+                                tags: derivePresetTags(legacy, presetId),
+                                swatch: buildPresetSwatch(legacyValues),
+                                thumbnail: '',
+                            };
+                        });
+                    }
+
+                    if (!map[DESIGN_PRESET_FALLBACK]) {
+                        map[DESIGN_PRESET_FALLBACK] = {
+                            label: __('Personnalisé', 'mon-articles'),
+                            description: __('Conservez vos réglages actuels.', 'mon-articles'),
+                            locked: false,
+                            values: {},
+                            tags: [__('Libre', 'mon-articles')],
+                            swatch: buildPresetSwatch({}),
+                            thumbnail: '',
+                        };
+                    }
+
+                    return map;
+                },
+                [presetCatalog.presets]
+            );
+
+            var galleryPresets = useMemo(
+                function () {
+                    return Object.keys(designPresets).map(function (presetId) {
+                        var preset = designPresets[presetId] || {};
+                        return {
+                            id: presetId,
+                            label: preset.label || presetId,
+                            description: preset.description || '',
+                            locked: !!preset.locked,
+                            tags: Array.isArray(preset.tags) ? preset.tags : derivePresetTags(preset, presetId),
+                            swatch: preset.swatch || buildPresetSwatch(preset.values || {}),
+                            values: preset.values || {},
+                            thumbnail: preset.thumbnail || '',
+                        };
+                    });
+                },
+                [designPresets]
+            );
 
             var INSPECTOR_MODE_SIMPLE = 'simple';
             var INSPECTOR_MODE_EXPERT = 'expert';
@@ -1069,18 +1536,7 @@
 
             var designPresetList = useMemo(
                 function () {
-                    var list = Object.keys(designPresets).map(function (presetId) {
-                        var preset = designPresets[presetId] || {};
-                        var tags = derivePresetTags(preset, presetId);
-                        return {
-                            id: presetId,
-                            label: preset.label || presetId,
-                            description: preset.description || '',
-                            locked: !!preset.locked,
-                            tags: tags,
-                            swatch: buildPresetSwatch(preset.values || {}),
-                        };
-                    });
+                    var list = Array.isArray(galleryPresets) ? galleryPresets.slice() : [];
 
                     if (list.length === 0) {
                         list = [
@@ -1091,6 +1547,8 @@
                                 locked: false,
                                 tags: [__('Libre', 'mon-articles')],
                                 swatch: buildPresetSwatch({}),
+                                values: {},
+                                thumbnail: '',
                             },
                         ];
                     } else {
@@ -1110,7 +1568,7 @@
 
                     return list;
                 },
-                [designPresets]
+                [galleryPresets]
             );
 
             useEffect(
@@ -1749,6 +2207,10 @@
                             value: currentDesignPresetId,
                             onChange: handleDesignPresetChange,
                             disabled: isAttributeLocked('design_preset'),
+                            isLoading: presetCatalog.isLoading,
+                            error: presetCatalog.error,
+                            onRetry: presetCatalog.reload,
+                            version: presetCatalog.version,
                         })
                     ),
                     isDesignPresetLocked
