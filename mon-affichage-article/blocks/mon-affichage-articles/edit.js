@@ -1603,7 +1603,7 @@
                     }
                     setAttributes(updates);
                 },
-                [setAttributes]
+                [designPresets, setAttributes]
             );
 
             var displayMode = attributes.display_mode || 'grid';
