@@ -59,17 +59,25 @@ class My_Articles_Shortcode {
     }
 
     public static function get_design_presets_manifest_path() {
+        if ( class_exists( 'My_Articles_Preset_Registry' ) ) {
+            return My_Articles_Preset_Registry::get_instance()->get_index_path();
+        }
+
         $base_dir = defined( 'MY_ARTICLES_PLUGIN_DIR' ) ? MY_ARTICLES_PLUGIN_DIR : dirname( __FILE__, 2 ) . '/';
 
         if ( function_exists( 'trailingslashit' ) ) {
-            return trailingslashit( $base_dir ) . 'config/design-presets.json';
+            return trailingslashit( $base_dir ) . 'config/design-presets/index.json';
         }
 
-        return rtrim( $base_dir, '/\\' ) . '/config/design-presets.json';
+        return rtrim( $base_dir, '/\\' ) . '/config/design-presets/index.json';
     }
 
     public static function flush_design_presets_cache() {
         self::$design_presets = null;
+
+        if ( class_exists( 'My_Articles_Preset_Registry' ) ) {
+            My_Articles_Preset_Registry::get_instance()->flush_cache();
+        }
     }
 
     public static function get_last_render_summary() {
@@ -158,90 +166,16 @@ JS;
     private static function load_design_presets_from_manifest() {
         $fallback = self::get_fallback_design_presets();
 
-        $manifest_path = self::get_design_presets_manifest_path();
+        if ( class_exists( 'My_Articles_Preset_Registry' ) ) {
+            $registry = My_Articles_Preset_Registry::get_instance();
+            $presets  = $registry->get_presets_for_shortcode();
 
-        if ( ! file_exists( $manifest_path ) || ! is_readable( $manifest_path ) ) {
-            return $fallback;
-        }
-
-        $decoded = null;
-
-        if ( function_exists( 'wp_json_file_decode' ) ) {
-            $decoded = wp_json_file_decode( $manifest_path, array( 'associative' => true ) );
-        } else {
-            $contents = file_get_contents( $manifest_path );
-
-            if ( false !== $contents ) {
-                $decoded = json_decode( $contents, true );
+            if ( is_array( $presets ) && ! empty( $presets ) ) {
+                return $presets;
             }
         }
 
-        if ( ! is_array( $decoded ) ) {
-            return $fallback;
-        }
-
-        $normalized = array();
-
-        foreach ( $decoded as $preset_id => $definition ) {
-            if ( ! is_string( $preset_id ) || '' === $preset_id || ! is_array( $definition ) ) {
-                continue;
-            }
-
-            $label = '';
-            if ( isset( $definition['label'] ) && is_string( $definition['label'] ) ) {
-                $label = __( $definition['label'], 'mon-articles' );
-            }
-
-            if ( '' === $label ) {
-                $label = $preset_id;
-            }
-
-            $description = '';
-            if ( isset( $definition['description'] ) && is_string( $definition['description'] ) ) {
-                $description = __( $definition['description'], 'mon-articles' );
-            }
-
-            $values = array();
-            if ( isset( $definition['values'] ) && is_array( $definition['values'] ) ) {
-                foreach ( $definition['values'] as $key => $value ) {
-                    if ( is_string( $key ) && ( is_scalar( $value ) || is_null( $value ) ) ) {
-                        $values[ $key ] = $value;
-                    }
-                }
-            }
-
-            $normalized[ $preset_id ] = array(
-                'label'       => $label,
-                'description' => $description,
-                'locked'      => ! empty( $definition['locked'] ),
-                'values'      => $values,
-            );
-        }
-
-        if ( empty( $normalized ) ) {
-            return $fallback;
-        }
-
-        $presets = $fallback;
-
-        foreach ( $normalized as $preset_id => $definition ) {
-            if ( isset( $presets[ $preset_id ] ) ) {
-                $merged_values = isset( $presets[ $preset_id ]['values'] ) && is_array( $presets[ $preset_id ]['values'] )
-                    ? $presets[ $preset_id ]['values']
-                    : array();
-
-                if ( isset( $definition['values'] ) && is_array( $definition['values'] ) ) {
-                    $merged_values = array_merge( $merged_values, $definition['values'] );
-                }
-
-                $presets[ $preset_id ] = array_merge( $presets[ $preset_id ], $definition );
-                $presets[ $preset_id ]['values'] = $merged_values;
-            } else {
-                $presets[ $preset_id ] = $definition;
-            }
-        }
-
-        return $presets;
+        return $fallback;
     }
 
     private static function get_fallback_design_presets() {
@@ -254,357 +188,6 @@ JS;
                 'tags'        => array(
                     __( 'Libre', 'mon-articles' ),
                     __( 'Personnalisé', 'mon-articles' ),
-                ),
-            ),
-            'lcv-classique' => array(
-                'label'       => __( 'Classique LCV', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Fond clair légèrement bleuté, cartes arrondies et typographie lisible.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Clair', 'mon-articles' ),
-                    __( 'Institutionnel', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#f3f4f6',
-                    'vignette_bg_color'           => '#ffffff',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#1f2937',
-                    'meta_color'                  => '#6b7280',
-                    'meta_color_hover'            => '#111827',
-                    'excerpt_color'               => '#374151',
-                    'pagination_color'            => '#2563eb',
-                    'shadow_color'                => 'rgba(15,23,42,0.08)',
-                    'shadow_color_hover'          => 'rgba(37,99,235,0.16)',
-                    'module_padding_top'          => 24,
-                    'module_padding_right'        => 24,
-                    'module_padding_bottom'       => 24,
-                    'module_padding_left'         => 24,
-                    'gap_size'                    => 24,
-                    'list_item_gap'               => 28,
-                    'border_radius'               => 18,
-                    'title_font_size'             => 18,
-                    'meta_font_size'              => 13,
-                    'excerpt_font_size'           => 15,
-                    'list_content_padding_top'    => 16,
-                    'list_content_padding_right'  => 16,
-                    'list_content_padding_bottom' => 16,
-                    'list_content_padding_left'   => 16,
-                ),
-            ),
-            'dark-spotlight' => array(
-                'label'       => __( 'Projecteur sombre', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Contraste élevé, idéal pour des pages sombres ou des encarts immersifs.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Sombre', 'mon-articles' ),
-                    __( 'Immersif', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#111827',
-                    'vignette_bg_color'           => '#1f2937',
-                    'title_wrapper_bg_color'      => '#111827',
-                    'title_color'                 => '#f9fafb',
-                    'meta_color'                  => '#cbd5f5',
-                    'meta_color_hover'            => '#ffffff',
-                    'excerpt_color'               => '#e5e7eb',
-                    'pagination_color'            => '#93c5fd',
-                    'shadow_color'                => 'rgba(0,0,0,0.4)',
-                    'shadow_color_hover'          => 'rgba(30,64,175,0.6)',
-                    'module_padding_top'          => 32,
-                    'module_padding_right'        => 32,
-                    'module_padding_bottom'       => 32,
-                    'module_padding_left'         => 32,
-                    'gap_size'                    => 20,
-                    'list_item_gap'               => 32,
-                    'border_radius'               => 20,
-                    'title_font_size'             => 20,
-                    'meta_font_size'              => 14,
-                    'excerpt_font_size'           => 16,
-                    'list_content_padding_top'    => 20,
-                    'list_content_padding_right'  => 20,
-                    'list_content_padding_bottom' => 20,
-                    'list_content_padding_left'   => 20,
-                ),
-            ),
-            'editorial-focus' => array(
-                'label'       => __( 'Focus éditorial', 'mon-articles' ),
-                'locked'      => true,
-                'description' => __( 'Présentation magazine sobre, optimisée pour les listes avec extraits courts.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Liste', 'mon-articles' ),
-                    __( 'Éditorial', 'mon-articles' ),
-                    __( 'Guidé', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'display_mode'                => 'list',
-                    'module_bg_color'             => '#ffffff',
-                    'vignette_bg_color'           => '#ffffff',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#111827',
-                    'meta_color'                  => '#6b7280',
-                    'meta_color_hover'            => '#111827',
-                    'excerpt_color'               => '#374151',
-                    'pagination_color'            => '#1d4ed8',
-                    'shadow_color'                => 'rgba(0,0,0,0.04)',
-                    'shadow_color_hover'          => 'rgba(0,0,0,0.08)',
-                    'module_padding_top'          => 16,
-                    'module_padding_right'        => 16,
-                    'module_padding_bottom'       => 16,
-                    'module_padding_left'         => 16,
-                    'gap_size'                    => 20,
-                    'list_item_gap'               => 24,
-                    'border_radius'               => 8,
-                    'title_font_size'             => 18,
-                    'meta_font_size'              => 12,
-                    'excerpt_font_size'           => 14,
-                    'list_content_padding_top'    => 12,
-                    'list_content_padding_right'  => 12,
-                    'list_content_padding_bottom' => 12,
-                    'list_content_padding_left'   => 12,
-                    'show_excerpt'                => 1,
-                    'excerpt_length'              => 22,
-                ),
-            ),
-            'headless-air' => array(
-                'label'       => __( 'Headless Air', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Palette neutre et accent bleu inspirés de Headless UI, avec transitions douces.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Clair', 'mon-articles' ),
-                    __( 'Transitions douces', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#f8fafc',
-                    'vignette_bg_color'           => '#ffffff',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#1e293b',
-                    'meta_color'                  => '#64748b',
-                    'meta_color_hover'            => '#1d4ed8',
-                    'excerpt_color'               => '#475569',
-                    'pagination_color'            => '#3b82f6',
-                    'shadow_color'                => 'rgba(15,23,42,0.07)',
-                    'shadow_color_hover'          => 'rgba(59,130,246,0.18)',
-                    'module_padding_top'          => 28,
-                    'module_padding_right'        => 28,
-                    'module_padding_bottom'       => 28,
-                    'module_padding_left'         => 28,
-                    'gap_size'                    => 24,
-                    'list_item_gap'               => 28,
-                    'border_radius'               => 20,
-                    'title_font_size'             => 19,
-                    'meta_font_size'              => 14,
-                    'excerpt_font_size'           => 15,
-                    'list_content_padding_top'    => 18,
-                    'list_content_padding_right'  => 18,
-                    'list_content_padding_bottom' => 18,
-                    'list_content_padding_left'   => 18,
-                    'pinned_border_color'         => '#93c5fd',
-                    'pinned_badge_bg_color'       => '#3b82f6',
-                    'pinned_badge_text_color'     => '#ffffff',
-                    'show_excerpt'                => 1,
-                ),
-            ),
-            'shadcn-contrast' => array(
-                'label'       => __( 'Shadcn Contrast', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Contraste marqué, fond sombre et accents chartreuse inspirés de shadcn/ui.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Sombre', 'mon-articles' ),
-                    __( 'Contraste élevé', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#05070f',
-                    'vignette_bg_color'           => '#0f172a',
-                    'title_wrapper_bg_color'      => '#05070f',
-                    'title_color'                 => '#f4f4f5',
-                    'meta_color'                  => '#e4e4e7',
-                    'meta_color_hover'            => '#bef264',
-                    'excerpt_color'               => '#f5f5f4',
-                    'pagination_color'            => '#bef264',
-                    'shadow_color'                => 'rgba(15,23,42,0.65)',
-                    'shadow_color_hover'          => 'rgba(190,242,100,0.45)',
-                    'module_padding_top'          => 36,
-                    'module_padding_right'        => 36,
-                    'module_padding_bottom'       => 36,
-                    'module_padding_left'         => 36,
-                    'gap_size'                    => 24,
-                    'list_item_gap'               => 32,
-                    'border_radius'               => 18,
-                    'title_font_size'             => 20,
-                    'meta_font_size'              => 15,
-                    'excerpt_font_size'           => 16,
-                    'list_content_padding_top'    => 22,
-                    'list_content_padding_right'  => 22,
-                    'list_content_padding_bottom' => 22,
-                    'list_content_padding_left'   => 22,
-                    'pinned_border_color'         => '#bef264',
-                    'pinned_badge_bg_color'       => '#bef264',
-                    'pinned_badge_text_color'     => '#111827',
-                    'show_excerpt'                => 1,
-                ),
-            ),
-            'radix-modular' => array(
-                'label'       => __( 'Radix Modular', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Tokens modulaires et hiérarchie claire inspirés de Radix UI.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Clair', 'mon-articles' ),
-                    __( 'Modulaire', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#f9fafb',
-                    'vignette_bg_color'           => '#ffffff',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#1f2937',
-                    'meta_color'                  => '#4b5563',
-                    'meta_color_hover'            => '#4338ca',
-                    'excerpt_color'               => '#374151',
-                    'pagination_color'            => '#6366f1',
-                    'shadow_color'                => 'rgba(79,70,229,0.08)',
-                    'shadow_color_hover'          => 'rgba(79,70,229,0.18)',
-                    'module_padding_top'          => 24,
-                    'module_padding_right'        => 24,
-                    'module_padding_bottom'       => 24,
-                    'module_padding_left'         => 24,
-                    'gap_size'                    => 20,
-                    'list_item_gap'               => 24,
-                    'border_radius'               => 16,
-                    'title_font_size'             => 18,
-                    'meta_font_size'              => 13,
-                    'excerpt_font_size'           => 15,
-                    'list_content_padding_top'    => 16,
-                    'list_content_padding_right'  => 16,
-                    'list_content_padding_bottom' => 16,
-                    'list_content_padding_left'   => 16,
-                    'pinned_border_color'         => '#818cf8',
-                    'pinned_badge_bg_color'       => '#6366f1',
-                    'pinned_badge_text_color'     => '#ffffff',
-                    'show_excerpt'                => 1,
-                ),
-            ),
-            'bootstrap-classic' => array(
-                'label'       => __( 'Bootstrap Classic', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Palette Bootstrap avec bleu primaire et badges contrastés.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Clair', 'mon-articles' ),
-                    __( 'Corporate', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#ffffff',
-                    'vignette_bg_color'           => '#f8f9fa',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#0d6efd',
-                    'meta_color'                  => '#495057',
-                    'meta_color_hover'            => '#0a58ca',
-                    'excerpt_color'               => '#212529',
-                    'pagination_color'            => '#0d6efd',
-                    'shadow_color'                => 'rgba(13,110,253,0.08)',
-                    'shadow_color_hover'          => 'rgba(13,110,253,0.18)',
-                    'module_padding_top'          => 24,
-                    'module_padding_right'        => 24,
-                    'module_padding_bottom'       => 24,
-                    'module_padding_left'         => 24,
-                    'gap_size'                    => 24,
-                    'list_item_gap'               => 28,
-                    'border_radius'               => 12,
-                    'title_font_size'             => 18,
-                    'meta_font_size'              => 14,
-                    'excerpt_font_size'           => 15,
-                    'list_content_padding_top'    => 20,
-                    'list_content_padding_right'  => 20,
-                    'list_content_padding_bottom' => 20,
-                    'list_content_padding_left'   => 20,
-                    'pinned_border_color'         => '#0d6efd',
-                    'pinned_badge_bg_color'       => '#ffc107',
-                    'pinned_badge_text_color'     => '#0d1b2a',
-                    'show_excerpt'                => 1,
-                ),
-            ),
-            'semantic-soft' => array(
-                'label'       => __( 'Semantic Soft', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Pastels doux et labels arrondis dans l’esprit de Semantic UI.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Pastel', 'mon-articles' ),
-                    __( 'UI moderne', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#fcfcfd',
-                    'vignette_bg_color'           => '#ffffff',
-                    'title_wrapper_bg_color'      => '#ffffff',
-                    'title_color'                 => '#4338ca',
-                    'meta_color'                  => '#0f766e',
-                    'meta_color_hover'            => '#1f2937',
-                    'excerpt_color'               => '#4b5563',
-                    'pagination_color'            => '#f97316',
-                    'shadow_color'                => 'rgba(17,24,39,0.05)',
-                    'shadow_color_hover'          => 'rgba(236,72,153,0.18)',
-                    'module_padding_top'          => 28,
-                    'module_padding_right'        => 28,
-                    'module_padding_bottom'       => 28,
-                    'module_padding_left'         => 28,
-                    'gap_size'                    => 24,
-                    'list_item_gap'               => 26,
-                    'border_radius'               => 16,
-                    'title_font_size'             => 18,
-                    'meta_font_size'              => 13,
-                    'excerpt_font_size'           => 15,
-                    'list_content_padding_top'    => 18,
-                    'list_content_padding_right'  => 18,
-                    'list_content_padding_bottom' => 18,
-                    'list_content_padding_left'   => 18,
-                    'pinned_border_color'         => '#fb7185',
-                    'pinned_badge_bg_color'       => '#fde68a',
-                    'pinned_badge_text_color'     => '#4338ca',
-                    'show_excerpt'                => 1,
-                ),
-            ),
-            'anime-motion' => array(
-                'label'       => __( 'Anime Motion', 'mon-articles' ),
-                'locked'      => false,
-                'description' => __( 'Ambiance néon et contrastes dynamiques inspirés d’Anime.js.', 'mon-articles' ),
-                'tags'        => array(
-                    __( 'Grille', 'mon-articles' ),
-                    __( 'Sombre', 'mon-articles' ),
-                    __( 'Néon', 'mon-articles' ),
-                ),
-                'values'      => array(
-                    'module_bg_color'             => '#111827',
-                    'vignette_bg_color'           => '#0f172a',
-                    'title_wrapper_bg_color'      => '#0f172a',
-                    'title_color'                 => '#f8fafc',
-                    'meta_color'                  => '#38bdf8',
-                    'meta_color_hover'            => '#f472b6',
-                    'excerpt_color'               => '#e2e8f0',
-                    'pagination_color'            => '#f472b6',
-                    'shadow_color'                => 'rgba(56,189,248,0.35)',
-                    'shadow_color_hover'          => 'rgba(244,114,182,0.45)',
-                    'module_padding_top'          => 32,
-                    'module_padding_right'        => 32,
-                    'module_padding_bottom'       => 32,
-                    'module_padding_left'         => 32,
-                    'gap_size'                    => 22,
-                    'list_item_gap'               => 30,
-                    'border_radius'               => 14,
-                    'title_font_size'             => 20,
-                    'meta_font_size'              => 14,
-                    'excerpt_font_size'           => 16,
-                    'list_content_padding_top'    => 22,
-                    'list_content_padding_right'  => 22,
-                    'list_content_padding_bottom' => 22,
-                    'list_content_padding_left'   => 22,
-                    'pinned_border_color'         => '#f472b6',
-                    'pinned_badge_bg_color'       => '#38bdf8',
-                    'pinned_badge_text_color'     => '#0f172a',
-                    'show_excerpt'                => 1,
                 ),
             ),
         );

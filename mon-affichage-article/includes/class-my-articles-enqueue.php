@@ -87,64 +87,68 @@ class My_Articles_Enqueue {
             }
         }
 
-        if ( class_exists( 'My_Articles_Shortcode' ) && function_exists( 'wp_add_inline_script' ) && wp_script_is( $editor_handle, 'registered' ) ) {
+        if ( function_exists( 'wp_add_inline_script' ) && wp_script_is( $editor_handle, 'registered' ) ) {
             if ( function_exists( 'wp_set_script_translations' ) ) {
                 wp_set_script_translations( $editor_handle, 'mon-articles', $translations_dir );
             }
 
-            $presets = My_Articles_Shortcode::get_design_presets();
-            $export  = array();
+            $catalog = array(
+                'version'      => '0',
+                'generated_at' => gmdate( 'c' ),
+                'presets'      => array(),
+            );
 
-            if ( is_array( $presets ) ) {
-                foreach ( $presets as $preset_id => $preset ) {
-                    if ( ! is_string( $preset_id ) || '' === $preset_id ) {
-                        continue;
-                    }
-
-                    $label = '';
-
-                    if ( is_array( $preset ) && isset( $preset['label'] ) && is_string( $preset['label'] ) ) {
-                        $label = $preset['label'];
-                    }
-
-                    if ( '' === $label ) {
-                        $label = $preset_id;
-                    }
-
-                    $description = '';
-
-                    if ( is_array( $preset ) && isset( $preset['description'] ) && is_string( $preset['description'] ) ) {
-                        $description = $preset['description'];
-                    }
-
-                    $tags = array();
-
-                    if ( is_array( $preset ) && isset( $preset['tags'] ) && is_array( $preset['tags'] ) ) {
-                        foreach ( $preset['tags'] as $tag ) {
-                            if ( is_scalar( $tag ) ) {
-                                $tags[] = (string) $tag;
-                            }
+            if ( class_exists( 'My_Articles_Preset_Registry' ) ) {
+                $registry = My_Articles_Preset_Registry::get_instance();
+                $catalog  = array(
+                    'version'      => $registry->get_version(),
+                    'generated_at' => gmdate( 'c' ),
+                    'presets'      => $registry->get_presets_for_rest(),
+                );
+            } elseif ( class_exists( 'My_Articles_Shortcode' ) ) {
+                $fallback = My_Articles_Shortcode::get_design_presets();
+                if ( is_array( $fallback ) ) {
+                    foreach ( $fallback as $preset_id => $definition ) {
+                        if ( ! is_string( $preset_id ) || '' === $preset_id ) {
+                            continue;
                         }
+
+                        $catalog['presets'][] = array(
+                            'id'          => $preset_id,
+                            'label'       => isset( $definition['label'] ) ? (string) $definition['label'] : $preset_id,
+                            'description' => isset( $definition['description'] ) ? (string) $definition['description'] : '',
+                            'locked'      => ! empty( $definition['locked'] ),
+                            'tags'        => isset( $definition['tags'] ) && is_array( $definition['tags'] ) ? $definition['tags'] : array(),
+                            'values'      => isset( $definition['values'] ) && is_array( $definition['values'] ) ? $definition['values'] : array(),
+                            'thumbnail'   => '',
+                            'swatch'      => array(),
+                        );
                     }
-
-                    $values = array();
-
-                    if ( is_array( $preset ) && isset( $preset['values'] ) && is_array( $preset['values'] ) ) {
-                        foreach ( $preset['values'] as $key => $value ) {
-                            if ( is_string( $key ) && ( is_scalar( $value ) || is_null( $value ) ) ) {
-                                $values[ $key ] = $value;
-                            }
-                        }
-                    }
-
-                    $export[ $preset_id ] = array(
-                        'label'       => $label,
-                        'description' => $description,
-                        'locked'      => ! empty( $preset['locked'] ),
-                        'tags'        => $tags,
-                        'values'      => $values,
-                    );
                 }
+            }
+
+            $inline_map = array();
+            foreach ( $catalog['presets'] as $preset ) {
+                if ( empty( $preset['id'] ) ) {
+                    continue;
+                }
+
+                $inline_map[ $preset['id'] ] = array(
+                    'label'       => $preset['label'] ?? $preset['id'],
+                    'description' => $preset['description'] ?? '',
+                    'locked'      => ! empty( $preset['locked'] ),
+                    'tags'        => isset( $preset['tags'] ) && is_array( $preset['tags'] ) ? $preset['tags'] : array(),
+                    'values'      => isset( $preset['values'] ) && is_array( $preset['values'] ) ? $preset['values'] : array(),
+                );
+            }
+
+            $catalog_json = wp_json_encode( $catalog );
+            $map_json     = wp_json_encode( $inline_map );
+
+            if ( false !== $catalog_json && false !== $map_json ) {
+                $script = 'window.myArticlesDesignPresetsCatalog = ' . $catalog_json . '; window.myArticlesDesignPresets = ' . $map_json . ';';
+
+                wp_add_inline_script( $editor_handle, $script, 'before' );
             }
 
             wp_add_inline_script(

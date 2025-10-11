@@ -1,0 +1,66 @@
+{
+    "version": "2024.05",
+    "generated_at": "2024-05-13T00:00:00Z",
+    "presets": [
+        {
+            "id": "custom",
+            "manifest": "custom/manifest.json",
+            "tags": "custom/tags.json",
+            "thumbnail": "custom/thumbnail.svg"
+        },
+        {
+            "id": "lcv-classique",
+            "manifest": "lcv-classique/manifest.json",
+            "tags": "lcv-classique/tags.json",
+            "thumbnail": "lcv-classique/thumbnail.svg"
+        },
+        {
+            "id": "dark-spotlight",
+            "manifest": "dark-spotlight/manifest.json",
+            "tags": "dark-spotlight/tags.json",
+            "thumbnail": "dark-spotlight/thumbnail.svg"
+        },
+        {
+            "id": "editorial-focus",
+            "manifest": "editorial-focus/manifest.json",
+            "tags": "editorial-focus/tags.json",
+            "thumbnail": "editorial-focus/thumbnail.svg"
+        },
+        {
+            "id": "headless-air",
+            "manifest": "headless-air/manifest.json",
+            "tags": "headless-air/tags.json",
+            "thumbnail": "headless-air/thumbnail.svg"
+        },
+        {
+            "id": "shadcn-contrast",
+            "manifest": "shadcn-contrast/manifest.json",
+            "tags": "shadcn-contrast/tags.json",
+            "thumbnail": "shadcn-contrast/thumbnail.svg"
+        },
+        {
+            "id": "radix-modular",
+            "manifest": "radix-modular/manifest.json",
+            "tags": "radix-modular/tags.json",
+            "thumbnail": "radix-modular/thumbnail.svg"
+        },
+        {
+            "id": "bootstrap-classic",
+            "manifest": "bootstrap-classic/manifest.json",
+            "tags": "bootstrap-classic/tags.json",
+            "thumbnail": "bootstrap-classic/thumbnail.svg"
+        },
+        {
+            "id": "semantic-soft",
+            "manifest": "semantic-soft/manifest.json",
+            "tags": "semantic-soft/tags.json",
+            "thumbnail": "semantic-soft/thumbnail.svg"
+        },
+        {
+            "id": "anime-motion",
+            "manifest": "anime-motion/manifest.json",
+            "tags": "anime-motion/tags.json",
+            "thumbnail": "anime-motion/thumbnail.svg"
+        }
+    ]
+}
