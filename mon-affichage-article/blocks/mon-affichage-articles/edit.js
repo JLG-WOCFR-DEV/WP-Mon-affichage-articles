@@ -1497,12 +1497,17 @@
             var filterValueChangeHandler = useCallback(
                 function (value) {
                     var nextValue = value || '';
+
+                    if (nextValue === searchValue) {
+                        return;
+                    }
+
                     setSearchValue(nextValue);
                     setCurrentPage(1);
                     setFetchedInstances([]);
                     setHasMoreResults(true);
                 },
-                [setSearchValue, setCurrentPage, setFetchedInstances, setHasMoreResults]
+                [searchValue, setSearchValue, setCurrentPage, setFetchedInstances, setHasMoreResults]
             );
 
             var debouncedFilterUpdate = useAsyncDebounce(filterValueChangeHandler, 250);
