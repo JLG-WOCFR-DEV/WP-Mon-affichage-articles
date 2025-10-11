@@ -1283,6 +1283,10 @@ JS;
      * @return My_Articles_Shortcode_Data_Preparer
      */
     public function get_data_preparer() {
+        if ( ! $this->data_preparer instanceof My_Articles_Shortcode_Data_Preparer ) {
+            $this->data_preparer = new My_Articles_Shortcode_Data_Preparer( $this );
+        }
+
         return $this->data_preparer;
     }
 
@@ -1568,13 +1572,18 @@ JS;
         }
 
         $allowed_sort_values = $allowed_orderby;
-        $requested_sort      = $requested_orderby;
+        $query_sort          = $requested_orderby;
+        $display_sort        = $requested_orderby;
 
         if ( isset( $options['sort'] ) && is_scalar( $options['sort'] ) ) {
-            $candidate_sort = (string) $options['sort'];
+            $candidate_sort = sanitize_key( (string) $options['sort'] );
 
-            if ( in_array( $candidate_sort, $allowed_sort_values, true ) ) {
-                $requested_sort = $candidate_sort;
+            if ( '' !== $candidate_sort ) {
+                $display_sort = $candidate_sort;
+
+                if ( in_array( $candidate_sort, $allowed_sort_values, true ) ) {
+                    $query_sort = $candidate_sort;
+                }
             }
         }
 
@@ -1582,10 +1591,14 @@ JS;
             $context_sort = $context['requested_sort'];
 
             if ( is_scalar( $context_sort ) ) {
-                $context_sort = (string) $context_sort;
+                $context_sort = sanitize_key( (string) $context_sort );
 
-                if ( in_array( $context_sort, $allowed_sort_values, true ) ) {
-                    $requested_sort = $context_sort;
+                if ( '' !== $context_sort ) {
+                    $display_sort = $context_sort;
+
+                    if ( in_array( $context_sort, $allowed_sort_values, true ) ) {
+                        $query_sort = $context_sort;
+                    }
                 }
             }
         }
@@ -1595,21 +1608,21 @@ JS;
             $meta_key = trim( sanitize_text_field( (string) $options['meta_key'] ) );
         }
 
-        if ( 'meta_value' === $requested_sort ) {
+        if ( 'meta_value' === $query_sort ) {
             if ( '' === $meta_key ) {
                 $requested_orderby = $defaults['orderby'];
-                $requested_sort    = $defaults['sort'];
+                $query_sort        = $defaults['sort'];
             }
         } else {
             $meta_key = '';
         }
 
-        if ( in_array( $requested_sort, $allowed_orderby, true ) ) {
-            $requested_orderby = $requested_sort;
+        if ( in_array( $query_sort, $allowed_orderby, true ) ) {
+            $requested_orderby = $query_sort;
         }
 
         $options['orderby']  = $requested_orderby;
-        $options['sort']      = $requested_sort;
+        $options['sort']      = $display_sort;
         $options['meta_key'] = $meta_key;
 
         $order = isset( $options['order'] ) ? strtoupper( (string) $options['order'] ) : $defaults['order'];
@@ -2941,23 +2954,23 @@ JS;
     /**
      * Builds the HTML markup for numbered pagination links.
      *
-     * @param int    $total_pages            Total number of pages available.
-     * @param int    $paged                  Current page number.
-     * @param string $paged_var              Query variable used for the pagination links.
-     * @param array  $additional_query_args  Additional query arguments to preserve when generating links.
-     * @param string $base_url               Base URL to use when generating the pagination links. When empty, the
-     *                                       current request derived from $wp->request is used as a fallback.
+     * @param int    $total_pages   Total number of pages available.
+     * @param int    $current_page  Current page number.
+     * @param string $query_var     Query variable used for the pagination links.
+     * @param array  $query_args    Additional query arguments to preserve when generating links.
+     * @param string $referer       Base URL to use when generating the pagination links. When empty, the
+     *                              current request derived from $wp->request is used as a fallback.
      *
      * @return string HTML markup for the pagination component or an empty string if no pagination is needed.
      */
-    public function get_numbered_pagination_html( $total_pages, $paged, $paged_var, $additional_query_args = array(), $base_url = '' ) {
+    public function get_numbered_pagination_html( $total_pages, $current_page, $query_var, array $query_args, $referer = '' ) {
         if ( $total_pages <= 1 ) {
             return '';
         }
 
         $site_home = home_url();
 
-        $base_url = my_articles_normalize_internal_url( $base_url, $site_home );
+        $base_url = my_articles_normalize_internal_url( $referer, $site_home );
 
         if ( '' === $base_url ) {
             global $wp;
@@ -2977,8 +2990,8 @@ JS;
                     $sanitized_query_args = array();
                 }
 
-                if ( isset( $sanitized_query_args[ $paged_var ] ) ) {
-                    unset( $sanitized_query_args[ $paged_var ] );
+                if ( isset( $sanitized_query_args[ $query_var ] ) ) {
+                    unset( $sanitized_query_args[ $query_var ] );
                 }
 
                 if ( ! empty( $sanitized_query_args ) ) {
@@ -3007,8 +3020,8 @@ JS;
         }
 
         $clean_additional_args = array();
-        if ( ! empty( $additional_query_args ) && is_array( $additional_query_args ) ) {
-            foreach ( $additional_query_args as $key => $value ) {
+        if ( ! empty( $query_args ) ) {
+            foreach ( $query_args as $key => $value ) {
                 $clean_key = sanitize_key( $key );
                 if ( '' === $clean_key ) {
                     continue;
@@ -3032,14 +3045,14 @@ JS;
         $query_args = array_merge( $existing_args, $clean_additional_args );
 
         $base_without_query = rtrim( $base_url, '?' );
-        $format             = ( strpos( $base_without_query, '?' ) !== false ? '&' : '?' ) . $paged_var . '=%#%';
+        $format             = ( strpos( $base_without_query, '?' ) !== false ? '&' : '?' ) . $query_var . '=%#%';
 
         $pagination_links = paginate_links(
             [
                 'base'      => $base_without_query . '%_%',
                 'format'    => $format,
                 'add_args'  => ! empty( $query_args ) ? $query_args : false,
-                'current'   => max( 1, (int) $paged ),
+                'current'   => max( 1, (int) $current_page ),
                 'total'     => max( 1, (int) $total_pages ),
                 'prev_text' => __( '&laquo; Précédent', 'mon-articles' ),
                 'next_text' => __( 'Suivant &raquo;', 'mon-articles' ),
@@ -3053,8 +3066,8 @@ JS;
         return '<nav class="my-articles-pagination">' . $pagination_links . '</nav>';
     }
 
-    private function render_numbered_pagination( $total_pages, $paged, $paged_var, $additional_query_args = array(), $base_url = '' ) {
-        $pagination_html = $this->get_numbered_pagination_html( $total_pages, $paged, $paged_var, $additional_query_args, $base_url );
+    private function render_numbered_pagination( $total_pages, $current_page, $query_var, array $query_args = array(), $referer = '' ) {
+        $pagination_html = $this->get_numbered_pagination_html( $total_pages, $current_page, $query_var, $query_args, $referer );
 
         if ( ! empty( $pagination_html ) ) {
             echo $pagination_html;

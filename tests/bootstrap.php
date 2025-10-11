@@ -5,8 +5,105 @@ if (!defined('MY_ARTICLES_DISABLE_AUTOBOOT')) {
     define('MY_ARTICLES_DISABLE_AUTOBOOT', true);
 }
 
+if (!defined('ABSPATH')) {
+    define('ABSPATH', dirname(__DIR__) . '/');
+}
+
+if (!class_exists('WP_UnitTestCase')) {
+    abstract class WP_UnitTestCase extends \PHPUnit\Framework\TestCase
+    {
+        /** @var WP_UnitTest_Factory|null */
+        private static $factory = null;
+
+        public static function factory(): WP_UnitTest_Factory
+        {
+            if (!self::$factory instanceof WP_UnitTest_Factory) {
+                self::$factory = new WP_UnitTest_Factory();
+            }
+
+            return self::$factory;
+        }
+
+        protected function setUp(): void
+        {
+            parent::setUp();
+        }
+
+        protected function tearDown(): void
+        {
+            parent::tearDown();
+        }
+
+        public static function tearDownAfterClass(): void
+        {
+            self::$factory = null;
+        }
+    }
+
+    final class WP_UnitTest_Factory
+    {
+        /** @var WP_UnitTest_Factory_For_Post */
+        public $post;
+
+        public function __construct()
+        {
+            $this->post = new WP_UnitTest_Factory_For_Post();
+        }
+    }
+
+    final class WP_UnitTest_Factory_For_Post
+    {
+        private int $last_id = 0;
+
+        /**
+         * @param array<string, mixed> $args
+         * @return int
+         */
+        public function create(array $args = array()): int
+        {
+            global $mon_articles_test_posts;
+
+            if (!is_array($mon_articles_test_posts)) {
+                $mon_articles_test_posts = array();
+            }
+
+            $this->last_id++;
+            $post_id = isset($args['ID']) ? (int) $args['ID'] : $this->last_id;
+
+            $defaults = array(
+                'ID'           => $post_id,
+                'post_title'   => 'Post ' . $post_id,
+                'post_type'    => 'post',
+                'post_status'  => 'publish',
+                'post_author'  => 1,
+                'post_content' => '',
+            );
+
+            $post_data = array_merge($defaults, $args);
+            $post_data['ID'] = $post_id;
+
+            $mon_articles_test_posts[$post_id] = (object) $post_data;
+
+            return $post_id;
+        }
+    }
+}
+
 if (!defined('WPINC')) {
     define('WPINC', 'wp-includes');
+}
+
+if (!defined('MINUTE_IN_SECONDS')) {
+    define('MINUTE_IN_SECONDS', 60);
+}
+
+if (!isset($mon_articles_test_terms) || !is_array($mon_articles_test_terms)) {
+    $mon_articles_test_terms = array(
+        'category' => array(
+            (object) array('term_id' => 1, 'slug' => 'actus', 'name' => 'Actualités'),
+            (object) array('term_id' => 2, 'slug' => 'culture', 'name' => 'Culture'),
+        ),
+    );
 }
 
 if (!defined('HOUR_IN_SECONDS')) {
@@ -245,6 +342,25 @@ if (!function_exists('get_post_types')) {
     }
 }
 
+if (!function_exists('get_post')) {
+    function get_post($post = null)
+    {
+        global $mon_articles_test_posts;
+
+        if (!is_array($mon_articles_test_posts)) {
+            $mon_articles_test_posts = array();
+        }
+
+        if (is_object($post) || is_array($post)) {
+            $post = is_object($post) ? ($post->ID ?? 0) : ($post['ID'] ?? 0);
+        }
+
+        $post_id = is_numeric($post) ? (int) $post : 0;
+
+        return $mon_articles_test_posts[$post_id] ?? null;
+    }
+}
+
 if (!function_exists('get_object_taxonomies')) {
     function get_object_taxonomies($post_type, $output = 'names')
     {
@@ -435,6 +551,19 @@ if (!function_exists('sanitize_text_field')) {
     }
 }
 
+if (!function_exists('wp_strip_all_tags')) {
+    function wp_strip_all_tags($string, $remove_breaks = false)
+    {
+        $string = strip_tags((string) $string);
+
+        if ($remove_breaks) {
+            $string = preg_replace('/[\r\n\t]+/', '', $string);
+        }
+
+        return $string;
+    }
+}
+
 if (!function_exists('home_url')) {
     function home_url($path = '', $scheme = null)
     {
@@ -475,6 +604,17 @@ if (!function_exists('maybe_serialize')) {
         }
 
         return serialize($data);
+    }
+}
+
+if (!function_exists('wp_unslash')) {
+    function wp_unslash($value)
+    {
+        if (is_array($value)) {
+            return array_map('wp_unslash', $value);
+        }
+
+        return is_string($value) ? stripslashes($value) : $value;
     }
 }
 
@@ -534,9 +674,50 @@ if (!function_exists('get_post_meta')) {
             return $mon_articles_test_post_meta_map[$post_id];
         }
 
-        $value = $mon_articles_test_post_meta_map[$post_id][$key] ?? ($single ? '' : array());
+        if (!array_key_exists($key, $mon_articles_test_post_meta_map[$post_id])) {
+            return $single ? '' : array();
+        }
+
+        $value = $mon_articles_test_post_meta_map[$post_id][$key];
+
+        if ($single) {
+            if (is_array($value) && array_keys($value) === range(0, count($value) - 1)) {
+                return $value[0] ?? '';
+            }
+
+            return $value;
+        }
 
         return $value;
+    }
+}
+
+if (!function_exists('add_post_meta')) {
+    function add_post_meta($post_id, $meta_key, $meta_value)
+    {
+        global $mon_articles_test_post_meta_map;
+
+        if (!is_array($mon_articles_test_post_meta_map)) {
+            $mon_articles_test_post_meta_map = array();
+        }
+
+        $post_id = (int) $post_id;
+
+        if (!isset($mon_articles_test_post_meta_map[$post_id])) {
+            $mon_articles_test_post_meta_map[$post_id] = array();
+        }
+
+        if (!isset($mon_articles_test_post_meta_map[$post_id][$meta_key])) {
+            $mon_articles_test_post_meta_map[$post_id][$meta_key] = array();
+        }
+
+        if (!is_array($mon_articles_test_post_meta_map[$post_id][$meta_key])) {
+            $mon_articles_test_post_meta_map[$post_id][$meta_key] = array($mon_articles_test_post_meta_map[$post_id][$meta_key]);
+        }
+
+        $mon_articles_test_post_meta_map[$post_id][$meta_key][] = $meta_value;
+
+        return true;
     }
 }
 
@@ -567,6 +748,25 @@ if (!function_exists('add_shortcode')) {
     function add_shortcode($tag, $callback): void
     {
         // No-op for tests.
+    }
+}
+
+if (!function_exists('remove_all_filters')) {
+    function remove_all_filters($hook = null): void
+    {
+        global $mon_articles_test_filters;
+
+        if (!is_array($mon_articles_test_filters)) {
+            $mon_articles_test_filters = array();
+        }
+
+        if (null === $hook) {
+            $mon_articles_test_filters = array();
+
+            return;
+        }
+
+        unset($mon_articles_test_filters[$hook]);
     }
 }
 
@@ -610,6 +810,27 @@ if (!function_exists('wp_json_encode')) {
     function wp_json_encode($data, $options = 0, $depth = 512)
     {
         return json_encode($data, $options, $depth);
+    }
+}
+
+if (!function_exists('wp_list_pluck')) {
+    function wp_list_pluck($list, $field)
+    {
+        $values = array();
+
+        if (!is_iterable($list)) {
+            return $values;
+        }
+
+        foreach ($list as $item) {
+            if (is_array($item) && array_key_exists($field, $item)) {
+                $values[] = $item[$field];
+            } elseif (is_object($item) && isset($item->{$field})) {
+                $values[] = $item->{$field};
+            }
+        }
+
+        return $values;
     }
 }
 
@@ -1522,7 +1743,10 @@ if (!class_exists('WP_Query')) {
 }
 
 require_once __DIR__ . '/../mon-affichage-article/mon-affichage-articles.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/interface-my-articles-content-adapter.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode-data-preparer.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-settings-sanitizer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-cache-key.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/rest/class-my-articles-controller.php';
