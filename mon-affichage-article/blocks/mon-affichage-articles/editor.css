@@ -519,9 +519,17 @@
 }
 
 .my-articles-preset-browser__screen-content {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 8px;
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.my-articles-preset-browser__screen--tablet .my-articles-preset-browser__screen-content {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.my-articles-preset-browser__screen--desktop .my-articles-preset-browser__screen-content {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .my-articles-preset-browser__screen-card {
@@ -531,6 +539,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-width: 0;
 }
 
 .my-articles-preset-browser__screen-card-title {
