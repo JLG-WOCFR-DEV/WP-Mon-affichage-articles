@@ -58,6 +58,20 @@ class My_Articles_Shortcode {
         return self::$design_presets;
     }
 
+    public static function get_design_presets_manifest_path() {
+        $base_dir = defined( 'MY_ARTICLES_PLUGIN_DIR' ) ? MY_ARTICLES_PLUGIN_DIR : dirname( __FILE__, 2 ) . '/';
+
+        if ( function_exists( 'trailingslashit' ) ) {
+            return trailingslashit( $base_dir ) . 'config/design-presets.json';
+        }
+
+        return rtrim( $base_dir, '/\\' ) . '/config/design-presets.json';
+    }
+
+    public static function flush_design_presets_cache() {
+        self::$design_presets = null;
+    }
+
     public static function get_last_render_summary() {
         return self::$last_render_summary;
     }
@@ -144,13 +158,7 @@ JS;
     private static function load_design_presets_from_manifest() {
         $fallback = self::get_fallback_design_presets();
 
-        $base_dir = defined( 'MY_ARTICLES_PLUGIN_DIR' ) ? MY_ARTICLES_PLUGIN_DIR : dirname( __FILE__, 2 ) . '/';
-
-        if ( function_exists( 'trailingslashit' ) ) {
-            $manifest_path = trailingslashit( $base_dir ) . 'config/design-presets.json';
-        } else {
-            $manifest_path = rtrim( $base_dir, '/\\' ) . '/config/design-presets.json';
-        }
+        $manifest_path = self::get_design_presets_manifest_path();
 
         if ( ! file_exists( $manifest_path ) || ! is_readable( $manifest_path ) ) {
             return $fallback;
@@ -765,6 +773,307 @@ JS;
         return array_values( $sanitized );
     }
 
+    public static function get_content_adapter_definitions() {
+        $registry = array();
+
+        if ( function_exists( 'apply_filters' ) ) {
+            $registry = apply_filters( 'my_articles_content_adapters', array() );
+        }
+
+        if ( ! is_array( $registry ) ) {
+            $registry = array();
+        }
+
+        $normalized = array();
+
+        foreach ( $registry as $adapter_id => $definition ) {
+            $resolved_id = '';
+
+            if ( is_string( $adapter_id ) && '' !== $adapter_id ) {
+                $resolved_id = sanitize_key( $adapter_id );
+            } elseif ( is_array( $definition ) && isset( $definition['id'] ) ) {
+                $resolved_id = sanitize_key( (string) $definition['id'] );
+            }
+
+            if ( '' === $resolved_id ) {
+                continue;
+            }
+
+            if ( is_array( $definition ) ) {
+                $callback = $definition['callback'] ?? null;
+                $label    = isset( $definition['label'] ) && is_string( $definition['label'] ) ? $definition['label'] : $resolved_id;
+                $description = isset( $definition['description'] ) && is_string( $definition['description'] ) ? $definition['description'] : '';
+                $schema = isset( $definition['schema'] ) && is_array( $definition['schema'] ) ? $definition['schema'] : array();
+            } elseif ( is_callable( $definition ) ) {
+                $callback   = $definition;
+                $label      = $resolved_id;
+                $description = '';
+                $schema      = array();
+            } else {
+                continue;
+            }
+
+            if ( ! is_callable( $callback ) ) {
+                continue;
+            }
+
+            $normalized[ $resolved_id ] = array(
+                'id'          => $resolved_id,
+                'label'       => is_string( $label ) ? $label : $resolved_id,
+                'description' => is_string( $description ) ? $description : '',
+                'callback'    => $callback,
+                'schema'      => $schema,
+            );
+        }
+
+        return $normalized;
+    }
+
+    public static function get_content_adapter_definitions_for_admin() {
+        $definitions = self::get_content_adapter_definitions();
+        $export = array();
+
+        foreach ( $definitions as $definition ) {
+            $export[] = array(
+                'id'          => $definition['id'],
+                'label'       => $definition['label'],
+                'description' => $definition['description'],
+            );
+        }
+
+        return $export;
+    }
+
+    public static function sanitize_content_adapters( $raw_adapters ) {
+        if ( is_string( $raw_adapters ) ) {
+            $decoded = json_decode( $raw_adapters, true );
+            if ( is_array( $decoded ) ) {
+                $raw_adapters = $decoded;
+            }
+        }
+
+        if ( ! is_array( $raw_adapters ) ) {
+            return array();
+        }
+
+        $definitions = self::get_content_adapter_definitions();
+        if ( empty( $definitions ) ) {
+            return array();
+        }
+
+        $normalized = array();
+
+        foreach ( $raw_adapters as $entry ) {
+            if ( is_string( $entry ) ) {
+                $decoded_entry = json_decode( $entry, true );
+                if ( is_array( $decoded_entry ) ) {
+                    $entry = $decoded_entry;
+                }
+            }
+
+            if ( ! is_array( $entry ) ) {
+                continue;
+            }
+
+            $adapter_id = '';
+            if ( isset( $entry['id'] ) ) {
+                $adapter_id = sanitize_key( (string) $entry['id'] );
+            } elseif ( isset( $entry['adapter'] ) ) {
+                $adapter_id = sanitize_key( (string) $entry['adapter'] );
+            }
+
+            if ( '' === $adapter_id || ! isset( $definitions[ $adapter_id ] ) ) {
+                continue;
+            }
+
+            $config = array();
+            if ( isset( $entry['config'] ) ) {
+                if ( is_string( $entry['config'] ) && '' !== trim( $entry['config'] ) ) {
+                    $decoded_config = json_decode( $entry['config'], true );
+                    if ( is_array( $decoded_config ) ) {
+                        $config = $decoded_config;
+                    }
+                } elseif ( is_array( $entry['config'] ) ) {
+                    $config = $entry['config'];
+                }
+            }
+
+            $normalized[] = array(
+                'id'     => $adapter_id,
+                'config' => self::sanitize_adapter_config( $config ),
+            );
+        }
+
+        return $normalized;
+    }
+
+    private static function sanitize_adapter_config( $config ) {
+        if ( ! is_array( $config ) ) {
+            return array();
+        }
+
+        $sanitized = array();
+
+        foreach ( $config as $key => $value ) {
+            if ( is_string( $key ) ) {
+                $normalized_key = sanitize_key( $key );
+            } else {
+                $normalized_key = $key;
+            }
+
+            if ( '' === $normalized_key && 0 !== $normalized_key ) {
+                continue;
+            }
+
+            if ( is_array( $value ) ) {
+                $sanitized[ $normalized_key ] = self::sanitize_adapter_config( $value );
+                continue;
+            }
+
+            if ( is_bool( $value ) ) {
+                $sanitized[ $normalized_key ] = $value ? 1 : 0;
+                continue;
+            }
+
+            if ( is_int( $value ) || is_float( $value ) ) {
+                $sanitized[ $normalized_key ] = $value + 0;
+                continue;
+            }
+
+            if ( is_scalar( $value ) ) {
+                $sanitized[ $normalized_key ] = sanitize_text_field( (string) $value );
+            }
+        }
+
+        return $sanitized;
+    }
+
+    public static function collect_content_adapter_items( array $options, array $context = array() ) {
+        $adapters = isset( $options['content_adapters'] ) && is_array( $options['content_adapters'] )
+            ? $options['content_adapters']
+            : array();
+
+        if ( empty( $adapters ) ) {
+            return array();
+        }
+
+        $registry = self::get_content_adapter_definitions();
+        if ( empty( $registry ) ) {
+            return array();
+        }
+
+        $seen_ids = array();
+        if ( isset( $options['all_excluded_ids'] ) && is_array( $options['all_excluded_ids'] ) ) {
+            $seen_ids = array_merge( $seen_ids, array_map( 'absint', $options['all_excluded_ids'] ) );
+        }
+
+        if ( isset( $options['exclude_post_ids'] ) && is_array( $options['exclude_post_ids'] ) ) {
+            $seen_ids = array_merge( $seen_ids, array_map( 'absint', $options['exclude_post_ids'] ) );
+        }
+
+        if ( isset( $options['pinned_posts'] ) && is_array( $options['pinned_posts'] ) ) {
+            $seen_ids = array_merge( $seen_ids, array_map( 'absint', $options['pinned_posts'] ) );
+        }
+
+        if ( isset( $context['rendered_pinned_ids'] ) && is_array( $context['rendered_pinned_ids'] ) ) {
+            $seen_ids = array_merge( $seen_ids, array_map( 'absint', $context['rendered_pinned_ids'] ) );
+        }
+
+        $seen_ids = array_values( array_unique( array_filter( $seen_ids ) ) );
+
+        $items = array();
+
+        foreach ( $adapters as $entry ) {
+            if ( ! is_array( $entry ) || empty( $entry['id'] ) ) {
+                continue;
+            }
+
+            $adapter_id = sanitize_key( (string) $entry['id'] );
+
+            if ( '' === $adapter_id || ! isset( $registry[ $adapter_id ] ) ) {
+                continue;
+            }
+
+            $callback = $registry[ $adapter_id ]['callback'];
+
+            if ( ! is_callable( $callback ) ) {
+                continue;
+            }
+
+            $config = isset( $entry['config'] ) && is_array( $entry['config'] ) ? $entry['config'] : array();
+
+            try {
+                $result = call_user_func( $callback, $options, $config, $context );
+            } catch ( \Throwable $exception ) {
+                continue;
+            }
+
+            $items = array_merge( $items, self::normalize_adapter_item_collection( $result, $seen_ids ) );
+        }
+
+        if ( empty( $items ) ) {
+            return array();
+        }
+
+        return $items;
+    }
+
+    private static function normalize_adapter_item_collection( $raw_items, array &$seen_ids = array() ) {
+        $normalized = array();
+
+        if ( $raw_items instanceof WP_Query ) {
+            $raw_items = $raw_items->posts;
+        }
+
+        if ( $raw_items instanceof WP_Post ) {
+            $raw_items = array( $raw_items );
+        }
+
+        if ( is_array( $raw_items ) ) {
+            foreach ( $raw_items as $item ) {
+                $normalized = array_merge( $normalized, self::normalize_adapter_item_collection( $item, $seen_ids ) );
+            }
+
+            return $normalized;
+        }
+
+        if ( is_object( $raw_items ) && $raw_items instanceof WP_Post ) {
+            $post_id = absint( $raw_items->ID );
+
+            if ( $post_id > 0 && ! in_array( $post_id, $seen_ids, true ) ) {
+                $seen_ids[] = $post_id;
+                $normalized[] = array(
+                    'type' => 'post',
+                    'post' => $raw_items,
+                );
+            }
+
+            return $normalized;
+        }
+
+        if ( is_scalar( $raw_items ) ) {
+            $content = (string) $raw_items;
+
+            if ( '' !== trim( $content ) ) {
+                $normalized[] = array(
+                    'type'  => 'html',
+                    'html'  => wp_kses_post( $content ),
+                );
+            }
+
+            return $normalized;
+        }
+
+        if ( is_object( $raw_items ) && isset( $raw_items->html ) && is_scalar( $raw_items->html ) ) {
+            $normalized[] = array(
+                'type' => 'html',
+                'html' => wp_kses_post( (string) $raw_items->html ),
+            );
+        }
+
+        return $normalized;
+    }
+
     public static function append_active_tax_query( array $args, $resolved_taxonomy, $active_category, array $active_filters = array() ) {
         $clauses = array();
 
@@ -842,6 +1151,89 @@ JS;
         return $args;
     }
 
+    private static function merge_tax_query_clauses( array $args, array $clauses ) {
+        if ( empty( $clauses ) ) {
+            return $args;
+        }
+
+        $existing = array();
+        $relation = 'AND';
+
+        if ( isset( $args['tax_query'] ) && is_array( $args['tax_query'] ) ) {
+            foreach ( $args['tax_query'] as $key => $clause ) {
+                if ( 'relation' === $key && is_string( $clause ) ) {
+                    $relation = $clause;
+                    continue;
+                }
+
+                if ( is_array( $clause ) ) {
+                    $existing[] = $clause;
+                }
+            }
+        }
+
+        $args['tax_query'] = array_merge(
+            array( 'relation' => $relation ),
+            $existing,
+            $clauses
+        );
+
+        return $args;
+    }
+
+    private static function apply_primary_taxonomy_terms( array $args, array $options ) {
+        if ( empty( $options['primary_taxonomy_terms'] ) || ! is_array( $options['primary_taxonomy_terms'] ) ) {
+            return $args;
+        }
+
+        $grouped = array();
+
+        foreach ( $options['primary_taxonomy_terms'] as $pair ) {
+            if ( ! is_array( $pair ) ) {
+                continue;
+            }
+
+            $taxonomy = isset( $pair['taxonomy'] ) ? sanitize_key( (string) $pair['taxonomy'] ) : '';
+            $slug     = isset( $pair['slug'] ) ? sanitize_title( (string) $pair['slug'] ) : '';
+
+            if ( '' === $taxonomy || '' === $slug ) {
+                continue;
+            }
+
+            if ( ! isset( $grouped[ $taxonomy ] ) ) {
+                $grouped[ $taxonomy ] = array();
+            }
+
+            $grouped[ $taxonomy ][] = $slug;
+        }
+
+        if ( empty( $grouped ) ) {
+            return $args;
+        }
+
+        $clauses = array();
+
+        foreach ( $grouped as $taxonomy => $slugs ) {
+            $slugs = array_values( array_unique( array_filter( $slugs ) ) );
+
+            if ( empty( $slugs ) ) {
+                continue;
+            }
+
+            $clauses[] = array(
+                'taxonomy' => $taxonomy,
+                'field'    => 'slug',
+                'terms'    => $slugs,
+            );
+        }
+
+        if ( empty( $clauses ) ) {
+            return $args;
+        }
+
+        return self::merge_tax_query_clauses( $args, $clauses );
+    }
+
     private static function build_regular_query( array $options, array $overrides = array(), $active_category = null ) {
         $base_args = array(
             'post_type'           => $options['post_type'],
@@ -854,6 +1246,7 @@ JS;
         }
 
         $query_args = array_merge( $base_args, $overrides );
+        $query_args = self::apply_primary_taxonomy_terms( $query_args, $options );
 
         if ( ! isset( $query_args['orderby'] ) && ! empty( $options['orderby'] ) ) {
             $query_args['orderby'] = $options['orderby'];
@@ -1218,6 +1611,8 @@ JS;
             'taxonomy' => '',
             'term' => '',
             'tax_filters' => array(),
+            'primary_taxonomy_terms' => array(),
+            'content_adapters' => array(),
             'counting_behavior' => 'exact',
             'posts_per_page' => 10,
             'orderby' => 'date',
@@ -1578,6 +1973,11 @@ JS;
         }
         $options['filter_categories'] = $filter_categories;
 
+        $options['primary_taxonomy_terms'] = self::sanitize_filter_pairs(
+            $options['primary_taxonomy_terms'] ?? array(),
+            $options['post_type']
+        );
+
         $available_tax_filters = self::sanitize_filter_pairs( $options['tax_filters'] ?? array(), $options['post_type'] );
         $options['tax_filters']      = $available_tax_filters;
 
@@ -1586,6 +1986,8 @@ JS;
         if ( array_key_exists( 'requested_filters', $context ) ) {
             $requested_tax_filters = self::sanitize_filter_pairs( $context['requested_filters'], $options['post_type'] );
         }
+
+        $options['content_adapters'] = self::sanitize_content_adapters( $options['content_adapters'] ?? array() );
 
         $active_tax_filters = array();
 
@@ -2165,15 +2567,25 @@ JS;
             return sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
         }, array_keys( $results_attributes ), $results_attributes ) ) . '>';
 
-        if ($options['display_mode'] === 'slideshow') {
-            $this->render_slideshow($pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id);
-        } else if ($options['display_mode'] === 'list') {
-            $displayed_pinned_ids = $this->render_list($pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id);
+        $adapter_items = self::collect_content_adapter_items(
+            $options,
+            array(
+                'instance_id'          => $id,
+                'render_limit'         => $render_limit,
+                'display_mode'         => $options['display_mode'] ?? '',
+                'rendered_pinned_ids'  => $state['rendered_pinned_ids'] ?? array(),
+            )
+        );
+
+        if ( $options['display_mode'] === 'slideshow' ) {
+            $this->render_slideshow( $pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id, $adapter_items );
+        } elseif ( $options['display_mode'] === 'list' ) {
+            $displayed_pinned_ids = $this->render_list( $pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id, $adapter_items );
             if ( ! is_array( $displayed_pinned_ids ) ) {
                 $displayed_pinned_ids = array();
             }
         } else {
-            $displayed_pinned_ids = $this->render_grid($pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id);
+            $displayed_pinned_ids = $this->render_grid( $pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id, $adapter_items );
             if ( ! is_array( $displayed_pinned_ids ) ) {
                 $displayed_pinned_ids = array();
             }
@@ -2277,7 +2689,7 @@ JS;
         return ob_get_clean();
     }
     
-    private function render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, $container_class, $results_region_id = '' ) {
+    private function render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, $container_class, $results_region_id = '', array $adapter_items = array() ) {
         $has_rendered_posts   = false;
         $render_limit         = max( 0, (int) $posts_per_page );
         $should_limit         = $render_limit > 0;
@@ -2320,6 +2732,37 @@ JS;
                 $this->render_article_item( $options, false );
                 $has_rendered_posts = true;
                 $rendered_count++;
+            }
+        }
+
+        $adapter_post_processed = false;
+
+        if ( ! empty( $adapter_items ) ) {
+            foreach ( $adapter_items as $adapter_item ) {
+                if ( $should_limit && $rendered_count >= $render_limit ) {
+                    break;
+                }
+
+                if ( ! is_array( $adapter_item ) || empty( $adapter_item['type'] ) ) {
+                    continue;
+                }
+
+                if ( 'post' === $adapter_item['type'] && isset( $adapter_item['post'] ) && $adapter_item['post'] instanceof WP_Post ) {
+                    $adapter_post_processed = true;
+                    $post = $adapter_item['post'];
+                    setup_postdata( $post );
+                    $this->render_article_item( $options, false );
+                    $has_rendered_posts = true;
+                    $rendered_count++;
+                } elseif ( 'html' === $adapter_item['type'] && isset( $adapter_item['html'] ) ) {
+                    echo $adapter_item['html'];
+                    $has_rendered_posts = true;
+                    $rendered_count++;
+                }
+            }
+
+            if ( $adapter_post_processed ) {
+                wp_reset_postdata();
             }
         }
 
@@ -2371,15 +2814,15 @@ JS;
         return ob_get_clean();
     }
 
-    private function render_list($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
-        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-list-content', $results_region_id );
+    private function render_list( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-list-content', $results_region_id, $adapter_items );
     }
 
-    private function render_grid($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
-        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content', $results_region_id );
+    private function render_grid( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
+        return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content', $results_region_id, $adapter_items );
     }
 
-    private function render_slideshow($pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '') {
+    private function render_slideshow( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
         $is_unlimited       = (int) $posts_per_page <= 0;
         $total_posts_needed = $is_unlimited ? PHP_INT_MAX : (int) $posts_per_page;
 
@@ -2412,6 +2855,37 @@ JS;
                 $this->render_article_item( $options, false );
                 echo '</div>';
                 $post_count++;
+            }
+        }
+
+        $adapter_post_processed = false;
+
+        if ( ! empty( $adapter_items ) ) {
+            foreach ( $adapter_items as $adapter_item ) {
+                if ( $post_count >= $total_posts_needed ) {
+                    break;
+                }
+
+                if ( ! is_array( $adapter_item ) || empty( $adapter_item['type'] ) ) {
+                    continue;
+                }
+
+                if ( 'post' === $adapter_item['type'] && isset( $adapter_item['post'] ) && $adapter_item['post'] instanceof WP_Post ) {
+                    $adapter_post_processed = true;
+                    $post = $adapter_item['post'];
+                    setup_postdata( $post );
+                    echo '<div class="swiper-slide">';
+                    $this->render_article_item( $options, false );
+                    echo '</div>';
+                    $post_count++;
+                } elseif ( 'html' === $adapter_item['type'] && isset( $adapter_item['html'] ) ) {
+                    echo '<div class="swiper-slide swiper-slide-external">' . $adapter_item['html'] . '</div>';
+                    $post_count++;
+                }
+            }
+
+            if ( $adapter_post_processed ) {
+                wp_reset_postdata();
             }
         }
 

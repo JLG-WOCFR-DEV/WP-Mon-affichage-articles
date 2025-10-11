@@ -58,6 +58,7 @@ class My_Articles_Metaboxes {
         wp_enqueue_script( 'my-articles-admin-select2', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-select2.js', array('select2-js', 'jquery-ui-sortable'), MY_ARTICLES_VERSION, true );
         wp_enqueue_script( 'my-articles-admin-options', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-options.js', array('jquery'), MY_ARTICLES_VERSION, true );
         wp_enqueue_script( 'my-articles-dynamic-fields', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-dynamic-fields.js', array('jquery'), MY_ARTICLES_VERSION, true );
+        wp_enqueue_script( 'my-articles-admin-preview', MY_ARTICLES_PLUGIN_URL . 'assets/js/admin-preview.js', array( 'jquery' ), MY_ARTICLES_VERSION, true );
 
         wp_localize_script(
             'my-articles-admin-select2',
@@ -88,6 +89,28 @@ class My_Articles_Metaboxes {
                 'infoMessage'     => esc_html__( 'Largeur estimée : %2$spx pour %1$d colonnes.', 'mon-articles' ),
             ]
         );
+
+        wp_localize_script(
+            'my-articles-admin-preview',
+            'myArticlesPreview',
+            [
+                'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'my_articles_render_preview' ),
+                'strings'  => [
+                    'loading'     => esc_html__( 'Préparation de la prévisualisation…', 'mon-articles' ),
+                    'success'     => esc_html__( 'Prévisualisation actualisée.', 'mon-articles' ),
+                    'error'       => esc_html__( 'Impossible de récupérer la prévisualisation.', 'mon-articles' ),
+                    'invalidJson' => esc_html__( 'JSON invalide. Vérifiez la configuration de l’adaptateur.', 'mon-articles' ),
+                    'remove'      => esc_html__( 'Supprimer', 'mon-articles' ),
+                    'emptyAdapters' => esc_html__( 'Aucun adaptateur disponible.', 'mon-articles' ),
+                    'adapterLabel'  => esc_html__( 'Adaptateur', 'mon-articles' ),
+                    'configLabel'   => esc_html__( 'Configuration (JSON)', 'mon-articles' ),
+                    'missingId'     => esc_html__( 'Enregistrez l’Affichage pour activer la prévisualisation.', 'mon-articles' ),
+                    'selectAdapter' => esc_html__( 'Sélectionnez un adaptateur', 'mon-articles' ),
+                ],
+                'adapters' => My_Articles_Shortcode::get_content_adapter_definitions_for_admin(),
+            ]
+        );
     }
 
     public function add_admin_head_styles() {
@@ -95,6 +118,18 @@ class My_Articles_Metaboxes {
             echo '<style>
                 .select2-container--default .select2-selection--multiple .select2-selection__choice { cursor: move; }
                 .ui-sortable-placeholder { border: 1px dashed #ccc; background-color: #f7f7f7; height: 31px; margin: 5px 0 3px 6px; }
+                .my-articles-metabox-preview { border: 1px solid #dcdcde; background: #fff; margin-bottom: 20px; }
+                .my-articles-metabox-preview__toolbar { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid #dcdcde; background: #f6f7f7; }
+                .my-articles-metabox-preview__toolbar .spinner { visibility: hidden; margin-left: auto; }
+                .my-articles-metabox-preview.is-loading .spinner { visibility: visible; }
+                .my-articles-metabox-preview__status { font-size: 12px; color: #50575e; }
+                .my-articles-metabox-preview__canvas { padding: 16px; max-height: 520px; overflow: auto; background: #fff; }
+                .my-articles-metabox-preview__canvas iframe { width: 100%; border: 0; }
+                .my-articles-content-adapters__row { border: 1px solid #dcdcde; padding: 12px; margin-bottom: 12px; background: #fff; }
+                .my-articles-content-adapters__row .my-articles-content-adapters__remove { float: right; }
+                .my-articles-content-adapters__row textarea { width: 100%; min-height: 80px; font-family: monospace; }
+                .my-articles-content-adapters__row.is-invalid textarea { border-color: #d63638; box-shadow: 0 0 0 1px rgba(214,54,56,0.3); }
+                .my-articles-content-adapters__row .description { margin-top: 8px; }
             </style>';
         }
     }
@@ -118,6 +153,17 @@ class My_Articles_Metaboxes {
     public function render_main_metabox( $post ) {
         wp_nonce_field( 'my_articles_save_meta_box_data', 'my_articles_meta_box_nonce' );
         $opts = (array) get_post_meta( $post->ID, $this->option_key, true );
+
+        $preview_nonce = wp_create_nonce( 'my_articles_render_preview' );
+
+        echo '<div class="my-articles-metabox-preview" data-instance-id="' . esc_attr( $post->ID ) . '" data-nonce="' . esc_attr( $preview_nonce ) . '" data-settings-prefix="' . esc_attr( $this->option_key ) . '">';
+        echo '<div class="my-articles-metabox-preview__toolbar">';
+        echo '<button type="button" class="button my-articles-metabox-preview__refresh">' . esc_html__( 'Rafraîchir la prévisualisation', 'mon-articles' ) . '</button>';
+        echo '<span class="spinner"></span>';
+        echo '<span class="my-articles-metabox-preview__status" aria-live="polite"></span>';
+        echo '</div>';
+        echo '<div class="my-articles-metabox-preview__canvas" role="region" aria-live="polite"></div>';
+        echo '</div>';
 
         if ( ! isset( $opts['sort'] ) && isset( $opts['orderby'] ) ) {
             $opts['sort'] = $opts['orderby'];
@@ -168,6 +214,25 @@ class My_Articles_Metaboxes {
             [
                 'post_type'    => $opts['post_type'] ?? '',
                 'description'  => esc_html__( 'Sélectionnez des couples taxonomie + terme appliqués en permanence au module.', 'mon-articles' ),
+            ]
+        );
+        $this->render_field(
+            'primary_taxonomy_terms',
+            esc_html__( 'Termes principaux', 'mon-articles' ),
+            'primary_taxonomy_select',
+            $opts,
+            [
+                'post_type'   => $opts['post_type'] ?? '',
+                'description' => esc_html__( 'Combine plusieurs taxonomies et termes pour construire la requête principale.', 'mon-articles' ),
+            ]
+        );
+        $this->render_field(
+            'content_adapters',
+            esc_html__( 'Sources externes', 'mon-articles' ),
+            'content_adapters',
+            $opts,
+            [
+                'description' => esc_html__( 'Déclarez des adaptateurs pour agréger des résultats issus de WP_Query personnalisées ou d’API tierces.', 'mon-articles' ),
             ]
         );
         $this->render_field('counting_behavior', esc_html__('Comportement du comptage', 'mon-articles'), 'select', $opts, [ 'default' => 'exact', 'options' => [ 'exact' => __('Nombre exact', 'mon-articles'), 'auto_fill' => __('Remplissage automatique (Grille complète)', 'mon-articles') ] ]);
@@ -715,6 +780,136 @@ class My_Articles_Metaboxes {
                     echo '<p class="description" style="font-style: italic;">' . esc_html( $args['description'] ) . '</p>';
                 }
                 break;
+            case 'primary_taxonomy_select':
+                $normalized_selection = array();
+
+                if ( is_array( $value ) ) {
+                    foreach ( $value as $filter ) {
+                        if ( is_array( $filter ) ) {
+                            $taxonomy = isset( $filter['taxonomy'] ) ? sanitize_key( $filter['taxonomy'] ) : '';
+                            $slug     = isset( $filter['slug'] ) ? sanitize_title( $filter['slug'] ) : '';
+
+                            if ( $taxonomy && $slug ) {
+                                $normalized_selection[] = $taxonomy . ':' . $slug;
+                            }
+                        } elseif ( is_string( $filter ) && strpos( $filter, ':' ) !== false ) {
+                            $normalized_selection[] = sanitize_text_field( $filter );
+                        }
+                    }
+                } elseif ( is_string( $value ) ) {
+                    $decoded_selection = json_decode( $value, true );
+
+                    if ( is_array( $decoded_selection ) ) {
+                        foreach ( $decoded_selection as $filter ) {
+                            if ( is_array( $filter ) ) {
+                                $taxonomy = isset( $filter['taxonomy'] ) ? sanitize_key( $filter['taxonomy'] ) : '';
+                                $slug     = isset( $filter['slug'] ) ? sanitize_title( $filter['slug'] ) : '';
+
+                                if ( $taxonomy && $slug ) {
+                                    $normalized_selection[] = $taxonomy . ':' . $slug;
+                                }
+                            } elseif ( is_string( $filter ) && strpos( $filter, ':' ) !== false ) {
+                                $normalized_selection[] = sanitize_text_field( $filter );
+                            }
+                        }
+                    } elseif ( strpos( $value, ':' ) !== false ) {
+                        $normalized_selection[] = sanitize_text_field( $value );
+                    }
+                }
+
+                $normalized_selection = array_values( array_unique( $normalized_selection ) );
+
+                $selected_post_type = isset( $args['post_type'] ) ? my_articles_normalize_post_type( $args['post_type'] ) : '';
+                $taxonomy_objects   = array();
+
+                if ( $selected_post_type ) {
+                    $taxonomy_objects = get_object_taxonomies( $selected_post_type, 'objects' );
+                }
+
+                if ( empty( $taxonomy_objects ) ) {
+                    $taxonomy_objects = get_taxonomies( array( 'public' => true ), 'objects' );
+                }
+
+                if ( empty( $taxonomy_objects ) ) {
+                    echo '<p class="description">' . esc_html__( 'Aucune taxonomie disponible pour ce type de contenu.', 'mon-articles' ) . '</p>';
+                    break;
+                }
+
+                echo '<select id="' . esc_attr( $input_id ) . '" name="' . $name . '[]" multiple="multiple" size="8" style="width: 100%;">';
+
+                foreach ( $taxonomy_objects as $taxonomy ) {
+                    if ( ! $taxonomy instanceof WP_Taxonomy ) {
+                        continue;
+                    }
+
+                    $terms = get_terms(
+                        array(
+                            'taxonomy'   => $taxonomy->name,
+                            'hide_empty' => false,
+                        )
+                    );
+
+                    if ( is_wp_error( $terms ) || empty( $terms ) ) {
+                        continue;
+                    }
+
+                    $label = $taxonomy->labels && isset( $taxonomy->labels->name ) ? $taxonomy->labels->name : $taxonomy->name;
+
+                    echo '<optgroup label="' . esc_attr( $label ) . '">';
+
+                    foreach ( $terms as $term ) {
+                        $option_value = $taxonomy->name . ':' . $term->slug;
+                        $selected     = in_array( $option_value, $normalized_selection, true ) ? ' selected="selected"' : '';
+                        echo '<option value="' . esc_attr( $option_value ) . '"' . $selected . '>' . esc_html( $term->name ) . '</option>';
+                    }
+
+                    echo '</optgroup>';
+                }
+
+                echo '</select>';
+
+                if ( isset( $args['description'] ) ) {
+                    echo '<p class="description" style="font-style: italic;">' . esc_html( $args['description'] ) . '</p>';
+                }
+                break;
+            case 'content_adapters':
+                $available_adapters = My_Articles_Shortcode::get_content_adapter_definitions_for_admin();
+                $encoded_available  = '';
+
+                if ( ! empty( $available_adapters ) ) {
+                    $available_json = wp_json_encode( array_values( $available_adapters ) );
+                    if ( false !== $available_json ) {
+                        $encoded_available = ' data-available-adapters="' . esc_attr( $available_json ) . '"';
+                    }
+                }
+
+                $encoded_value = '[]';
+                if ( is_string( $value ) && '' !== trim( $value ) ) {
+                    $encoded_value = $value;
+                } elseif ( is_array( $value ) ) {
+                    $encoded_value = wp_json_encode( array_values( $value ) );
+                    if ( false === $encoded_value ) {
+                        $encoded_value = '[]';
+                    }
+                }
+
+                echo '<div class="my-articles-content-adapters"' . $encoded_available . '>';
+                echo '<input type="hidden" class="my-articles-content-adapters__input" name="' . $name . '" value="' . esc_attr( $encoded_value ) . '" />';
+                echo '<div class="my-articles-content-adapters__list"></div>';
+
+                $add_button_disabled = empty( $available_adapters ) ? ' disabled="disabled"' : '';
+                echo '<p><button type="button" class="button my-articles-content-adapters__add"' . $add_button_disabled . '>' . esc_html__( 'Ajouter une source', 'mon-articles' ) . '</button></p>';
+
+                if ( empty( $available_adapters ) ) {
+                    echo '<p class="description" style="font-style: italic;">' . esc_html__( 'Aucun adaptateur disponible. Utilisez des filtres pour en enregistrer.', 'mon-articles' ) . '</p>';
+                }
+
+                if ( isset( $args['description'] ) ) {
+                    echo '<p class="description" style="font-style: italic;">' . esc_html( $args['description'] ) . '</p>';
+                }
+
+                echo '</div>';
+                break;
         }
         echo '</td></tr></table>';
     }
@@ -768,6 +963,10 @@ class My_Articles_Metaboxes {
             $input['tax_filters'] ?? array(),
             $sanitized['post_type']
         );
+        $sanitized['primary_taxonomy_terms'] = My_Articles_Shortcode::sanitize_filter_pairs(
+            $input['primary_taxonomy_terms'] ?? array(),
+            $sanitized['post_type']
+        );
 
         $sanitized['pinned_posts'] = array();
         if ( isset($input['pinned_posts']) && is_array($input['pinned_posts']) ) {
@@ -779,7 +978,11 @@ class My_Articles_Metaboxes {
         $sanitized['pinned_badge_text'] = isset( $input['pinned_badge_text'] ) ? sanitize_text_field( wp_unslash( $input['pinned_badge_text'] ) ) : 'Épinglé';
         $sanitized['pinned_badge_bg_color'] = my_articles_sanitize_color($input['pinned_badge_bg_color'] ?? '', '#eab308');
         $sanitized['pinned_badge_text_color'] = my_articles_sanitize_color($input['pinned_badge_text_color'] ?? '', '#ffffff');
-        
+
+        $sanitized['content_adapters'] = My_Articles_Shortcode::sanitize_content_adapters(
+            $input['content_adapters'] ?? array()
+        );
+
         if (isset($input['exclude_posts'])) {
             $cleaned_ids = preg_replace('/[^0-9,]/', '', wp_unslash( $input['exclude_posts'] ) );
             $id_array = array_filter(array_map('absint', explode(',', $cleaned_ids)));
