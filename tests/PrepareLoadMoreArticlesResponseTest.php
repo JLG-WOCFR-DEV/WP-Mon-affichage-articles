@@ -6,6 +6,7 @@ namespace MonAffichageArticles\Tests;
 
 use Mon_Affichage_Articles;
 use My_Articles_Shortcode;
+use My_Articles_Shortcode_Data_Preparer;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use \WP_Query;
@@ -31,6 +32,8 @@ final class PrepareLoadMoreArticlesResponseTest extends TestCase
             'transients'            => $GLOBALS['mon_articles_test_transients'] ?? null,
             'transients_store'      => $GLOBALS['mon_articles_test_transients_store'] ?? null,
         );
+
+        My_Articles_Shortcode_Data_Preparer::reset_runtime_cache();
     }
 
     protected function tearDown(): void

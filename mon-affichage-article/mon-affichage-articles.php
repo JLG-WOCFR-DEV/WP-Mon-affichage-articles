@@ -130,73 +130,6 @@ final class Mon_Affichage_Articles {
         return My_Articles_Shortcode::sanitize_filter_pairs( $prepared_filters );
     }
 
-    /**
-     * Build the normalized options array used to query an instance.
-     *
-     * Centralizes the normalization performed by the shortcode layer so both
-     * the filter and load-more flows share the same safeguards.
-     *
-     * @param array $options_meta Raw options stored on the instance post.
-     * @param array $request_context {
-     *     Optional. Request context to feed into the normalizer.
-     *
-     *     @type string $requested_category                Category slug requested by the user.
-     *     @type string $requested_search                  Raw search term provided by the user.
-     *     @type string $requested_sort                    Requested sort key.
-     *     @type array  $requested_filters                 Sanitized taxonomy filters.
-     *     @type bool   $allow_external_requested_category Whether external categories are allowed.
-     * }
-     *
-     * @return array{
-     *     options: array,
-     *     normalize_context: array
-     * }|WP_Error
-     */
-    private function build_instance_query_context( array $options_meta, array $request_context = array() ) {
-        $requested_category = isset( $request_context['requested_category'] )
-            ? (string) $request_context['requested_category']
-            : '';
-
-        $normalize_context = array(
-            'requested_category'  => $requested_category,
-            'force_collect_terms' => true,
-        );
-
-        if ( ! empty( $request_context['allow_external_requested_category'] ) ) {
-            $normalize_context['allow_external_requested_category'] = true;
-        }
-
-        if ( ! empty( $request_context['requested_search'] ) ) {
-            $normalize_context['requested_search'] = (string) $request_context['requested_search'];
-        }
-
-        if ( ! empty( $request_context['requested_sort'] ) ) {
-            $normalize_context['requested_sort'] = (string) $request_context['requested_sort'];
-        }
-
-        if ( ! empty( $request_context['requested_filters'] ) && is_array( $request_context['requested_filters'] ) ) {
-            $normalize_context['requested_filters'] = $request_context['requested_filters'];
-        }
-
-        $options = My_Articles_Shortcode::normalize_instance_options(
-            $options_meta,
-            $normalize_context
-        );
-
-        if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
-            return new WP_Error(
-                'my_articles_category_not_allowed',
-                __( 'Catégorie non autorisée.', 'mon-articles' ),
-                array( 'status' => 403 )
-            );
-        }
-
-        return array(
-            'options'           => $options,
-            'normalize_context' => $normalize_context,
-        );
-    }
-
     public function validate_instance_for_request( $instance_id ) {
         $post_type = get_post_type( $instance_id );
 
@@ -723,11 +656,16 @@ public function prepare_filter_articles_response( array $args ) {
         wp_send_json_success( $response );
     }
 
-public function prepare_load_more_articles_response( array $args ) {
+    public function prepare_load_more_articles_response( array $args ) {
         $instance_id = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
-        $paged       = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
-        $category    = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
-        $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
+        $requested_page = isset( $args['paged'] ) ? absint( $args['paged'] ) : 1;
+        if ( $requested_page < 1 ) {
+            $requested_page = 1;
+        }
+
+        $category          = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
+        $raw_filters       = $args['filters'] ?? array();
+        $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $raw_filters );
         $search_term       = $this->sanitize_scalar_argument( $args, 'search', 'sanitize_text_field' );
         $requested_sort    = $this->sanitize_scalar_argument( $args, 'sort', 'sanitize_key' );
 
@@ -751,23 +689,58 @@ public function prepare_load_more_articles_response( array $args ) {
         }
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
-        $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $preparer           = $shortcode_instance->get_data_preparer();
 
-        $normalized_options = $this->build_instance_query_context(
-            $options_meta,
+        $preparation = $preparer->prepare(
+            $instance_id,
+            array(),
             array(
-                'requested_category' => $category,
-                'requested_search'   => $search_term,
-                'requested_sort'     => $requested_sort,
-                'requested_filters'  => $requested_filters,
+                'context' => array(
+                    'category'            => $category,
+                    'search'              => $search_term,
+                    'sort'                => $requested_sort,
+                    'filters'             => $requested_filters,
+                    'page'                => $requested_page,
+                    'force_collect_terms' => true,
+                ),
             )
         );
 
-        if ( is_wp_error( $normalized_options ) ) {
-            return $normalized_options;
+        if ( is_wp_error( $preparation ) ) {
+            return $preparation;
         }
 
-        $options = $normalized_options['options'];
+        $options = isset( $preparation['options'] ) && is_array( $preparation['options'] )
+            ? $preparation['options']
+            : array();
+
+        $requested_values = isset( $preparation['requested'] ) && is_array( $preparation['requested'] )
+            ? $preparation['requested']
+            : array();
+
+        $requested_category = isset( $requested_values['category'] ) ? (string) $requested_values['category'] : '';
+        $requested_search   = isset( $requested_values['search'] ) ? (string) $requested_values['search'] : $search_term;
+        $requested_sort     = isset( $requested_values['sort'] ) ? (string) $requested_values['sort'] : $requested_sort;
+        $requested_filters  = isset( $requested_values['filters'] ) && is_array( $requested_values['filters'] )
+            ? $requested_values['filters']
+            : array();
+        $requested_page     = isset( $requested_values['page'] )
+            ? max( 1, (int) $requested_values['page'] )
+            : $requested_page;
+
+        $allows_requested_category = ! empty( $preparation['allows_requested_category'] );
+
+        if ( ! $allows_requested_category && '' !== $category ) {
+            $default_term = isset( $options['default_term'] ) ? (string) $options['default_term'] : '';
+
+            if ( '' === $default_term || $category !== $default_term ) {
+                return new WP_Error(
+                    'my_articles_category_not_allowed',
+                    __( 'Catégorie non autorisée.', 'mon-articles' ),
+                    array( 'status' => 403 )
+                );
+            }
+        }
 
         $pagination_mode = isset( $options['pagination_mode'] ) ? $options['pagination_mode'] : 'none';
 
@@ -779,7 +752,7 @@ public function prepare_load_more_articles_response( array $args ) {
             );
         }
 
-        $display_mode = $options['display_mode'];
+        $display_mode = isset( $options['display_mode'] ) ? $options['display_mode'] : '';
 
         if ( ! in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
             return new WP_Error(
@@ -790,12 +763,12 @@ public function prepare_load_more_articles_response( array $args ) {
         }
 
         $seen_pinned_ids = array();
-        if ( ! empty( $pinned_ids_str ) ) {
+        if ( '' !== $pinned_ids_str ) {
             $seen_pinned_ids = array_map( 'absint', array_filter( array_map( 'trim', explode( ',', $pinned_ids_str ) ) ) );
             $seen_pinned_ids = array_values( array_unique( array_filter( $seen_pinned_ids ) ) );
         }
 
-        $active_category = isset( $options['term'] ) ? $options['term'] : '';
+        $active_category = isset( $options['term'] ) ? (string) $options['term'] : '';
         $active_filters  = isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
             ? $options['active_tax_filters']
             : array();
@@ -803,11 +776,11 @@ public function prepare_load_more_articles_response( array $args ) {
         $cache_fragments = array();
 
         if ( ! empty( $options['search_query'] ) ) {
-            $cache_fragments['search'] = $options['search_query'];
+            $cache_fragments['search'] = (string) $options['search_query'];
         }
 
         if ( ! empty( $options['sort'] ) ) {
-            $cache_fragments['sort'] = $options['sort'];
+            $cache_fragments['sort'] = (string) $options['sort'];
         }
 
         $cache_fragments['debug'] = ! empty( $options['enable_debug_mode'] ) ? '1' : '0';
@@ -832,7 +805,7 @@ public function prepare_load_more_articles_response( array $args ) {
                 'instance_id'   => $instance_id,
                 'category'      => $active_category,
                 'display_mode'  => $display_mode,
-                'paged'         => $paged,
+                'paged'         => $requested_page,
                 'options'       => $options,
                 'seen_pinned'   => $seen_pinned_ids,
             )
@@ -841,7 +814,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $cache_key = $this->generate_response_cache_key(
             $instance_id,
             $active_category,
-            $paged,
+            $requested_page,
             $display_mode,
             is_array( $cache_fragments ) ? $cache_fragments : array()
         );
@@ -855,7 +828,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $state = $shortcode_instance->build_display_state(
             $options,
             array(
-                'paged'                   => $paged,
+                'paged'                   => $requested_page,
                 'pagination_strategy'     => 'sequential',
                 'seen_pinned_ids'         => $seen_pinned_ids,
                 'enforce_unlimited_batch' => ( ! empty( $options['is_unlimited'] ) && 'slideshow' !== $display_mode ),
@@ -876,7 +849,7 @@ public function prepare_load_more_articles_response( array $args ) {
             $pinned_query,
             $articles_query,
             array(
-                'wrap_slides' => ( 'slideshow' === $display_mode ),
+                'wrap_slides'                 => ( 'slideshow' === $display_mode ),
                 'skip_empty_state_when_empty' => true,
             )
         );
@@ -889,7 +862,7 @@ public function prepare_load_more_articles_response( array $args ) {
         $pinned_ids_string = ! empty( $updated_seen_pinned ) ? implode( ',', array_map( 'absint', $updated_seen_pinned ) ) : '';
 
         $pagination_context = array(
-            'current_page' => $paged,
+            'current_page' => $requested_page,
         );
 
         if ( $is_unlimited ) {
@@ -904,12 +877,12 @@ public function prepare_load_more_articles_response( array $args ) {
             $pagination_context
         );
 
-        $total_pages = $pagination_totals['total_pages'];
-        $next_page   = 0;
+        $total_pages   = $pagination_totals['total_pages'];
+        $next_page     = 0;
         $total_results = (int) $total_regular_posts + (int) $total_pinned_posts;
 
-        if ( $total_pages > 0 && $paged < $total_pages ) {
-            $next_page = $paged + 1;
+        if ( $total_pages > 0 && $requested_page < $total_pages ) {
+            $next_page = $requested_page + 1;
         }
 
         $response = array(
@@ -917,8 +890,8 @@ public function prepare_load_more_articles_response( array $args ) {
             'pinned_ids'              => $pinned_ids_string,
             'total_pages'             => $total_pages,
             'next_page'               => $next_page,
-            'search_query'            => $options['search_query'],
-            'sort'                    => $options['sort'],
+            'search_query'            => $options['search_query'] ?? '',
+            'sort'                    => $options['sort'] ?? '',
             'filters'                 => $active_filters,
             'displayed_count'         => $displayed_count,
             'rendered_regular_count'  => $rendered_regular_count,
@@ -936,7 +909,7 @@ public function prepare_load_more_articles_response( array $args ) {
                 array(
                     'instance_id'   => $instance_id,
                     'category_slug' => $active_category,
-                    'paged'         => $paged,
+                    'paged'         => $requested_page,
                     'display_mode'  => $display_mode,
                     'context'       => 'load_more_articles',
                 )
@@ -948,16 +921,16 @@ public function prepare_load_more_articles_response( array $args ) {
                 'my_articles_track_interaction',
                 'load_more_response',
                 array(
-                    'instance_id'  => $instance_id,
-                    'category'     => $active_category,
-                    'search_query' => $options['search_query'],
-                    'sort'         => $options['sort'],
-                    'requested_page' => $paged,
-                    'next_page'    => $response['next_page'],
-                    'total_pages'  => $response['total_pages'],
-                    'displayed'    => $displayed_count,
-                    'total_results' => $total_results,
-                    'added_count'  => $displayed_count,
+                    'instance_id'    => $instance_id,
+                    'category'       => $active_category,
+                    'search_query'   => $options['search_query'] ?? '',
+                    'sort'           => $options['sort'] ?? '',
+                    'requested_page' => $requested_page,
+                    'next_page'      => $response['next_page'],
+                    'total_pages'    => $response['total_pages'],
+                    'displayed'      => $displayed_count,
+                    'total_results'  => $total_results,
+                    'added_count'    => $displayed_count,
                     'rendered_regular' => $rendered_regular_count,
                     'rendered_pinned'  => $rendered_pinned_count,
                 )

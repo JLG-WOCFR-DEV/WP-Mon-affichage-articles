@@ -36,7 +36,7 @@ class My_Articles_Shortcode_Data_Preparer {
      *     @type array|null $request       Request variables (defaults to $_GET).
      *     @type bool       $force_refresh Whether to bypass caches.
      *     @type array      $context       Optional. Pre-sanitized context overriding request derived values. Accepts
-     *                                     `category`, `search`, `sort`, `filters` and `page` keys.
+     *                                     `category`, `search`, `sort`, `filters`, `page` and `force_collect_terms` keys.
      * }
      *
      * @return array|WP_Error Prepared payload or error when the request is invalid.
@@ -101,6 +101,7 @@ class My_Articles_Shortcode_Data_Preparer {
         }
 
         $requested_filters = array();
+        $should_force_collect_terms = ! empty( $context['force_collect_terms'] );
 
         if ( array_key_exists( 'filters', $context ) ) {
             $requested_filters = $this->sanitize_requested_filters( $context['filters'], $options_meta );
@@ -152,6 +153,10 @@ class My_Articles_Shortcode_Data_Preparer {
 
         if ( ! empty( $requested_filters ) ) {
             $normalize_context['requested_filters'] = $requested_filters;
+        }
+
+        if ( $should_force_collect_terms ) {
+            $normalize_context['force_collect_terms'] = true;
         }
 
         $options = My_Articles_Shortcode::normalize_instance_options( $options_meta, $normalize_context );
