@@ -76,4 +76,38 @@ final class ResponseCacheKeyTest extends TestCase
             'Empty values should be removed from array fragments to keep hashes aligned.'
         );
     }
+
+    public function test_associative_array_fragments_influence_hash(): void
+    {
+        $baseContext = array(
+            'instance' => 12,
+            'category' => 'eco',
+            'paged'    => 4,
+            'mode'     => 'list',
+        );
+
+        $builderType = new My_Articles_Response_Cache_Key('Tests', $baseContext);
+        $builderType->add_fragment('filters', array('type' => 'video'));
+
+        $builderCategory = new My_Articles_Response_Cache_Key('Tests', $baseContext);
+        $builderCategory->add_fragment('filters', array('category' => 'video'));
+
+        $this->assertNotSame(
+            $builderType->to_string(),
+            $builderCategory->to_string(),
+            'Associative array keys should impact the cache hash for fragments provided by filters.'
+        );
+
+        $builderOrdered = new My_Articles_Response_Cache_Key('Tests', $baseContext);
+        $builderOrdered->add_fragment('filters', array('type' => 'video', 'category' => 'news'));
+
+        $builderShuffled = new My_Articles_Response_Cache_Key('Tests', $baseContext);
+        $builderShuffled->add_fragment('filters', array('category' => 'news', 'type' => 'video'));
+
+        $this->assertSame(
+            $builderOrdered->to_string(),
+            $builderShuffled->to_string(),
+            'Associative fragments should be sorted internally to keep cache keys stable regardless of array order.'
+        );
+    }
 }
