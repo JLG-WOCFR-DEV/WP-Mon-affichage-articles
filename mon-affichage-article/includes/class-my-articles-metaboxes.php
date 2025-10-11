@@ -118,12 +118,12 @@ class My_Articles_Metaboxes {
             echo '<style>
                 .select2-container--default .select2-selection--multiple .select2-selection__choice { cursor: move; }
                 .ui-sortable-placeholder { border: 1px dashed #ccc; background-color: #f7f7f7; height: 31px; margin: 5px 0 3px 6px; }
-                .my-articles-metabox-preview { border: 1px solid #dcdcde; background: #fff; margin-bottom: 20px; }
-                .my-articles-metabox-preview__toolbar { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid #dcdcde; background: #f6f7f7; }
+                .my-articles-metabox-preview { border: 1px solid #dcdcde; background: var(--my-articles-preview-surface, #fff); color: var(--my-articles-preview-ink, inherit); margin-bottom: 20px; }
+                .my-articles-metabox-preview__toolbar { display: flex; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid #dcdcde; background: var(--my-articles-preview-surface, #f6f7f7); color: inherit; }
                 .my-articles-metabox-preview__toolbar .spinner { visibility: hidden; margin-left: auto; }
                 .my-articles-metabox-preview.is-loading .spinner { visibility: visible; }
                 .my-articles-metabox-preview__status { font-size: 12px; color: #50575e; }
-                .my-articles-metabox-preview__canvas { padding: 16px; max-height: 520px; overflow: auto; background: #fff; }
+                .my-articles-metabox-preview__canvas { padding: 16px; max-height: 520px; overflow: auto; background: var(--my-articles-preview-surface, #fff); color: inherit; }
                 .my-articles-metabox-preview__canvas iframe { width: 100%; border: 0; }
                 .my-articles-content-adapters__row { border: 1px solid #dcdcde; padding: 12px; margin-bottom: 12px; background: #fff; }
                 .my-articles-content-adapters__row .my-articles-content-adapters__remove { float: right; }
@@ -154,9 +154,27 @@ class My_Articles_Metaboxes {
         wp_nonce_field( 'my_articles_save_meta_box_data', 'my_articles_meta_box_nonce' );
         $opts = (array) get_post_meta( $post->ID, $this->option_key, true );
 
-        $preview_nonce = wp_create_nonce( 'my_articles_render_preview' );
+        $preview_nonce  = wp_create_nonce( 'my_articles_render_preview' );
+        $preview_tokens = function_exists( 'my_articles_get_theme_preview_tokens' ) ? my_articles_get_theme_preview_tokens() : array();
+        $preview_style  = '';
 
-        echo '<div class="my-articles-metabox-preview" data-instance-id="' . esc_attr( $post->ID ) . '" data-nonce="' . esc_attr( $preview_nonce ) . '" data-settings-prefix="' . esc_attr( $this->option_key ) . '">';
+        if ( is_array( $preview_tokens ) && ! empty( $preview_tokens ) ) {
+            $style_parts = array();
+
+            if ( ! empty( $preview_tokens['background'] ) && is_string( $preview_tokens['background'] ) ) {
+                $style_parts[] = '--my-articles-preview-surface: ' . esc_attr( $preview_tokens['background'] ) . ';';
+            }
+
+            if ( ! empty( $preview_tokens['foreground'] ) && is_string( $preview_tokens['foreground'] ) ) {
+                $style_parts[] = '--my-articles-preview-ink: ' . esc_attr( $preview_tokens['foreground'] ) . ';';
+            }
+
+            if ( ! empty( $style_parts ) ) {
+                $preview_style = ' style="' . esc_attr( implode( ' ', $style_parts ) ) . '"';
+            }
+        }
+
+        echo '<div class="my-articles-metabox-preview"' . $preview_style . ' data-instance-id="' . esc_attr( $post->ID ) . '" data-nonce="' . esc_attr( $preview_nonce ) . '" data-settings-prefix="' . esc_attr( $this->option_key ) . '">';
         echo '<div class="my-articles-metabox-preview__toolbar">';
         echo '<button type="button" class="button my-articles-metabox-preview__refresh">' . esc_html__( 'Rafraîchir la prévisualisation', 'mon-articles' ) . '</button>';
         echo '<span class="spinner"></span>';
