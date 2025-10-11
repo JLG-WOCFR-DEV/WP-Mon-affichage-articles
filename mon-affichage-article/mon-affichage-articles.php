@@ -368,7 +368,7 @@ final class Mon_Affichage_Articles {
 public function prepare_filter_articles_response( array $args ) {
         $instance_id   = isset( $args['instance_id'] ) ? absint( $args['instance_id'] ) : 0;
         $category_slug = isset( $args['category'] ) ? sanitize_title( $args['category'] ) : '';
-        $requested_filters = My_Articles_Shortcode::sanitize_filter_pairs( $args['filters'] ?? array() );
+        $incoming_filters = $args['filters'] ?? array();
         $raw_current_url = isset( $args['current_url'] ) ? (string) $args['current_url'] : '';
         $raw_http_referer = isset( $args['http_referer'] ) ? (string) $args['http_referer'] : '';
         $search_term      = $this->sanitize_scalar_argument( $args, 'search', 'sanitize_text_field' );
@@ -399,40 +399,42 @@ public function prepare_filter_articles_response( array $args ) {
         }
 
         $shortcode_instance = My_Articles_Shortcode::get_instance();
-        $options_meta       = (array) get_post_meta( $instance_id, '_my_articles_settings', true );
+        $preparer           = $shortcode_instance->get_data_preparer();
 
-        $has_filter_categories = false;
-        if ( isset( $options_meta['filter_categories'] ) ) {
-            $raw_filter_categories = $options_meta['filter_categories'];
-
-            if ( is_string( $raw_filter_categories ) ) {
-                $raw_filter_categories = explode( ',', $raw_filter_categories );
-            }
-
-            if ( is_array( $raw_filter_categories ) ) {
-                $normalized_filter_categories = array_values( array_filter( array_map( 'absint', $raw_filter_categories ) ) );
-                $has_filter_categories        = ! empty( $normalized_filter_categories );
-            }
-        }
-
-        $allows_requested_category = ! empty( $options_meta['show_category_filter'] ) || $has_filter_categories;
-
-        $normalized_options = $this->build_instance_query_context(
-            $options_meta,
+        $preparation = $preparer->prepare(
+            $instance_id,
+            array(),
             array(
-                'requested_category'                 => $category_slug,
-                'requested_search'                   => $search_term,
-                'requested_filters'                  => $requested_filters,
-                'requested_sort'                     => $requested_sort,
-                'allow_external_requested_category'  => $allows_requested_category,
+                'context' => array(
+                    'category' => $category_slug,
+                    'search'   => $search_term,
+                    'sort'     => $requested_sort,
+                    'filters'  => $incoming_filters,
+                    'page'     => 1,
+                ),
             )
         );
 
-        if ( is_wp_error( $normalized_options ) ) {
-            return $normalized_options;
+        if ( is_wp_error( $preparation ) ) {
+            return $preparation;
         }
 
-        $options = $normalized_options['options'];
+        $options = isset( $preparation['options'] ) && is_array( $preparation['options'] )
+            ? $preparation['options']
+            : array();
+
+        $requested_values = isset( $preparation['requested'] ) && is_array( $preparation['requested'] )
+            ? $preparation['requested']
+            : array();
+
+        $requested_category = isset( $requested_values['category'] ) ? (string) $requested_values['category'] : '';
+        $requested_search   = isset( $requested_values['search'] ) ? (string) $requested_values['search'] : $search_term;
+        $requested_sort     = isset( $requested_values['sort'] ) ? (string) $requested_values['sort'] : $requested_sort;
+        $requested_filters  = isset( $requested_values['filters'] ) && is_array( $requested_values['filters'] )
+            ? $requested_values['filters']
+            : array();
+
+        $allows_requested_category = ! empty( $preparation['allows_requested_category'] );
 
         if ( ! $allows_requested_category && '' !== $category_slug ) {
             $default_term = isset( $options['default_term'] ) ? (string) $options['default_term'] : '';
