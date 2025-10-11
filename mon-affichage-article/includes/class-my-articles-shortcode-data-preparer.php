@@ -458,7 +458,24 @@ class My_Articles_Shortcode_Data_Preparer {
      */
     private function maybe_sanitize_search_value( $value ) {
         if ( is_scalar( $value ) ) {
-            return sanitize_text_field( (string) $value );
+            $normalized = sanitize_text_field( (string) $value );
+            $normalized = trim( $normalized );
+
+            if ( '' === $normalized ) {
+                return '';
+            }
+
+            if ( function_exists( 'remove_accents' ) ) {
+                $normalized = remove_accents( $normalized );
+            } else {
+                $transliterated = @iconv( 'UTF-8', 'ASCII//TRANSLIT', $normalized );
+
+                if ( is_string( $transliterated ) && '' !== $transliterated ) {
+                    $normalized = $transliterated;
+                }
+            }
+
+            return strtolower( $normalized );
         }
 
         return '';
@@ -471,10 +488,8 @@ class My_Articles_Shortcode_Data_Preparer {
      * @return string
      */
     public function sanitize_sort_value( $value ) {
-        $allowed_sort_values = array( 'date', 'title', 'menu_order', 'meta_value', 'comment_count', 'post__in' );
-
-        if ( in_array( $value, $allowed_sort_values, true ) ) {
-            return $value;
+        if ( is_scalar( $value ) ) {
+            return sanitize_key( (string) $value );
         }
 
         return '';
