@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MonAffichageArticles\Tests;
 
 use My_Articles_Shortcode;
+use My_Articles_Shortcode_Data_Preparer;
 use PHPUnit\Framework\TestCase;
 
 final class ShortcodeDataPreparerTest extends TestCase
@@ -123,5 +124,62 @@ final class ShortcodeDataPreparerTest extends TestCase
 
         $this->assertIsArray($prepared);
         $this->assertSame(1, $prepared['requested']['page'] ?? null);
+    }
+
+    public function test_prepare_cache_key_includes_namespace(): void
+    {
+        $instanceId = 777;
+
+        global $mon_articles_test_post_type_map,
+            $mon_articles_test_post_status_map,
+            $mon_articles_test_post_meta_map,
+            $mon_articles_test_wp_cache,
+            $mon_articles_test_options,
+            $mon_articles_test_options_store;
+
+        $mon_articles_test_post_type_map[$instanceId]   = 'mon_affichage';
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
+        $mon_articles_test_post_meta_map[$instanceId]   = array(
+            '_my_articles_settings' => array(
+                'pagination_mode' => 'none',
+                'display_mode'    => 'grid',
+                'posts_per_page'  => 3,
+            ),
+        );
+
+        $mon_articles_test_wp_cache = array();
+        $mon_articles_test_options['my_articles_cache_namespace']       = 'alpha';
+        $mon_articles_test_options_store['my_articles_cache_namespace'] = 'alpha';
+
+        $shortcode = My_Articles_Shortcode::get_instance();
+        $preparer  = $shortcode->get_data_preparer();
+
+        My_Articles_Shortcode_Data_Preparer::reset_runtime_cache();
+
+        $preparedAlpha = $preparer->prepare($instanceId);
+        $this->assertIsArray($preparedAlpha);
+
+        $cacheGroup = My_Articles_Shortcode_Data_Preparer::CACHE_GROUP;
+        $this->assertSame(
+            1,
+            isset($mon_articles_test_wp_cache[$cacheGroup])
+                ? count($mon_articles_test_wp_cache[$cacheGroup])
+                : 0
+        );
+
+        $mon_articles_test_options['my_articles_cache_namespace']       = 'beta';
+        $mon_articles_test_options_store['my_articles_cache_namespace'] = 'beta';
+
+        My_Articles_Shortcode_Data_Preparer::reset_runtime_cache();
+
+        $preparedBeta = $preparer->prepare($instanceId);
+        $this->assertIsArray($preparedBeta);
+
+        $this->assertSame(
+            2,
+            isset($mon_articles_test_wp_cache[$cacheGroup])
+                ? count($mon_articles_test_wp_cache[$cacheGroup])
+                : 0
+        );
     }
 }
