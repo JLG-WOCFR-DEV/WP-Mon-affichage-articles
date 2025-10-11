@@ -1,0 +1,40 @@
+{
+    "id": "editorial-focus",
+    "label": "Focus éditorial",
+    "description": "Présentation magazine sobre, optimisée pour les listes avec extraits courts.",
+    "locked": true,
+    "values": {
+        "display_mode": "list",
+        "module_bg_color": "#ffffff",
+        "vignette_bg_color": "#ffffff",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#111827",
+        "meta_color": "#6b7280",
+        "meta_color_hover": "#111827",
+        "excerpt_color": "#374151",
+        "pagination_color": "#1d4ed8",
+        "shadow_color": "rgba(0,0,0,0.04)",
+        "shadow_color_hover": "rgba(0,0,0,0.08)",
+        "module_padding_top": 16,
+        "module_padding_right": 16,
+        "module_padding_bottom": 16,
+        "module_padding_left": 16,
+        "gap_size": 20,
+        "list_item_gap": 24,
+        "border_radius": 8,
+        "title_font_size": 18,
+        "meta_font_size": 12,
+        "excerpt_font_size": 14,
+        "list_content_padding_top": 12,
+        "list_content_padding_right": 12,
+        "list_content_padding_bottom": 12,
+        "list_content_padding_left": 12,
+        "show_excerpt": 1,
+        "excerpt_length": 22
+    },
+    "swatch": {
+        "background": "#ffffff",
+        "accent": "#1d4ed8",
+        "heading": "#111827"
+    }
+}

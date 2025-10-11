@@ -1,0 +1,41 @@
+{
+    "id": "anime-motion",
+    "label": "Anime Motion",
+    "description": "Ambiance néon et contrastes dynamiques inspirés d’Anime.js.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#111827",
+        "vignette_bg_color": "#0f172a",
+        "title_wrapper_bg_color": "#0f172a",
+        "title_color": "#f8fafc",
+        "meta_color": "#38bdf8",
+        "meta_color_hover": "#f472b6",
+        "excerpt_color": "#e2e8f0",
+        "pagination_color": "#f472b6",
+        "shadow_color": "rgba(56,189,248,0.35)",
+        "shadow_color_hover": "rgba(244,114,182,0.45)",
+        "module_padding_top": 32,
+        "module_padding_right": 32,
+        "module_padding_bottom": 32,
+        "module_padding_left": 32,
+        "gap_size": 22,
+        "list_item_gap": 30,
+        "border_radius": 14,
+        "title_font_size": 20,
+        "meta_font_size": 14,
+        "excerpt_font_size": 16,
+        "list_content_padding_top": 22,
+        "list_content_padding_right": 22,
+        "list_content_padding_bottom": 22,
+        "list_content_padding_left": 22,
+        "pinned_border_color": "#f472b6",
+        "pinned_badge_bg_color": "#38bdf8",
+        "pinned_badge_text_color": "#0f172a",
+        "show_excerpt": 1
+    },
+    "swatch": {
+        "background": "#111827",
+        "accent": "#f472b6",
+        "heading": "#f8fafc"
+    }
+}

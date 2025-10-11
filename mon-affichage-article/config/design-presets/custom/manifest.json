@@ -1,0 +1,12 @@
+{
+    "id": "custom",
+    "label": "Personnalisé",
+    "description": "Conservez vos propres réglages de couleurs et d’espacements.",
+    "locked": false,
+    "values": {},
+    "swatch": {
+        "background": "#ffffff",
+        "accent": "#1f2937",
+        "heading": "#1f2937"
+    }
+}

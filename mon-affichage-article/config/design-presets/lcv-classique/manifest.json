@@ -1,0 +1,37 @@
+{
+    "id": "lcv-classique",
+    "label": "Classique LCV",
+    "description": "Fond clair légèrement bleuté, cartes arrondies et typographie lisible.",
+    "locked": false,
+    "values": {
+        "module_bg_color": "#f3f4f6",
+        "vignette_bg_color": "#ffffff",
+        "title_wrapper_bg_color": "#ffffff",
+        "title_color": "#1f2937",
+        "meta_color": "#6b7280",
+        "meta_color_hover": "#111827",
+        "excerpt_color": "#374151",
+        "pagination_color": "#2563eb",
+        "shadow_color": "rgba(15,23,42,0.08)",
+        "shadow_color_hover": "rgba(37,99,235,0.16)",
+        "module_padding_top": 24,
+        "module_padding_right": 24,
+        "module_padding_bottom": 24,
+        "module_padding_left": 24,
+        "gap_size": 24,
+        "list_item_gap": 28,
+        "border_radius": 18,
+        "title_font_size": 18,
+        "meta_font_size": 13,
+        "excerpt_font_size": 15,
+        "list_content_padding_top": 16,
+        "list_content_padding_right": 16,
+        "list_content_padding_bottom": 16,
+        "list_content_padding_left": 16
+    },
+    "swatch": {
+        "background": "#f3f4f6",
+        "accent": "#2563eb",
+        "heading": "#1f2937"
+    }
+}

@@ -107,6 +107,18 @@ class My_Articles_Controller extends WP_REST_Controller {
                 ),
             )
         );
+
+        register_rest_route(
+            $this->namespace,
+            '/presets',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => array( $this, 'get_design_presets' ),
+                    'permission_callback' => '__return_true',
+                ),
+            )
+        );
     }
 
     /**
@@ -213,6 +225,42 @@ class My_Articles_Controller extends WP_REST_Controller {
                 'sanitize_callback' => array( $this, 'sanitize_key_arg' ),
             ),
         );
+    }
+
+    public function get_design_presets( WP_REST_Request $request ) {
+        $response = array(
+            'version' => '0',
+            'presets' => array(),
+        );
+
+        if ( class_exists( 'My_Articles_Preset_Registry' ) ) {
+            $registry          = My_Articles_Preset_Registry::get_instance();
+            $response['version'] = $registry->get_version();
+            $response['presets'] = $registry->get_presets_for_rest();
+        } elseif ( class_exists( 'My_Articles_Shortcode' ) ) {
+            $presets = My_Articles_Shortcode::get_design_presets();
+
+            if ( is_array( $presets ) ) {
+                foreach ( $presets as $id => $definition ) {
+                    if ( ! is_string( $id ) || '' === $id ) {
+                        continue;
+                    }
+
+                    $response['presets'][] = array(
+                        'id'          => $id,
+                        'label'       => isset( $definition['label'] ) ? (string) $definition['label'] : $id,
+                        'description' => isset( $definition['description'] ) ? (string) $definition['description'] : '',
+                        'locked'      => ! empty( $definition['locked'] ),
+                        'tags'        => isset( $definition['tags'] ) && is_array( $definition['tags'] ) ? $definition['tags'] : array(),
+                        'values'      => isset( $definition['values'] ) && is_array( $definition['values'] ) ? $definition['values'] : array(),
+                        'thumbnail'   => '',
+                        'swatch'      => array(),
+                    );
+                }
+            }
+        }
+
+        return rest_ensure_response( $response );
     }
 
     /**
