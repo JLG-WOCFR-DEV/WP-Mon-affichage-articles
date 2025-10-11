@@ -224,6 +224,148 @@ if ( ! function_exists( 'my_articles_normalize_internal_url' ) ) {
     }
 }
 
+if ( ! function_exists( 'my_articles_get_registered_content_adapters' ) ) {
+    /**
+     * Retrieve the list of programmatically registered content adapters.
+     *
+     * @return array<string, array<string, mixed>> Normalized adapter definitions keyed by adapter id.
+     */
+    function my_articles_get_registered_content_adapters() {
+        global $my_articles_content_adapters_registry;
+
+        if ( ! is_array( $my_articles_content_adapters_registry ) ) {
+            $my_articles_content_adapters_registry = array();
+        }
+
+        return $my_articles_content_adapters_registry;
+    }
+}
+
+if ( ! function_exists( 'my_articles_register_content_adapter' ) ) {
+    /**
+     * Register a content adapter that can contribute external items to the listing.
+     *
+     * Developers can provide either a callable or a class implementing
+     * {@see My_Articles_Content_Adapter_Interface}. Both approaches accept an
+     * optional configuration schema so the editor UI can present relevant fields.
+     *
+     * @param string               $adapter_id Adapter identifier used in the UI and shortcode options.
+     * @param callable|array<mixed> $definition Callback or configuration array describing the adapter.
+     *
+     * @return bool True when the adapter has been registered, false otherwise.
+     */
+    function my_articles_register_content_adapter( $adapter_id, $definition ) {
+        global $my_articles_content_adapters_registry;
+
+        if ( ! is_array( $my_articles_content_adapters_registry ) ) {
+            $my_articles_content_adapters_registry = array();
+        }
+
+        $normalized_id = sanitize_key( (string) $adapter_id );
+
+        if ( '' === $normalized_id ) {
+            return false;
+        }
+
+        if ( is_callable( $definition ) ) {
+            $definition = array( 'callback' => $definition );
+        }
+
+        if ( ! is_array( $definition ) ) {
+            return false;
+        }
+
+        $callback = $definition['callback'] ?? null;
+        $class    = '';
+
+        if ( isset( $definition['class'] ) && is_string( $definition['class'] ) ) {
+            $candidate_class = ltrim( $definition['class'], '\\' );
+
+            if (
+                class_exists( $candidate_class )
+                && interface_exists( 'My_Articles_Content_Adapter_Interface' )
+                && is_subclass_of( $candidate_class, 'My_Articles_Content_Adapter_Interface' )
+            ) {
+                $class = $candidate_class;
+            } else {
+                return false;
+            }
+        }
+
+        if ( null !== $callback && ! is_callable( $callback ) ) {
+            return false;
+        }
+
+        if ( null === $callback && '' === $class ) {
+            return false;
+        }
+
+        $label = isset( $definition['label'] ) && is_string( $definition['label'] )
+            ? sanitize_text_field( $definition['label'] )
+            : $normalized_id;
+
+        $description = isset( $definition['description'] ) && is_string( $definition['description'] )
+            ? sanitize_text_field( $definition['description'] )
+            : '';
+
+        $schema = array();
+        if ( isset( $definition['schema'] ) && is_array( $definition['schema'] ) ) {
+            $schema = $definition['schema'];
+        }
+
+        $my_articles_content_adapters_registry[ $normalized_id ] = array(
+            'id'          => $normalized_id,
+            'label'       => $label,
+            'description' => $description,
+            'callback'    => $callback,
+            'class'       => $class,
+            'schema'      => $schema,
+        );
+
+        return true;
+    }
+}
+
+if ( ! function_exists( 'my_articles_unregister_content_adapter' ) ) {
+    /**
+     * Remove a previously registered adapter from the registry.
+     *
+     * @param string $adapter_id Identifier provided during registration.
+     *
+     * @return void
+     */
+    function my_articles_unregister_content_adapter( $adapter_id ) {
+        global $my_articles_content_adapters_registry;
+
+        if ( ! is_array( $my_articles_content_adapters_registry ) ) {
+            $my_articles_content_adapters_registry = array();
+        }
+
+        $normalized_id = sanitize_key( (string) $adapter_id );
+
+        if ( '' === $normalized_id ) {
+            return;
+        }
+
+        unset( $my_articles_content_adapters_registry[ $normalized_id ] );
+    }
+}
+
+if ( ! function_exists( 'my_articles_reset_content_adapter_registry' ) ) {
+    /**
+     * Reset the in-memory adapter registry.
+     *
+     * Exposed primarily for the test suite and development utilities.
+     *
+     * @return void
+     */
+    function my_articles_reset_content_adapter_registry() {
+        global $my_articles_content_adapters_registry;
+
+        $my_articles_content_adapters_registry = array();
+    }
+}
+
 if ( ! function_exists( 'my_articles_get_selectable_post_types' ) ) {
     /**
      * Retrieve the list of selectable post types for the plugin.

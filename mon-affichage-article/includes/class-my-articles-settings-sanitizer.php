@@ -46,6 +46,17 @@ if ( ! class_exists( 'My_Articles_Settings_Sanitizer' ) ) {
                     'absent_value' => 0,
                     'label'        => self::translate( 'Activer la recherche par mots-clés' ),
                 ),
+                'meta_query_relation' => array(
+                    'type'    => 'enum',
+                    'allowed' => array( 'AND', 'OR' ),
+                    'default' => 'AND',
+                    'label'   => self::translate( 'Relation des meta queries' ),
+                ),
+                'meta_query' => array(
+                    'type'    => 'meta_query',
+                    'default' => array(),
+                    'label'   => self::translate( 'Meta queries avancées' ),
+                ),
                 'desktop_columns' => array(
                     'type'    => 'int',
                     'min'     => 1,
@@ -313,6 +324,17 @@ if ( ! class_exists( 'My_Articles_Settings_Sanitizer' ) ) {
                     }
                     break;
 
+                case 'meta_query':
+                    if ( $has_raw_value ) {
+                        $value = self::sanitize_meta_queries( $raw_value );
+                        if ( empty( $value ) && ! empty( $raw_value ) ) {
+                            $valid = false;
+                        }
+                    } else {
+                        $value = array();
+                    }
+                    break;
+
                 case 'string':
                 default:
                     $value = $has_raw_value ? (string) $raw_value : (string) $default;
@@ -366,9 +388,165 @@ if ( ! class_exists( 'My_Articles_Settings_Sanitizer' ) ) {
          *
          * @return array<string, mixed>
          */
+        public static function sanitize_meta_queries( $raw_meta_queries ) {
+            if ( is_string( $raw_meta_queries ) ) {
+                $decoded = json_decode( $raw_meta_queries, true );
+                if ( is_array( $decoded ) ) {
+                    $raw_meta_queries = $decoded;
+                } else {
+                    return array();
+                }
+            }
+
+            if ( ! is_array( $raw_meta_queries ) ) {
+                return array();
+            }
+
+            $relation = 'AND';
+            if ( isset( $raw_meta_queries['relation'] ) && is_string( $raw_meta_queries['relation'] ) ) {
+                $candidate_relation = strtoupper( $raw_meta_queries['relation'] );
+                if ( in_array( $candidate_relation, array( 'AND', 'OR' ), true ) ) {
+                    $relation = $candidate_relation;
+                }
+            }
+
+            $clauses_input = array();
+
+            if ( isset( $raw_meta_queries['clauses'] ) ) {
+                $clauses_input = $raw_meta_queries['clauses'];
+            } else {
+                $clauses_input = $raw_meta_queries;
+            }
+
+            if ( is_string( $clauses_input ) ) {
+                $decoded_clauses = json_decode( $clauses_input, true );
+                if ( is_array( $decoded_clauses ) ) {
+                    $clauses_input = $decoded_clauses;
+                } else {
+                    return array();
+                }
+            }
+
+            if ( ! is_array( $clauses_input ) ) {
+                return array();
+            }
+
+            $normalized = array();
+            foreach ( $clauses_input as $clause ) {
+                if ( is_string( $clause ) ) {
+                    $decoded_clause = json_decode( $clause, true );
+                    if ( is_array( $decoded_clause ) ) {
+                        $clause = $decoded_clause;
+                    }
+                }
+
+                if ( ! is_array( $clause ) ) {
+                    continue;
+                }
+
+                $key = isset( $clause['key'] ) ? (string) $clause['key'] : '';
+                if ( function_exists( 'sanitize_text_field' ) ) {
+                    $key = sanitize_text_field( $key );
+                } else {
+                    $key = is_string( $key ) ? trim( strip_tags( $key ) ) : '';
+                }
+
+                if ( '' === $key ) {
+                    continue;
+                }
+
+                $normalized_clause = array(
+                    'key' => $key,
+                );
+
+                if ( array_key_exists( 'value', $clause ) ) {
+                    $value = self::sanitize_meta_query_value( $clause['value'] );
+                    if ( null !== $value ) {
+                        $normalized_clause['value'] = $value;
+                    }
+                }
+
+                if ( isset( $clause['compare'] ) && is_string( $clause['compare'] ) ) {
+                    $compare = strtoupper( $clause['compare'] );
+                    $allowed_compares = array( '=', '!=', '>', '>=', '<', '<=', 'LIKE', 'NOT LIKE', 'IN', 'NOT IN', 'BETWEEN', 'NOT BETWEEN', 'EXISTS', 'NOT EXISTS', 'REGEXP', 'NOT REGEXP', 'RLIKE' );
+                    if ( in_array( $compare, $allowed_compares, true ) ) {
+                        $normalized_clause['compare'] = $compare;
+                    }
+                }
+
+                if ( isset( $clause['type'] ) && is_string( $clause['type'] ) ) {
+                    $type = strtoupper( $clause['type'] );
+                    $allowed_types = array( 'NUMERIC', 'BINARY', 'CHAR', 'DATE', 'DATETIME', 'DECIMAL', 'SIGNED', 'UNSIGNED', 'TIME' );
+                    if ( in_array( $type, $allowed_types, true ) ) {
+                        $normalized_clause['type'] = $type;
+                    }
+                }
+
+                $normalized[] = $normalized_clause;
+            }
+
+            if ( empty( $normalized ) ) {
+                return array();
+            }
+
+            return array_merge( array( 'relation' => $relation ), $normalized );
+        }
+
+        private static function sanitize_meta_query_value( $value ) {
+            if ( is_array( $value ) ) {
+                $sanitized = array();
+                foreach ( $value as $entry ) {
+                    $normalized = self::sanitize_meta_query_value( $entry );
+                    if ( null !== $normalized ) {
+                        $sanitized[] = $normalized;
+                    }
+                }
+
+                return empty( $sanitized ) ? null : $sanitized;
+            }
+
+            if ( is_bool( $value ) ) {
+                return $value ? 1 : 0;
+            }
+
+            if ( is_int( $value ) || is_float( $value ) ) {
+                return $value + 0;
+            }
+
+            if ( null === $value ) {
+                return null;
+            }
+
+            if ( is_scalar( $value ) ) {
+                $text = (string) $value;
+                if ( function_exists( 'sanitize_text_field' ) ) {
+                    $text = sanitize_text_field( $text );
+                } else {
+                    $text = trim( strip_tags( $text ) );
+                }
+
+                if ( '' === $text ) {
+                    return null;
+                }
+
+                return $text;
+            }
+
+            return null;
+        }
+
         private static function apply_dependencies( array $sanitized ) {
             if ( isset( $sanitized['pagination_mode'], $sanitized['load_more_auto'] ) && 'load_more' !== $sanitized['pagination_mode'] ) {
                 $sanitized['load_more_auto'] = 0;
+            }
+
+            if ( isset( $sanitized['meta_query'] ) ) {
+                if ( empty( $sanitized['meta_query'] ) ) {
+                    $sanitized['meta_query'] = array();
+                    $sanitized['meta_query_relation'] = 'AND';
+                } else {
+                    $sanitized['meta_query_relation'] = isset( $sanitized['meta_query']['relation'] ) ? $sanitized['meta_query']['relation'] : 'AND';
+                }
             }
 
             return $sanitized;

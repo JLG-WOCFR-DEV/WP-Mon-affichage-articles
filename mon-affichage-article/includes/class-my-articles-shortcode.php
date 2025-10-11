@@ -359,12 +359,21 @@ JS;
     public static function get_content_adapter_definitions() {
         $registry = array();
 
-        if ( function_exists( 'apply_filters' ) ) {
-            $registry = apply_filters( 'my_articles_content_adapters', array() );
+        if ( function_exists( 'my_articles_get_registered_content_adapters' ) ) {
+            $registered = my_articles_get_registered_content_adapters();
+            if ( is_array( $registered ) ) {
+                $registry = $registered;
+            }
         }
 
-        if ( ! is_array( $registry ) ) {
-            $registry = array();
+        $filtered = array();
+
+        if ( function_exists( 'apply_filters' ) ) {
+            $filtered = apply_filters( 'my_articles_content_adapters', array() );
+        }
+
+        if ( is_array( $filtered ) && ! empty( $filtered ) ) {
+            $registry = array_merge( $registry, $filtered );
         }
 
         $normalized = array();
@@ -382,11 +391,19 @@ JS;
                 continue;
             }
 
+            $class_name = '';
             if ( is_array( $definition ) ) {
                 $callback = $definition['callback'] ?? null;
                 $label    = isset( $definition['label'] ) && is_string( $definition['label'] ) ? $definition['label'] : $resolved_id;
                 $description = isset( $definition['description'] ) && is_string( $definition['description'] ) ? $definition['description'] : '';
                 $schema = isset( $definition['schema'] ) && is_array( $definition['schema'] ) ? $definition['schema'] : array();
+
+                if ( isset( $definition['class'] ) && is_string( $definition['class'] ) ) {
+                    $candidate_class = ltrim( $definition['class'], '\\' );
+                    if ( class_exists( $candidate_class ) && interface_exists( 'My_Articles_Content_Adapter_Interface' ) && is_subclass_of( $candidate_class, 'My_Articles_Content_Adapter_Interface' ) ) {
+                        $class_name = $candidate_class;
+                    }
+                }
             } elseif ( is_callable( $definition ) ) {
                 $callback   = $definition;
                 $label      = $resolved_id;
@@ -396,7 +413,7 @@ JS;
                 continue;
             }
 
-            if ( ! is_callable( $callback ) ) {
+            if ( '' === $class_name && ! is_callable( $callback ) ) {
                 continue;
             }
 
@@ -405,6 +422,7 @@ JS;
                 'label'       => is_string( $label ) ? $label : $resolved_id,
                 'description' => is_string( $description ) ? $description : '',
                 'callback'    => $callback,
+                'class'       => $class_name,
                 'schema'      => $schema,
             );
         }
@@ -577,16 +595,21 @@ JS;
                 continue;
             }
 
-            $callback = $registry[ $adapter_id ]['callback'];
-
-            if ( ! is_callable( $callback ) ) {
-                continue;
-            }
+            $definition = $registry[ $adapter_id ];
+            $callback   = isset( $definition['callback'] ) ? $definition['callback'] : null;
+            $class_name = isset( $definition['class'] ) ? $definition['class'] : '';
 
             $config = isset( $entry['config'] ) && is_array( $entry['config'] ) ? $entry['config'] : array();
 
             try {
-                $result = call_user_func( $callback, $options, $config, $context );
+                if ( is_string( $class_name ) && '' !== $class_name && class_exists( $class_name ) && interface_exists( 'My_Articles_Content_Adapter_Interface' ) && is_subclass_of( $class_name, 'My_Articles_Content_Adapter_Interface' ) ) {
+                    $adapter_instance = new $class_name();
+                    $result = $adapter_instance->get_items( $options, $config, $context );
+                } elseif ( is_callable( $callback ) ) {
+                    $result = call_user_func( $callback, $options, $config, $context );
+                } else {
+                    continue;
+                }
             } catch ( \Throwable $exception ) {
                 continue;
             }
@@ -764,6 +787,62 @@ JS;
         return $args;
     }
 
+    private static function merge_meta_query_clauses( array $args, array $meta_query ) {
+        if ( empty( $meta_query ) || ! is_array( $meta_query ) ) {
+            return $args;
+        }
+
+        $new_relation = 'AND';
+        $clauses      = array();
+
+        foreach ( $meta_query as $key => $clause ) {
+            if ( 'relation' === $key && is_string( $clause ) ) {
+                $candidate = strtoupper( $clause );
+                if ( in_array( $candidate, array( 'AND', 'OR' ), true ) ) {
+                    $new_relation = $candidate;
+                }
+                continue;
+            }
+
+            if ( is_array( $clause ) && ! empty( $clause['key'] ) ) {
+                $clauses[] = $clause;
+            }
+        }
+
+        if ( empty( $clauses ) ) {
+            return $args;
+        }
+
+        $existing           = array();
+        $existing_relation   = 'AND';
+
+        if ( isset( $args['meta_query'] ) && is_array( $args['meta_query'] ) ) {
+            foreach ( $args['meta_query'] as $key => $clause ) {
+                if ( 'relation' === $key && is_string( $clause ) ) {
+                    $candidate = strtoupper( $clause );
+                    if ( in_array( $candidate, array( 'AND', 'OR' ), true ) ) {
+                        $existing_relation = $candidate;
+                    }
+                    continue;
+                }
+
+                if ( is_array( $clause ) ) {
+                    $existing[] = $clause;
+                }
+            }
+        }
+
+        $relation = $new_relation ?: $existing_relation;
+
+        $args['meta_query'] = array_merge(
+            array( 'relation' => $relation ),
+            $existing,
+            $clauses
+        );
+
+        return $args;
+    }
+
     private static function apply_primary_taxonomy_terms( array $args, array $options ) {
         if ( empty( $options['primary_taxonomy_terms'] ) || ! is_array( $options['primary_taxonomy_terms'] ) ) {
             return $args;
@@ -861,6 +940,10 @@ JS;
 
         $query_args = self::append_active_tax_query( $query_args, $resolved_taxonomy, $active_category, $active_filters );
 
+        if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
+            $query_args = self::merge_meta_query_clauses( $query_args, $options['meta_query'] );
+        }
+
         return new WP_Query( $query_args );
     }
 
@@ -893,6 +976,10 @@ JS;
 
         if ( ! empty( $options['search_query'] ) ) {
             $query_args['s'] = $options['search_query'];
+        }
+
+        if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
+            $query_args = self::merge_meta_query_clauses( $query_args, $options['meta_query'] );
         }
 
         if ( empty( $options['pinned_posts_ignore_filter'] ) ) {
@@ -1021,16 +1108,20 @@ JS;
             }
 
             if ( ! empty( $pinned_ids_for_request ) ) {
-                $pinned_query = new WP_Query(
-                    array(
-                        'post_type'      => $options['post_type'],
-                        'post_status'    => 'publish',
-                        'post__in'       => $pinned_ids_for_request,
-                        'orderby'        => 'post__in',
-                        'posts_per_page' => count( $pinned_ids_for_request ),
-                        'no_found_rows'  => true,
-                    )
+                $pinned_query_args = array(
+                    'post_type'      => $options['post_type'],
+                    'post_status'    => 'publish',
+                    'post__in'       => $pinned_ids_for_request,
+                    'orderby'        => 'post__in',
+                    'posts_per_page' => count( $pinned_ids_for_request ),
+                    'no_found_rows'  => true,
                 );
+
+                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
+                    $pinned_query_args = self::merge_meta_query_clauses( $pinned_query_args, $options['meta_query'] );
+                }
+
+                $pinned_query = new WP_Query( $pinned_query_args );
 
                 if ( $pinned_query->have_posts() ) {
                     $rendered_pinned_ids = array_map( 'absint', wp_list_pluck( $pinned_query->posts, 'ID' ) );
@@ -1091,17 +1182,21 @@ JS;
             }
 
             if ( ! empty( $pinned_ids_for_request ) ) {
-                $pinned_query = new WP_Query(
-                    array(
-                        'post_type'      => $options['post_type'],
-                        'post_status'    => 'publish',
-                        'post__in'       => $pinned_ids_for_request,
-                        'orderby'        => 'post__in',
-                        'posts_per_page' => count( $pinned_ids_for_request ),
-                        'no_found_rows'  => true,
-                        'post__not_in'   => isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
-                    )
+                $pinned_query_args = array(
+                    'post_type'      => $options['post_type'],
+                    'post_status'    => 'publish',
+                    'post__in'       => $pinned_ids_for_request,
+                    'orderby'        => 'post__in',
+                    'posts_per_page' => count( $pinned_ids_for_request ),
+                    'no_found_rows'  => true,
+                    'post__not_in'   => isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
                 );
+
+                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
+                    $pinned_query_args = self::merge_meta_query_clauses( $pinned_query_args, $options['meta_query'] );
+                }
+
+                $pinned_query = new WP_Query( $pinned_query_args );
 
                 if ( $pinned_query->have_posts() ) {
                     $rendered_pinned_ids = array_map( 'absint', wp_list_pluck( $pinned_query->posts, 'ID' ) );
@@ -1160,6 +1255,15 @@ JS;
             'updated_seen_pinned_ids'     => $updated_seen_pinned,
             'unlimited_batch_size'        => $batch_cap,
             'should_enforce_unlimited'    => (bool) $should_enforce_unlimited,
+            'meta_query'                  => isset( $options['meta_query'] ) && is_array( $options['meta_query'] )
+                ? $options['meta_query']
+                : array(),
+            'meta_query_relation'         => isset( $options['meta_query_relation'] ) && is_string( $options['meta_query_relation'] )
+                ? $options['meta_query_relation']
+                : 'AND',
+            'content_adapters'            => isset( $options['content_adapters'] ) && is_array( $options['content_adapters'] )
+                ? $options['content_adapters']
+                : array(),
         );
     }
 
@@ -1196,6 +1300,8 @@ JS;
             'tax_filters' => array(),
             'primary_taxonomy_terms' => array(),
             'content_adapters' => array(),
+            'meta_query' => array(),
+            'meta_query_relation' => 'AND',
             'counting_behavior' => 'exact',
             'posts_per_page' => 10,
             'orderby' => 'date',
@@ -1572,6 +1678,23 @@ JS;
         }
 
         $options['content_adapters'] = self::sanitize_content_adapters( $options['content_adapters'] ?? array() );
+
+        $meta_query_source = array();
+        if ( array_key_exists( 'meta_query_raw', $raw_options ) ) {
+            $meta_query_source = $raw_options['meta_query_raw'];
+        } elseif ( array_key_exists( 'meta_query', $raw_options ) ) {
+            $meta_query_source = $raw_options['meta_query'];
+        }
+
+        $meta_query = My_Articles_Settings_Sanitizer::sanitize_meta_queries(
+            array(
+                'relation' => isset( $raw_options['meta_query_relation'] ) ? $raw_options['meta_query_relation'] : ( $options['meta_query_relation'] ?? 'AND' ),
+                'clauses'  => $meta_query_source,
+            )
+        );
+
+        $options['meta_query'] = $meta_query;
+        $options['meta_query_relation'] = isset( $meta_query['relation'] ) ? $meta_query['relation'] : 'AND';
 
         $active_tax_filters = array();
 
@@ -2207,6 +2330,10 @@ JS;
 
                 if ( '' !== $options['search_query'] ) {
                     $count_query_args['s'] = $options['search_query'];
+                }
+
+                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
+                    $count_query_args = self::merge_meta_query_clauses( $count_query_args, $options['meta_query'] );
                 }
 
                 if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {

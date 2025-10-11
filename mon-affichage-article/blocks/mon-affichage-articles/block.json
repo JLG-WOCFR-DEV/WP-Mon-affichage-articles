@@ -56,6 +56,26 @@
             "type": "string",
             "default": ""
         },
+        "meta_query_relation": {
+            "type": "string",
+            "default": "AND"
+        },
+        "meta_query": {
+            "type": "array",
+            "default": []
+        },
+        "meta_query_raw": {
+            "type": "string",
+            "default": ""
+        },
+        "content_adapters": {
+            "type": "array",
+            "default": []
+        },
+        "content_adapters_raw": {
+            "type": "string",
+            "default": ""
+        },
         "aria_label": {
             "type": "string",
             "default": "",
