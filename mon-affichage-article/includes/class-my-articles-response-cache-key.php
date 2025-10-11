@@ -92,12 +92,22 @@ class My_Articles_Response_Cache_Key {
         }
 
         if ( is_array( $value ) ) {
-            $normalized = array();
+            $normalized     = array();
+            $is_associative = array() !== $value && array_keys( $value ) !== range( 0, count( $value ) - 1 );
 
-            foreach ( $value as $item ) {
+            foreach ( $value as $key => $item ) {
                 $normalized_item = $this->normalize_fragment_value( $item );
 
                 if ( null === $normalized_item ) {
+                    continue;
+                }
+
+                if ( $is_associative ) {
+                    if ( is_array( $normalized_item ) ) {
+                        $normalized_item = implode( '|', $normalized_item );
+                    }
+
+                    $normalized[] = sprintf( '%s:%s', (string) $key, $normalized_item );
                     continue;
                 }
 
@@ -106,6 +116,10 @@ class My_Articles_Response_Cache_Key {
 
             if ( empty( $normalized ) ) {
                 return null;
+            }
+
+            if ( $is_associative ) {
+                sort( $normalized, SORT_STRING );
             }
 
             return array_values( $normalized );
