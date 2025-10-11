@@ -35,6 +35,8 @@ class My_Articles_Shortcode_Data_Preparer {
      *
      *     @type array|null $request       Request variables (defaults to $_GET).
      *     @type bool       $force_refresh Whether to bypass caches.
+     *     @type array      $context       Optional. Pre-sanitized context overriding request derived values. Accepts
+     *                                     `category`, `search`, `sort`, `filters`, `page` and `force_collect_terms` keys.
      * }
      *
      * @return array|WP_Error Prepared payload or error when the request is invalid.
@@ -43,10 +45,12 @@ class My_Articles_Shortcode_Data_Preparer {
         $defaults = array(
             'request'       => null,
             'force_refresh' => false,
+            'context'       => array(),
         );
 
         $args    = wp_parse_args( $args, $defaults );
         $request = $this->sanitize_request_payload( $args['request'] );
+        $context = is_array( $args['context'] ) ? $args['context'] : array();
 
         $options_meta = get_post_meta( $instance_id, '_my_articles_settings', true );
         if ( ! is_array( $options_meta ) ) {
@@ -80,6 +84,29 @@ class My_Articles_Shortcode_Data_Preparer {
             $this->read_request_value( $request, $query_vars['paged'] )
         );
 
+        if ( array_key_exists( 'category', $context ) ) {
+            $requested_category = $this->maybe_sanitize_category_value( $context['category'] );
+        }
+
+        if ( array_key_exists( 'search', $context ) ) {
+            $requested_search = $this->maybe_sanitize_search_value( $context['search'] );
+        }
+
+        if ( array_key_exists( 'sort', $context ) ) {
+            $requested_sort = $this->sanitize_sort_value( (string) $context['sort'] );
+        }
+
+        if ( array_key_exists( 'page', $context ) ) {
+            $requested_page = $this->normalize_requested_page( $context['page'] );
+        }
+
+        $requested_filters = array();
+        $should_force_collect_terms = ! empty( $context['force_collect_terms'] );
+
+        if ( array_key_exists( 'filters', $context ) ) {
+            $requested_filters = $this->sanitize_requested_filters( $context['filters'], $options_meta );
+        }
+
         $cache_key = $this->build_cache_key(
             $instance_id,
             $options_meta,
@@ -87,6 +114,7 @@ class My_Articles_Shortcode_Data_Preparer {
                 'category' => $requested_category,
                 'search'   => $requested_search,
                 'sort'     => $requested_sort,
+                'filters'  => $requested_filters,
             )
         );
 
@@ -123,6 +151,14 @@ class My_Articles_Shortcode_Data_Preparer {
             $normalize_context['requested_filters'] = $filter_categories_info['normalized'];
         }
 
+        if ( ! empty( $requested_filters ) ) {
+            $normalize_context['requested_filters'] = $requested_filters;
+        }
+
+        if ( $should_force_collect_terms ) {
+            $normalize_context['force_collect_terms'] = true;
+        }
+
         $options = My_Articles_Shortcode::normalize_instance_options( $options_meta, $normalize_context );
 
         if ( ! empty( $options['allowed_filter_term_slugs'] ) && empty( $options['is_requested_category_valid'] ) ) {
@@ -156,6 +192,7 @@ class My_Articles_Shortcode_Data_Preparer {
                 'search'   => $requested_search,
                 'sort'     => $requested_sort,
                 'page'     => $requested_page,
+                'filters'  => $requested_filters,
             ),
             'request_query_vars'        => $query_vars,
             'allows_requested_category' => (bool) $allows_requested_category,
@@ -400,6 +437,34 @@ class My_Articles_Shortcode_Data_Preparer {
     }
 
     /**
+     * Sanitizes a category value coming from contextual overrides.
+     *
+     * @param mixed $value Raw contextual value.
+     * @return string
+     */
+    private function maybe_sanitize_category_value( $value ) {
+        if ( is_scalar( $value ) ) {
+            return sanitize_title( (string) $value );
+        }
+
+        return '';
+    }
+
+    /**
+     * Sanitizes a search term coming from contextual overrides.
+     *
+     * @param mixed $value Raw contextual value.
+     * @return string
+     */
+    private function maybe_sanitize_search_value( $value ) {
+        if ( is_scalar( $value ) ) {
+            return sanitize_text_field( (string) $value );
+        }
+
+        return '';
+    }
+
+    /**
      * Ensures the sort parameter matches the whitelist of allowed values.
      *
      * @param string $value Raw sort value.
@@ -433,6 +498,34 @@ class My_Articles_Shortcode_Data_Preparer {
         }
 
         return $page;
+    }
+
+    /**
+     * Sanitizes requested taxonomy filters coming from contextual overrides.
+     *
+     * @param mixed $raw_filters Raw filters payload.
+     * @param array $options_meta Instance metadata.
+     * @return array<int, array{taxonomy:string,slug:string}>
+     */
+    private function sanitize_requested_filters( $raw_filters, array $options_meta ) {
+        if ( is_string( $raw_filters ) && '' === trim( $raw_filters ) ) {
+            return array();
+        }
+
+        $post_type = '';
+
+        if ( isset( $options_meta['post_type'] ) && is_scalar( $options_meta['post_type'] ) ) {
+            $post_type = (string) $options_meta['post_type'];
+        }
+
+        if ( '' === $post_type ) {
+            $defaults = My_Articles_Shortcode::get_default_options();
+            if ( isset( $defaults['post_type'] ) ) {
+                $post_type = (string) $defaults['post_type'];
+            }
+        }
+
+        return My_Articles_Shortcode::sanitize_filter_pairs( $raw_filters, $post_type );
     }
 
     /**
