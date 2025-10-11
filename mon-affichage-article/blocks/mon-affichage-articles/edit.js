@@ -2074,6 +2074,33 @@
                 })
             );
 
+            var interactionsPanel = el(
+                PanelBody,
+                {
+                    key: 'interactions-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Effets d’interaction', 'mon-articles'),
+                    initialOpen: false,
+                },
+                el(ToggleControl, {
+                    label: __('Élévation au survol (desktop)', 'mon-articles'),
+                    checked: !!attributes.hover_lift_desktop,
+                    onChange: withLockedGuard('hover_lift_desktop', function (value) {
+                        setAttributes({ hover_lift_desktop: !!value });
+                    }),
+                    help: __('Fait flotter légèrement les cartes sur les écrans à pointeur précis.', 'mon-articles'),
+                    disabled: isAttributeLocked('hover_lift_desktop'),
+                }),
+                el(ToggleControl, {
+                    label: __('Halo néon pulsé', 'mon-articles'),
+                    checked: !!attributes.hover_neon_pulse,
+                    onChange: withLockedGuard('hover_neon_pulse', function (value) {
+                        setAttributes({ hover_neon_pulse: !!value });
+                    }),
+                    help: __('Ajoute un halo animé et lumineux autour des cartes au survol.', 'mon-articles'),
+                    disabled: isAttributeLocked('hover_neon_pulse'),
+                })
+            );
+
             var spacingPanel = el(
                 PanelBody,
                 {
@@ -2365,6 +2392,13 @@
                 title: __('Disposition', 'mon-articles'),
                 keywords: [__('colonnes', 'mon-articles'), __('disposition', 'mon-articles'), __('grille', 'mon-articles')],
                 component: layoutPanel,
+            });
+
+            inspectorSections.push({
+                id: 'interactions',
+                title: __('Effets d’interaction', 'mon-articles'),
+                keywords: [__('survol', 'mon-articles'), __('animation', 'mon-articles'), __('hover', 'mon-articles')],
+                component: interactionsPanel,
             });
 
             inspectorSections.push({

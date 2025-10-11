@@ -271,6 +271,16 @@
             "default": "rgba(0,0,0,0.12)",
             "description": "Couleur de l'ombre au survol."
         },
+        "hover_lift_desktop": {
+            "type": "boolean",
+            "default": true,
+            "description": "Active la légère élévation des cartes au survol sur les écrans desktop."
+        },
+        "hover_neon_pulse": {
+            "type": "boolean",
+            "default": false,
+            "description": "Active un halo lumineux pulsé autour des cartes au survol."
+        },
         "pinned_border_color": {
             "type": "string",
             "default": "#eab308",

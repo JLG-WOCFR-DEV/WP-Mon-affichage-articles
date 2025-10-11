@@ -795,9 +795,10 @@
     box-sizing: border-box;
     background: linear-gradient(180deg, var(--my-articles-card-surface-color, #ffffff) 0%, var(--my-articles-color-surface-muted) 100%);
     border: 1px solid var(--my-articles-color-border);
+    transform: translateY(0);
 }
 
-.my-article-item::before {
+.my-articles-wrapper .my-article-item::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -816,31 +817,86 @@
     box-shadow: var(--my-articles-shadow-glow);
 }
 
-.my-article-item:hover,
-.my-article-item:focus-within {
-    transform: translateY(-6px);
-    box-shadow: var(--my-articles-shadow-floating);
+.my-articles-wrapper.my-articles-has-hover-lift {
+    --my-articles-hover-lift-offset: -6px;
+}
+
+.my-articles-wrapper.my-articles-has-neon-pulse {
+    --my-articles-neon-pulse-color: var(
+        --my-articles-shadow-color-hover,
+        rgba(59, 130, 246, 0.45)
+    );
+}
+
+.my-articles-wrapper.my-articles-has-neon-pulse .my-article-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0;
+    box-shadow: 0 0 0 0 var(--my-articles-neon-pulse-color);
+    transition: opacity 0.35s ease;
+}
+
+.my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within,
+.my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within,
+.my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover {
     border-color: var(--my-articles-color-border-active);
 }
 
-.my-article-item:hover::before,
-.my-article-item:focus-within::before {
-    opacity: 1;
+.my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within .article-title,
+.my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within .article-title {
+    color: var(--my-articles-color-ink);
 }
 
-.my-article-item:hover .article-title,
-.my-article-item:focus-within .article-title {
-    color: var(--my-articles-color-ink);
+@media (hover: hover) and (pointer: fine) {
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within {
+        transform: translateY(var(--my-articles-hover-lift-offset, -6px));
+        border-color: var(--my-articles-color-border-active);
+    }
+
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover {
+        box-shadow: var(--my-articles-shadow-floating);
+    }
+
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover::before,
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within::before,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover::before,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within::before {
+        opacity: 1;
+    }
+
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover .article-title,
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within .article-title,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover .article-title,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within .article-title {
+        color: var(--my-articles-color-ink);
+    }
+
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover::after,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within::after {
+        opacity: 1;
+        animation: my-articles-neon-pulse 1.8s ease-in-out infinite;
+    }
+}
+
+@keyframes my-articles-neon-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 var(--my-articles-neon-pulse-color);
+    }
+
+    50% {
+        box-shadow: 0 0 32px 12px var(--my-articles-neon-pulse-color);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .my-article-item {
         transition: none;
-    }
-
-    .my-article-item:hover,
-    .my-article-item:focus-within {
-        transform: none;
     }
 
     .my-article-item .article-thumbnail-wrapper::after,
@@ -854,6 +910,20 @@
     .my-article-item:focus-within img {
         transform: none;
         filter: none;
+    }
+
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within {
+        transform: none;
+    }
+
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item::after {
+        transition: none;
+    }
+
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover::after,
+    .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within::after {
+        animation: none;
     }
 }
 
