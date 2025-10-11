@@ -49,6 +49,10 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-telemetry.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/rest/class-my-articles-controller.php';
 
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-cli.php';
+        }
+
         $this->rest_controller = new My_Articles_Controller( $this );
     }
 
@@ -60,6 +64,7 @@ final class Mon_Affichage_Articles {
         add_action( 'wp_ajax_get_taxonomy_terms', array( $this, 'get_taxonomy_terms_callback' ) );
 
         add_action( 'wp_ajax_search_posts_for_select2', array( $this, 'search_posts_callback' ) );
+        add_action( 'wp_ajax_my_articles_render_preview', array( $this, 'render_admin_preview' ) );
 
         add_action( 'rest_api_init', array( $this->rest_controller, 'register_routes' ) );
 
@@ -1450,6 +1455,71 @@ public function prepare_filter_articles_response( array $args ) {
         }
 
         wp_send_json_success( $response['results'] );
+    }
+
+    public function render_admin_preview() {
+        check_ajax_referer( 'my_articles_render_preview', 'nonce' );
+
+        $post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+
+        if ( $post_id <= 0 ) {
+            wp_send_json_error(
+                array( 'message' => __( 'ID d\'instance manquant.', 'mon-articles' ) ),
+                400
+            );
+        }
+
+        if ( 'mon_affichage' !== get_post_type( $post_id ) ) {
+            wp_send_json_error(
+                array( 'message' => __( 'Type de contenu invalide.', 'mon-articles' ) ),
+                400
+            );
+        }
+
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_send_json_error(
+                array( 'message' => __( 'Vous n’avez pas les droits nécessaires pour cette prévisualisation.', 'mon-articles' ) ),
+                rest_authorization_required_code()
+            );
+        }
+
+        $raw_settings = isset( $_POST['settings'] ) ? wp_unslash( $_POST['settings'] ) : array();
+
+        if ( is_string( $raw_settings ) ) {
+            $decoded_settings = json_decode( $raw_settings, true );
+
+            if ( is_array( $decoded_settings ) ) {
+                $raw_settings = $decoded_settings;
+            }
+        }
+
+        if ( ! is_array( $raw_settings ) ) {
+            $raw_settings = array();
+        }
+
+        $normalized_settings = array();
+
+        foreach ( $raw_settings as $key => $value ) {
+            $normalized_settings[ $key ] = wp_unslash( $value );
+        }
+
+        $shortcode = My_Articles_Shortcode::get_instance();
+
+        $html = $shortcode->render_shortcode(
+            array(
+                'id'        => $post_id,
+                'overrides' => $normalized_settings,
+            )
+        );
+
+        $summary = My_Articles_Shortcode::get_last_render_summary();
+
+        wp_send_json_success(
+            array(
+                'html'    => $html,
+                'summary' => $summary,
+            )
+        );
     }
 
     public function register_post_type() {
