@@ -445,6 +445,7 @@ class My_Articles_Shortcode_Data_Preparer {
      */
     private function build_cache_key( $instance_id, array $options_meta, array $requested ) {
         $signature = array(
+            'namespace' => $this->get_cache_namespace(),
             'id'        => (int) $instance_id,
             'meta'      => $this->normalize_signature_value( $options_meta ),
             'requested' => $this->normalize_signature_value( $requested ),
@@ -490,6 +491,47 @@ class My_Articles_Shortcode_Data_Preparer {
         }
 
         return (string) $value;
+    }
+
+    /**
+     * Retrieve the cache namespace ensuring it is always a safe, non-empty string.
+     *
+     * @return string
+     */
+    private function get_cache_namespace() {
+        $namespace = '';
+
+        if ( function_exists( 'get_option' ) ) {
+            $namespace = (string) get_option( 'my_articles_cache_namespace', '' );
+        }
+
+        $namespace = sanitize_key( $namespace );
+
+        if ( '' === $namespace ) {
+            $namespace = 'default';
+        }
+
+        /**
+         * Filters the namespace used for the shortcode preparation cache.
+         *
+         * This allows third-party integrations to align the namespace with
+         * custom invalidation strategies.
+         *
+         * @param string $namespace Normalized namespace value.
+         */
+        $namespace = apply_filters( 'my_articles_shortcode_cache_namespace', $namespace );
+
+        if ( ! is_string( $namespace ) ) {
+            $namespace = 'default';
+        }
+
+        $namespace = sanitize_key( $namespace );
+
+        if ( '' === $namespace ) {
+            $namespace = 'default';
+        }
+
+        return $namespace;
     }
 
     /**
