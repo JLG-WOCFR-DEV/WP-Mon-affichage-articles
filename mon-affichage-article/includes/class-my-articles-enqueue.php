@@ -152,6 +152,17 @@ class My_Articles_Enqueue {
                 'window.myArticlesDesignPresets = ' . wp_json_encode( $export ) . ';',
                 'before'
             );
+
+            $adapter_definitions = My_Articles_Shortcode::get_content_adapter_definitions_for_admin();
+            $encoded_adapters    = wp_json_encode( $adapter_definitions );
+
+            if ( false !== $encoded_adapters ) {
+                wp_add_inline_script(
+                    $editor_handle,
+                    'window.myArticlesContentAdapters = ' . $encoded_adapters . ';',
+                    'before'
+                );
+            }
         }
     }
 

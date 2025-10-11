@@ -38,6 +38,7 @@ final class Mon_Affichage_Articles {
 
     private function includes() {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/helpers.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/interface-my-articles-content-adapter.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-settings.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode-data-preparer.php';

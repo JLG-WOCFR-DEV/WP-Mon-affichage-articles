@@ -346,6 +346,75 @@ class My_Articles_Metaboxes {
         $this->render_field('pinned_badge_bg_color', esc_html__('Couleur de fond du badge', 'mon-articles'), 'color', $opts, ['default' => '#eab308', 'wrapper_class' => 'badge-option']);
         $this->render_field('pinned_badge_text_color', esc_html__('Couleur du texte du badge', 'mon-articles'), 'color', $opts, ['default' => '#ffffff', 'wrapper_class' => 'badge-option']);
 
+        echo '<hr><h3>' . esc_html__('Requêtes avancées', 'mon-articles') . '</h3>';
+        $stored_meta_query = isset( $opts['meta_query'] ) && is_array( $opts['meta_query'] ) ? $opts['meta_query'] : array();
+        $meta_relation     = 'AND';
+
+        if ( isset( $opts['meta_query_relation'] ) && is_string( $opts['meta_query_relation'] ) ) {
+            $candidate_relation = strtoupper( $opts['meta_query_relation'] );
+            if ( in_array( $candidate_relation, array( 'AND', 'OR' ), true ) ) {
+                $meta_relation = $candidate_relation;
+            }
+        } elseif ( isset( $stored_meta_query['relation'] ) && is_string( $stored_meta_query['relation'] ) ) {
+            $candidate_relation = strtoupper( $stored_meta_query['relation'] );
+            if ( in_array( $candidate_relation, array( 'AND', 'OR' ), true ) ) {
+                $meta_relation = $candidate_relation;
+            }
+        }
+
+        $opts['meta_query_relation'] = $meta_relation;
+
+        $editor_clauses = array();
+        foreach ( $stored_meta_query as $key => $clause ) {
+            if ( 'relation' === $key ) {
+                continue;
+            }
+
+            if ( is_array( $clause ) && ! empty( $clause['key'] ) ) {
+                $editor_clauses[] = $clause;
+            }
+        }
+
+        $encoded_clauses = '';
+        if ( ! empty( $editor_clauses ) ) {
+            $encoded = wp_json_encode( $editor_clauses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE );
+            if ( false === $encoded ) {
+                $encoded = wp_json_encode( $editor_clauses );
+            }
+
+            if ( false !== $encoded ) {
+                $encoded_clauses = $encoded;
+            }
+        }
+
+        $opts['meta_query_clauses'] = $encoded_clauses;
+
+        $this->render_field(
+            'meta_query_relation',
+            esc_html__( 'Relation entre les conditions', 'mon-articles' ),
+            'select',
+            $opts,
+            array(
+                'default' => 'AND',
+                'options' => array(
+                    'AND' => esc_html__( 'ET (toutes les conditions doivent correspondre)', 'mon-articles' ),
+                    'OR'  => esc_html__( 'OU (au moins une condition)', 'mon-articles' ),
+                ),
+            )
+        );
+
+        $this->render_field(
+            'meta_query_clauses',
+            esc_html__( 'Conditions méta (JSON)', 'mon-articles' ),
+            'textarea',
+            $opts,
+            array(
+                'description' => __( 'Chaque condition doit préciser au minimum une clé (`key`). Exemple : `[ {"key":"featured","value":"1","compare":"="} ]`.', 'mon-articles' ),
+                'placeholder' => '[{"key":"featured","value":"1","compare":"="}]',
+                'rows'        => 6,
+            )
+        );
+
         echo '<hr><h3>' . esc_html__('Exclusions & Comportements Avancés', 'mon-articles') . '</h3>';
         $this->render_field('exclude_posts', esc_html__('ID des articles à exclure', 'mon-articles'), 'text', $opts, [
             'description' => __('Séparez les ID par des virgules (ex: 21, 56). Ces articles n\'apparaîtront jamais.', 'mon-articles'),
@@ -597,6 +666,31 @@ class My_Articles_Metaboxes {
                 if (isset($args['description'])) {
                     echo '<p class="description">' . esc_html($args['description']) . '</p>';
                 }
+                break;
+            case 'textarea':
+                $placeholder_attr = '';
+                if ( isset( $args['placeholder'] ) && '' !== $args['placeholder'] ) {
+                    $placeholder_attr = ' placeholder="' . esc_attr( $args['placeholder'] ) . '"';
+                }
+
+                $rows_attr = '';
+                if ( isset( $args['rows'] ) && (int) $args['rows'] > 0 ) {
+                    $rows_attr = ' rows="' . (int) $args['rows'] . '"';
+                }
+
+                printf(
+                    '<textarea id="%s" name="%s" class="large-text"%s%s>%s</textarea>',
+                    esc_attr( $input_id ),
+                    $name,
+                    $rows_attr,
+                    $placeholder_attr,
+                    esc_textarea( (string) $value )
+                );
+
+                if ( isset( $args['description'] ) ) {
+                    echo '<p class="description">' . esc_html( $args['description'] ) . '</p>';
+                }
+
                 break;
             case 'select2_ajax':
                 $saved_ids = is_array($value) ? $value : array();
@@ -982,6 +1076,23 @@ class My_Articles_Metaboxes {
         $sanitized['content_adapters'] = My_Articles_Shortcode::sanitize_content_adapters(
             $input['content_adapters'] ?? array()
         );
+
+        $meta_query_source = array();
+        if ( array_key_exists( 'meta_query_clauses', $input ) ) {
+            $meta_query_source = $input['meta_query_clauses'];
+        } elseif ( array_key_exists( 'meta_query', $input ) ) {
+            $meta_query_source = $input['meta_query'];
+        }
+
+        $meta_query = My_Articles_Settings_Sanitizer::sanitize_meta_queries(
+            array(
+                'relation' => isset( $input['meta_query_relation'] ) ? $input['meta_query_relation'] : 'AND',
+                'clauses'  => $meta_query_source,
+            )
+        );
+
+        $sanitized['meta_query'] = $meta_query;
+        $sanitized['meta_query_relation'] = isset( $meta_query['relation'] ) ? $meta_query['relation'] : 'AND';
 
         if (isset($input['exclude_posts'])) {
             $cleaned_ids = preg_replace('/[^0-9,]/', '', wp_unslash( $input['exclude_posts'] ) );

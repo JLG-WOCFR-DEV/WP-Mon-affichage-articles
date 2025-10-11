@@ -39,6 +39,7 @@
     var ToggleControl = components.ToggleControl;
     var RangeControl = components.RangeControl;
     var TextControl = components.TextControl;
+    var TextareaControl = components.TextareaControl || null;
     var BaseControl = components.BaseControl;
     var FormTokenField = components.FormTokenField;
     var ColorIndicator = components.ColorIndicator;
@@ -121,6 +122,9 @@
             PreviewCanvas = window.myArticlesBlocks.PreviewPane;
         }
     }
+    var availableContentAdapters = Array.isArray(window.myArticlesContentAdapters)
+        ? window.myArticlesContentAdapters
+        : [];
     var dateI18n = wp.date && typeof wp.date.dateI18n === 'function' ? wp.date.dateI18n : null;
     var getDateSettings =
         wp.date && typeof wp.date.__experimentalGetSettings === 'function'
@@ -454,6 +458,31 @@
                 );
             })
         );
+    }
+    if (!TextareaControl) {
+        TextareaControl = function (props) {
+            var value = typeof props.value === 'string' ? props.value : '';
+            var rows = props.rows && props.rows > 0 ? props.rows : 6;
+            var placeholder = props.placeholder || '';
+            var onChange = typeof props.onChange === 'function' ? props.onChange : function () {};
+            return el(
+                BaseControl || 'div',
+                {
+                    className: 'components-textarea-control',
+                    label: props.label,
+                    help: props.help,
+                },
+                el('textarea', {
+                    className: 'components-textarea-control__input',
+                    value: value,
+                    rows: rows,
+                    placeholder: placeholder,
+                    onChange: function (event) {
+                        onChange(event && event.target ? event.target.value : '');
+                    },
+                })
+            );
+        };
     }
 
     function OnboardingGuide(props) {
@@ -1244,6 +1273,36 @@
                 var value = attributes[key];
                 return value === undefined || value === null ? fallback : value;
             };
+
+            var metaQueryEditorValue = typeof attributes.meta_query_raw === 'string' ? attributes.meta_query_raw : '';
+            if (!metaQueryEditorValue) {
+                if (Array.isArray(attributes.meta_query) && attributes.meta_query.length) {
+                    try {
+                        metaQueryEditorValue = JSON.stringify(attributes.meta_query, null, 2);
+                    } catch (error) {
+                        try {
+                            metaQueryEditorValue = JSON.stringify(attributes.meta_query);
+                        } catch (error2) {
+                            metaQueryEditorValue = '';
+                        }
+                    }
+                }
+            }
+
+            var contentAdaptersEditorValue = typeof attributes.content_adapters_raw === 'string' ? attributes.content_adapters_raw : '';
+            if (!contentAdaptersEditorValue) {
+                if (Array.isArray(attributes.content_adapters) && attributes.content_adapters.length) {
+                    try {
+                        contentAdaptersEditorValue = JSON.stringify(attributes.content_adapters, null, 2);
+                    } catch (error) {
+                        try {
+                            contentAdaptersEditorValue = JSON.stringify(attributes.content_adapters);
+                        } catch (error2) {
+                            contentAdaptersEditorValue = '';
+                        }
+                    }
+                }
+            }
 
             var resolvePaletteSetting = function (setting) {
                 if (!setting) {
@@ -2260,6 +2319,109 @@
                 })
             );
 
+            var adapterHelpText = __('Définissez des adaptateurs externes (`id`) et leur configuration JSON. Chaque entrée doit correspondre à un adaptateur enregistré.', 'mon-articles');
+            if (Array.isArray(availableContentAdapters) && availableContentAdapters.length) {
+                var adapterLabels = availableContentAdapters
+                    .map(function (adapter) {
+                        if (!adapter || typeof adapter.id !== 'string') {
+                            return '';
+                        }
+                        var label = adapter.label && typeof adapter.label === 'string' ? adapter.label : adapter.id;
+                        return label + ' (' + adapter.id + ')';
+                    })
+                    .filter(function (entry) {
+                        return entry && entry.length;
+                    });
+
+                if (adapterLabels.length) {
+                    adapterHelpText +=
+                        ' ' +
+                        __('Adaptateurs disponibles :', 'mon-articles') +
+                        ' ' +
+                        adapterLabels.join(', ');
+                }
+            }
+
+            var advancedQueriesPanel = el(
+                PanelBody,
+                {
+                    key: 'advanced-queries-panel-' + (shouldForceInspectorOpen ? 'search' : 'default'),
+                    title: __('Requêtes avancées', 'mon-articles'),
+                    initialOpen: false,
+                },
+                el(SelectControl, {
+                    label: __('Relation des conditions méta', 'mon-articles'),
+                    value: (attributes.meta_query_relation || 'AND').toUpperCase() === 'OR' ? 'OR' : 'AND',
+                    options: [
+                        { label: __('ET – toutes les conditions doivent être vraies', 'mon-articles'), value: 'AND' },
+                        { label: __('OU – au moins une condition doit être vraie', 'mon-articles'), value: 'OR' },
+                    ],
+                    onChange: function (value) {
+                        var normalized = (value || 'AND').toUpperCase();
+                        if (normalized !== 'AND' && normalized !== 'OR') {
+                            normalized = 'AND';
+                        }
+                        setAttributes({ meta_query_relation: normalized });
+                    },
+                }),
+                TextareaControl
+                    ? el(TextareaControl, {
+                          label: __('Conditions méta (JSON)', 'mon-articles'),
+                          value: metaQueryEditorValue,
+                          rows: 6,
+                          placeholder: '[{"key":"featured","value":"1","compare":"="}]',
+                          help: __('Liste JSON de clauses WP_Query. Chaque entrée doit préciser une clé `key` et éventuellement `value`, `compare`, `type`.', 'mon-articles'),
+                          onChange: function (value) {
+                              var parsed = [];
+                              if (value && typeof value === 'string') {
+                                  try {
+                                      var decoded = JSON.parse(value);
+                                      if (Array.isArray(decoded)) {
+                                          parsed = decoded;
+                                      } else if (decoded && typeof decoded === 'object' && Array.isArray(decoded.clauses)) {
+                                          parsed = decoded.clauses;
+                                      }
+                                  } catch (error) {
+                                      parsed = [];
+                                  }
+                              }
+
+                              setAttributes({
+                                  meta_query_raw: value,
+                                  meta_query: Array.isArray(parsed) ? parsed : [],
+                              });
+                          },
+                      })
+                    : null,
+                TextareaControl
+                    ? el(TextareaControl, {
+                          label: __('Adaptateurs de contenu (JSON)', 'mon-articles'),
+                          value: contentAdaptersEditorValue,
+                          rows: 4,
+                          placeholder: '[{"id":"external","config":{"limit":3}}]',
+                          help: adapterHelpText,
+                          onChange: function (value) {
+                              var parsed = [];
+                              if (value && typeof value === 'string') {
+                                  try {
+                                      var decoded = JSON.parse(value);
+                                      if (Array.isArray(decoded)) {
+                                          parsed = decoded;
+                                      }
+                                  } catch (error) {
+                                      parsed = [];
+                                  }
+                              }
+
+                              setAttributes({
+                                  content_adapters_raw: value,
+                                  content_adapters: Array.isArray(parsed) ? parsed : [],
+                              });
+                          },
+                      })
+                    : null
+            );
+
             var sortingPanel = el(
                 PanelBody,
                 {
@@ -2413,6 +2575,12 @@
                 title: __('Filtres additionnels', 'mon-articles'),
                 keywords: [__('filtres', 'mon-articles'), __('taxonomie', 'mon-articles'), __('recherche', 'mon-articles')],
                 component: filtersPanel,
+            });
+            inspectorSections.push({
+                id: 'advanced-queries',
+                title: __('Requêtes avancées', 'mon-articles'),
+                keywords: [__('meta', 'mon-articles'), __('adaptateurs', 'mon-articles'), __('requêtes', 'mon-articles')],
+                component: advancedQueriesPanel,
             });
 
             inspectorSections.push({
