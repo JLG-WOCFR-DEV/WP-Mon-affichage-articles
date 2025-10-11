@@ -556,3 +556,97 @@
     display: flex;
     justify-content: flex-end;
 }
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift {
+    --my-articles-hover-lift-offset: -6px;
+}
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse {
+    --my-articles-neon-pulse-color: var(
+        --my-articles-shadow-color-hover,
+        rgba(59, 130, 246, 0.45)
+    );
+}
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    box-shadow: 0 0 0 0 var(--my-articles-neon-pulse-color);
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+}
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item,
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item {
+    transform: translateY(0);
+    transition: transform 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
+        box-shadow 0.45s cubic-bezier(0.22, 0.61, 0.36, 1),
+        border-color 0.45s ease;
+}
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within,
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within,
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover {
+    border-color: var(--my-articles-color-border-active);
+}
+
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within .article-title,
+.wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within .article-title {
+    color: var(--my-articles-color-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within {
+        transform: translateY(var(--my-articles-hover-lift-offset, -6px));
+        border-color: var(--my-articles-color-border-active);
+    }
+
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover::after,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within::after {
+        opacity: 1;
+        animation: my-articles-neon-pulse 1.8s ease-in-out infinite;
+    }
+
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover {
+        box-shadow: var(--my-articles-shadow-floating);
+    }
+
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover .article-title,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within .article-title,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover .article-title,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within .article-title {
+        color: var(--my-articles-color-ink);
+    }
+}
+
+@keyframes my-articles-neon-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 var(--my-articles-neon-pulse-color);
+    }
+
+    50% {
+        box-shadow: 0 0 32px 12px var(--my-articles-neon-pulse-color);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:hover,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-hover-lift .my-article-item:focus-within {
+        transform: none;
+    }
+
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item::after {
+        transition: none;
+    }
+
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:hover::after,
+    .wp-block-mon-affichage-articles .my-articles-wrapper.my-articles-has-neon-pulse .my-article-item:focus-within::after {
+        animation: none;
+    }
+}

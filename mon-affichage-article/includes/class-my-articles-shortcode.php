@@ -1660,6 +1660,7 @@ JS;
             'title_wrapper_bg_color' => '#ffffff', 'title_color' => '#333333',
             'meta_color' => '#6b7280', 'meta_color_hover' => '#000000', 'pagination_color' => '#333333',
             'shadow_color' => 'rgba(0,0,0,0.07)', 'shadow_color_hover' => 'rgba(0,0,0,0.12)',
+            'hover_lift_desktop' => 1, 'hover_neon_pulse' => 0,
             'slideshow_loop' => 1,
             'slideshow_autoplay' => 0,
             'slideshow_delay' => 5000,
@@ -2389,6 +2390,14 @@ JS;
         $inline_styles = $this->render_inline_styles( $options, $id );
 
         $wrapper_class = 'my-articles-wrapper my-articles-' . esc_attr($options['display_mode']);
+
+        if ( ! empty( $options['hover_lift_desktop'] ) ) {
+            $wrapper_class .= ' my-articles-has-hover-lift';
+        }
+
+        if ( ! empty( $options['hover_neon_pulse'] ) ) {
+            $wrapper_class .= ' my-articles-has-neon-pulse';
+        }
 
         $columns_mobile    = max( 1, (int) $options['columns_mobile'] );
         $columns_tablet    = max( 1, (int) $options['columns_tablet'] );
