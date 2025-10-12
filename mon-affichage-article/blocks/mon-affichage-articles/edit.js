@@ -38,10 +38,9 @@
     var ComboboxControl = components.ComboboxControl;
     var Button = components.Button;
     var ToggleGroupControl =
-        components.__experimentalToggleGroupControl || components.ToggleGroupControl || null;
+        components.ToggleGroupControl || components.__experimentalToggleGroupControl || null;
     var ToggleGroupControlOption =
-        components.__experimentalToggleGroupControlOption || components.ToggleGroupControlOption || null;
-    var ButtonGroup = components.ButtonGroup || null;
+        components.ToggleGroupControlOption || components.__experimentalToggleGroupControlOption || null;
     var SelectControl = components.SelectControl;
     var ToggleControl = components.ToggleControl;
     var RangeControl = components.RangeControl;
@@ -584,7 +583,6 @@
                   },
                   label: __('Rechercher un modèle', 'mon-articles'),
                   placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
-                  help: __('Cette recherche n’affecte que la liste des modèles affichés ci-dessous.', 'mon-articles'),
                   __nextHasNoMarginBottom: true,
               })
             : el(TextControl, {
@@ -594,7 +592,8 @@
                   },
                   label: __('Rechercher un modèle', 'mon-articles'),
                   placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
-                  help: __('Cette recherche n’affecte que la liste des modèles affichés ci-dessous.', 'mon-articles'),
+                  __nextHasNoMarginBottom: true,
+                  __next40pxDefaultSize: true,
               });
 
         var tagFilterBar = null;
@@ -1828,14 +1827,22 @@
             };
 
             var paletteSetting = [];
+            var paletteResult = null;
+
             if (typeof useSettings === 'function') {
-                var paletteResult = useSettings(['color.palette']);
+                paletteResult = useSettings('color.palette');
+
                 if (Array.isArray(paletteResult)) {
                     paletteSetting = paletteResult[0];
                 } else if (paletteResult) {
                     paletteSetting = paletteResult;
                 }
-            } else if (typeof useSetting === 'function') {
+            }
+
+            if (
+                (!paletteSetting || (Array.isArray(paletteSetting) && !paletteSetting.length)) &&
+                typeof useSetting === 'function'
+            ) {
                 paletteSetting = useSetting('color.palette');
             }
             var availableColors = flattenPalette(resolvePaletteSetting(paletteSetting));
@@ -3167,7 +3174,6 @@
                         setInspectorSearch(value);
                     },
                     placeholder: __('Filtrer les sections…', 'mon-articles'),
-                    help: __('Ce champ filtre uniquement les sections de réglages affichées dans le panneau.', 'mon-articles'),
                     __nextHasNoMarginBottom: true,
                 });
             } else {
@@ -3177,7 +3183,8 @@
                     onChange: function (value) {
                         setInspectorSearch(value);
                     },
-                    help: __('Ce champ filtre uniquement les sections de réglages affichées dans le panneau.', 'mon-articles'),
+                    __nextHasNoMarginBottom: true,
+                    __next40pxDefaultSize: true,
                 });
             }
 
@@ -3204,11 +3211,11 @@
                     {
                         className: 'my-articles-inspector-panel__mode-buttons',
                         label: __('Choisir un mode d’édition', 'mon-articles'),
+                        hideLabelFromVision: true,
                         value: inspectorModeNormalized,
-                        isBlock: true,
-                        onChange: function (value) {
-                            if (value && value !== inspectorModeNormalized) {
-                                setInspectorMode(value);
+                        onChange: function (nextValue) {
+                            if (nextValue && nextValue !== inspectorModeNormalized) {
+                                setInspectorMode(nextValue);
                             }
                         },
                     },
