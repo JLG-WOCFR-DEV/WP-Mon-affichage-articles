@@ -1508,12 +1508,16 @@
             var filterValueChangeHandler = useCallback(
                 function (value) {
                     var nextValue = value || '';
+
+                    if (nextValue === searchValue) {
+                        return;
+                    }
+
                     setSearchValue(nextValue);
                     setCurrentPage(1);
-                    setFetchedInstances([]);
                     setHasMoreResults(true);
                 },
-                [setSearchValue, setCurrentPage, setFetchedInstances, setHasMoreResults]
+                [searchValue, setSearchValue, setCurrentPage, setHasMoreResults]
             );
 
             var debouncedFilterUpdate = useAsyncDebounce(filterValueChangeHandler, 250);
@@ -2264,6 +2268,8 @@
                         onFilterValueChange: function (value) {
                             debouncedFilterUpdate(value);
                         },
+                        __nextHasNoMarginBottom: true,
+                        __next40pxDefaultSize: true,
                         help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
                         __nextHasNoMarginBottom: true,
                         __next40pxDefaultSize: true,
@@ -3198,24 +3204,6 @@
             ];
 
             var modeButtons = null;
-            var buildModeButton = function (option) {
-                var isActive = inspectorModeNormalized === option.key;
-                return el(
-                    Button,
-                    {
-                        key: option.key,
-                        variant: isActive ? 'primary' : 'secondary',
-                        isPressed: isActive,
-                        'aria-pressed': isActive,
-                        onClick: function () {
-                            if (!isActive) {
-                                setInspectorMode(option.key);
-                            }
-                        },
-                    },
-                    option.label
-                );
-            };
 
             if (ToggleGroupControl && ToggleGroupControlOption) {
                 modeButtons = el(
@@ -3240,11 +3228,41 @@
                     })
                 );
             } else {
-                modeButtons = el(
-                    'div',
-                    { className: 'my-articles-inspector-panel__mode-buttons is-fallback' },
-                    modeButtonOptions.map(buildModeButton)
-                );
+                var buildModeButton = function (option) {
+                    var isActive = inspectorModeNormalized === option.key;
+                    return el(
+                        Button,
+                        {
+                            key: option.key,
+                            variant: isActive ? 'primary' : 'secondary',
+                            isPressed: isActive,
+                            'aria-pressed': isActive,
+                            onClick: function () {
+                                if (!isActive) {
+                                    setInspectorMode(option.key);
+                                }
+                            },
+                        },
+                        option.label
+                    );
+                };
+
+                if (ButtonGroup) {
+                    modeButtons = el(
+                        ButtonGroup,
+                        {
+                            className: 'my-articles-inspector-panel__mode-buttons',
+                            'aria-label': __('Choisir un mode d’édition', 'mon-articles'),
+                        },
+                        modeButtonOptions.map(buildModeButton)
+                    );
+                } else {
+                    modeButtons = el(
+                        'div',
+                        { className: 'my-articles-inspector-panel__mode-buttons is-fallback' },
+                        modeButtonOptions.map(buildModeButton)
+                    );
+                }
             }
 
             var modeDescription = inspectorModeDescriptions[inspectorModeNormalized] || '';
