@@ -1822,7 +1822,7 @@
 
             var paletteSetting = [];
             if (typeof useSettings === 'function') {
-                var paletteResult = useSettings(['color.palette']);
+                var paletteResult = useSettings('color.palette');
                 if (Array.isArray(paletteResult)) {
                     paletteSetting = paletteResult[0];
                 } else if (paletteResult) {
