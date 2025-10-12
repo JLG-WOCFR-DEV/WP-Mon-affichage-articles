@@ -115,6 +115,113 @@
         return data;
     }
 
+    function applyThemeTokens(wrapper, canvas, tokens) {
+        if (!tokens || typeof tokens !== 'object') {
+            return;
+        }
+
+        var background = typeof tokens.background === 'string' ? tokens.background : '';
+        var foreground = typeof tokens.foreground === 'string' ? tokens.foreground : '';
+        var palette = tokens.palette && typeof tokens.palette === 'object' ? tokens.palette : null;
+
+        if (wrapper && wrapper.style) {
+            if (background) {
+                wrapper.style.setProperty('--my-articles-preview-surface', background);
+            }
+            if (foreground) {
+                wrapper.style.setProperty('--my-articles-preview-ink', foreground);
+            }
+        }
+
+        if (!canvas || typeof canvas.querySelectorAll !== 'function') {
+            return;
+        }
+
+        var roots = canvas.querySelectorAll('.my-articles-wrapper');
+
+        if (!roots || !roots.length) {
+            roots = [];
+            if (canvas.firstElementChild) {
+                roots.push(canvas.firstElementChild);
+            }
+        } else {
+            roots = Array.prototype.slice.call(roots);
+        }
+
+        roots.forEach(function (node) {
+            if (!node || !node.style) {
+                return;
+            }
+
+            if (background) {
+                node.style.setProperty('--wp--preset--color--base', background);
+                node.style.setProperty('--my-articles-surface-color', background);
+            }
+
+            if (foreground) {
+                node.style.setProperty('--wp--preset--color--contrast', foreground);
+                node.style.setProperty('--my-articles-color-ink', foreground);
+            }
+
+            if (palette) {
+                Object.keys(palette).forEach(function (slug) {
+                    var color = palette[slug];
+                    if (!color) {
+                        return;
+                    }
+                    node.style.setProperty('--wp--preset--color--' + slug, color);
+                });
+            }
+        });
+    }
+
+    function hydrateLazyImages(canvas) {
+        if (!canvas || typeof canvas.querySelectorAll !== 'function') {
+            return;
+        }
+
+        var images = canvas.querySelectorAll('img.lazyload');
+
+        if (!images || !images.length) {
+            return;
+        }
+
+        Array.prototype.forEach.call(images, function (img) {
+            if (!img || typeof img.getAttribute !== 'function') {
+                return;
+            }
+
+            if (img.classList && img.classList.contains('lazyloaded')) {
+                return;
+            }
+
+            var dataSrc = img.getAttribute('data-src');
+            var dataSrcset = img.getAttribute('data-srcset');
+            var dataSizes = img.getAttribute('data-sizes');
+
+            if (dataSrc) {
+                img.setAttribute('src', dataSrc);
+            }
+
+            if (dataSrcset) {
+                img.setAttribute('srcset', dataSrcset);
+            }
+
+            if (dataSizes && !img.getAttribute('sizes')) {
+                img.setAttribute('sizes', dataSizes);
+            }
+
+            img.removeAttribute('data-src');
+            img.removeAttribute('data-srcset');
+            img.removeAttribute('data-sizes');
+
+            if (img.classList) {
+                img.classList.remove('lazyload');
+                img.classList.add('lazyloaded');
+            }
+        });
+    }
+
     function parseAvailableAdapters(container) {
         if (!container) {
             return adapterRegistry.slice();
@@ -378,7 +485,17 @@
                 }
 
                 if (response && response.success) {
-                    canvas.innerHTML = response.data && response.data.html ? response.data.html : '';
+                    var data = response.data && typeof response.data === 'object' ? response.data : {};
+                    var html = data && typeof data.html === 'string' ? data.html : '';
+                    var tokens = data && typeof data.theme_tokens === 'object' ? data.theme_tokens : null;
+
+                    canvas.innerHTML = html;
+
+                    if (tokens) {
+                        applyThemeTokens(container, canvas, tokens);
+                    }
+
+                    hydrateLazyImages(canvas);
                     setStatus(settings.strings && settings.strings.success ? settings.strings.success : '');
                 } else {
                     var message = settings.strings && settings.strings.error ? settings.strings.error : '';
