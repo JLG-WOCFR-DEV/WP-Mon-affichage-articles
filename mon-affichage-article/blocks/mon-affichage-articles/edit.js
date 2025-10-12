@@ -34,6 +34,10 @@
     var ToolbarButton = components.ToolbarButton;
     var ComboboxControl = components.ComboboxControl;
     var Button = components.Button;
+    var ToggleGroupControl =
+        components.__experimentalToggleGroupControl || components.ToggleGroupControl || null;
+    var ToggleGroupControlOption =
+        components.__experimentalToggleGroupControlOption || components.ToggleGroupControlOption || null;
     var ButtonGroup = components.ButtonGroup || null;
     var SelectControl = components.SelectControl;
     var ToggleControl = components.ToggleControl;
@@ -577,6 +581,8 @@
                   },
                   label: __('Rechercher un modèle', 'mon-articles'),
                   placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
+                  help: __('Cette recherche n’affecte que la liste des modèles affichés ci-dessous.', 'mon-articles'),
+                  __nextHasNoMarginBottom: true,
               })
             : el(TextControl, {
                   value: searchValue,
@@ -585,6 +591,7 @@
                   },
                   label: __('Rechercher un modèle', 'mon-articles'),
                   placeholder: __('Filtrer par nom, description ou tag…', 'mon-articles'),
+                  help: __('Cette recherche n’affecte que la liste des modèles affichés ci-dessous.', 'mon-articles'),
               });
 
         var tagFilterBar = null;
@@ -1497,12 +1504,16 @@
             var filterValueChangeHandler = useCallback(
                 function (value) {
                     var nextValue = value || '';
+
+                    if (nextValue === searchValue) {
+                        return;
+                    }
+
                     setSearchValue(nextValue);
                     setCurrentPage(1);
-                    setFetchedInstances([]);
                     setHasMoreResults(true);
                 },
-                [setSearchValue, setCurrentPage, setFetchedInstances, setHasMoreResults]
+                [searchValue, setSearchValue, setCurrentPage, setHasMoreResults]
             );
 
             var debouncedFilterUpdate = useAsyncDebounce(filterValueChangeHandler, 250);
@@ -2235,6 +2246,8 @@
                         onFilterValueChange: function (value) {
                             debouncedFilterUpdate(value);
                         },
+                        __nextHasNoMarginBottom: true,
+                        __next40pxDefaultSize: true,
                         help: __('Utilisez la recherche pour trouver un contenu « mon_affichage ». Les résultats se chargent au fur et à mesure.', 'mon-articles'),
                     }),
                     listData && listData.isResolving
@@ -3113,6 +3126,8 @@
                         setInspectorSearch(value);
                     },
                     placeholder: __('Filtrer les sections…', 'mon-articles'),
+                    help: __('Ce champ filtre uniquement les sections de réglages affichées dans le panneau.', 'mon-articles'),
+                    __nextHasNoMarginBottom: true,
                 });
             } else {
                 searchField = el(TextControl, {
@@ -3121,6 +3136,7 @@
                     onChange: function (value) {
                         setInspectorSearch(value);
                     },
+                    help: __('Ce champ filtre uniquement les sections de réglages affichées dans le panneau.', 'mon-articles'),
                 });
             }
 
@@ -3140,40 +3156,65 @@
             ];
 
             var modeButtons = null;
-            var buildModeButton = function (option) {
-                var isActive = inspectorModeNormalized === option.key;
-                return el(
-                    Button,
+
+            if (ToggleGroupControl && ToggleGroupControlOption) {
+                modeButtons = el(
+                    ToggleGroupControl,
                     {
-                        key: option.key,
-                        variant: isActive ? 'primary' : 'secondary',
-                        isPressed: isActive,
-                        'aria-pressed': isActive,
-                        onClick: function () {
-                            if (!isActive) {
-                                setInspectorMode(option.key);
+                        className: 'my-articles-inspector-panel__mode-buttons',
+                        label: __('Choisir un mode d’édition', 'mon-articles'),
+                        value: inspectorModeNormalized,
+                        isBlock: true,
+                        onChange: function (value) {
+                            if (value && value !== inspectorModeNormalized) {
+                                setInspectorMode(value);
                             }
                         },
                     },
-                    option.label
-                );
-            };
-
-            if (ButtonGroup) {
-                modeButtons = el(
-                    ButtonGroup,
-                    {
-                        className: 'my-articles-inspector-panel__mode-buttons',
-                        'aria-label': __('Choisir un mode d’édition', 'mon-articles'),
-                    },
-                    modeButtonOptions.map(buildModeButton)
+                    modeButtonOptions.map(function (option) {
+                        return el(ToggleGroupControlOption, {
+                            key: option.key,
+                            value: option.key,
+                            label: option.label,
+                        });
+                    })
                 );
             } else {
-                modeButtons = el(
-                    'div',
-                    { className: 'my-articles-inspector-panel__mode-buttons is-fallback' },
-                    modeButtonOptions.map(buildModeButton)
-                );
+                var buildModeButton = function (option) {
+                    var isActive = inspectorModeNormalized === option.key;
+                    return el(
+                        Button,
+                        {
+                            key: option.key,
+                            variant: isActive ? 'primary' : 'secondary',
+                            isPressed: isActive,
+                            'aria-pressed': isActive,
+                            onClick: function () {
+                                if (!isActive) {
+                                    setInspectorMode(option.key);
+                                }
+                            },
+                        },
+                        option.label
+                    );
+                };
+
+                if (ButtonGroup) {
+                    modeButtons = el(
+                        ButtonGroup,
+                        {
+                            className: 'my-articles-inspector-panel__mode-buttons',
+                            'aria-label': __('Choisir un mode d’édition', 'mon-articles'),
+                        },
+                        modeButtonOptions.map(buildModeButton)
+                    );
+                } else {
+                    modeButtons = el(
+                        'div',
+                        { className: 'my-articles-inspector-panel__mode-buttons is-fallback' },
+                        modeButtonOptions.map(buildModeButton)
+                    );
+                }
             }
 
             var modeDescription = inspectorModeDescriptions[inspectorModeNormalized] || '';
