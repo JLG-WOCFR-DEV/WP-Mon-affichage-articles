@@ -142,6 +142,8 @@ class My_Articles_Enqueue {
                 );
             }
 
+            $export = $inline_map;
+
             $catalog_json = wp_json_encode( $catalog );
             $map_json     = wp_json_encode( $inline_map );
 
