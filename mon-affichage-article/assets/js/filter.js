@@ -1245,6 +1245,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (response && response.success) {
                         var responseData = response.data || {};
                         emitSuccess(responseData, durationMs);
@@ -1263,12 +1265,13 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(null, response, durationMs);
+                                var retryDurationMs = trackDuration();
+                                emitError(null, response, retryDurationMs);
 
                                 if (typeof callbacks.onError === 'function') {
-                                callbacks.onError(null, response);
-                            }
-                        });
+                                    callbacks.onError(null, response);
+                                }
+                            });
 
                         return;
                     }
@@ -1289,6 +1292,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         refreshRestNonce(filterSettings)
@@ -1296,7 +1301,8 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(jqXHR, null, durationMs);
+                                var retryDurationMs = trackDuration();
+                                emitError(jqXHR, null, retryDurationMs);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(jqXHR);
@@ -1328,7 +1334,7 @@
                     }
 
                     if (typeof callbacks.onComplete === 'function') {
-                        callbacks.onComplete(durationMs);
+                        callbacks.onComplete(trackDuration());
                     }
                 }
             });
