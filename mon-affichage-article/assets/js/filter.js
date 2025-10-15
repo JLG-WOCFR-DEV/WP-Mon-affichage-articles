@@ -1247,7 +1247,8 @@
 
                     if (response && response.success) {
                         var responseData = response.data || {};
-                        emitSuccess(responseData, durationMs);
+                        var successDuration = trackDuration();
+                        emitSuccess(responseData, successDuration);
 
                         if (typeof callbacks.onSuccess === 'function') {
                             callbacks.onSuccess(responseData, response);
@@ -1263,17 +1264,19 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(null, response, durationMs);
+                                var retryFailDuration = trackDuration();
+                                emitError(null, response, retryFailDuration);
 
                                 if (typeof callbacks.onError === 'function') {
-                                callbacks.onError(null, response);
-                            }
-                        });
+                                    callbacks.onError(null, response);
+                                }
+                            });
 
                         return;
                     }
 
-                    emitError(null, response, durationMs);
+                    var errorDuration = trackDuration();
+                    emitError(null, response, errorDuration);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(null, response);
@@ -1296,7 +1299,8 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                emitError(jqXHR, null, durationMs);
+                                var retryErrorDuration = trackDuration();
+                                emitError(jqXHR, null, retryErrorDuration);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(jqXHR);
@@ -1306,7 +1310,8 @@
                         return;
                     }
 
-                    emitError(jqXHR, null, durationMs);
+                    var ajaxErrorDuration = trackDuration();
+                    emitError(jqXHR, null, ajaxErrorDuration);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(jqXHR);
@@ -1328,7 +1333,8 @@
                     }
 
                     if (typeof callbacks.onComplete === 'function') {
-                        callbacks.onComplete(durationMs);
+                        var completeDuration = trackDuration();
+                        callbacks.onComplete(completeDuration);
                     }
                 }
             });
