@@ -2644,8 +2644,8 @@ JS;
         }
 
         $controls_attribute = '';
-        if ( $results_region_id ) {
-            $controls_attribute = ' aria-controls="' . esc_attr( $results_region_id ) . '"';
+        if ( $slider_id ) {
+            $controls_attribute = ' aria-controls="' . esc_attr( $slider_id ) . '"';
         }
 
         if ( $show_navigation ) {
@@ -2672,8 +2672,9 @@ JS;
         );
 
         if ( ! $is_active ) {
-            $attributes['tabindex']             = '-1';
+            $attributes['tabindex']               = '-1';
             $attributes['data-my-articles-inert'] = 'true';
+            $attributes['inert']                  = 'inert';
         }
 
         $attribute_strings = array();
@@ -2714,42 +2715,46 @@ JS;
         echo $this->get_empty_state_html();
     }
 
-    public function render_article_item($options, $is_pinned = false) {
+    public function render_article_item( $options, $is_pinned = false ) {
         $item_classes = 'my-article-item';
-        if ($is_pinned) { $item_classes .= ' is-pinned'; }
-        $display_mode = $options['display_mode'] ?? 'grid';
-        $taxonomy = $options['resolved_taxonomy'] ?? self::resolve_taxonomy( $options );
-        $enable_lazy_load = !empty($options['enable_lazy_load']);
-        $excerpt_more = __( '…', 'mon-articles' );
+
+        if ( $is_pinned ) {
+            $item_classes .= ' is-pinned';
+        }
+
+        $display_mode     = isset( $options['display_mode'] ) ? $options['display_mode'] : 'grid';
+        $taxonomy         = isset( $options['resolved_taxonomy'] ) ? $options['resolved_taxonomy'] : self::resolve_taxonomy( $options );
+        $enable_lazy_load = ! empty( $options['enable_lazy_load'] );
+        $excerpt_more     = __( '…', 'mon-articles' );
         ?>
-        <article class="<?php echo esc_attr($item_classes); ?>">
+        <article class="<?php echo esc_attr( $item_classes ); ?>">
             <?php
-            if ($display_mode === 'list') {
-                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more);
+            if ( 'list' === $display_mode ) {
+                $this->render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more );
             } else {
-                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '');
+                $this->render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '' );
             }
             ?>
         </article>
         <?php
     }
 
-    private function render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more) {
+    private function render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more ) {
         $permalink     = get_permalink();
         $escaped_link  = esc_url( $permalink );
         $raw_title     = get_the_title();
         $title_attr    = esc_attr( $raw_title );
         $title_display = esc_html( $raw_title );
-        $title_plain   = trim( wp_strip_all_tags( $raw_title ) );
         $term_names    = array();
 
-        if ( $options['show_category'] && ! empty( $taxonomy ) ) {
+        if ( ! empty( $options['show_category'] ) && ! empty( $taxonomy ) ) {
             $terms = get_the_terms( get_the_ID(), $taxonomy );
 
             if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
                 $term_names = array_map( 'sanitize_text_field', wp_list_pluck( $terms, 'name' ) );
             }
         }
+
         $title_id       = 'my-article-title-' . get_the_ID();
         $excerpt_id     = $title_id . '-excerpt';
         $read_more_text = isset( $options['excerpt_more_text'] ) ? trim( wp_strip_all_tags( (string) $options['excerpt_more_text'] ) ) : '';
@@ -2759,15 +2764,15 @@ JS;
         $should_render_excerpt = false;
 
         if ( ! empty( $options['show_excerpt'] ) ) {
-            $excerpt_length    = isset( $options['excerpt_length'] ) ? (int) $options['excerpt_length'] : 0;
-            $raw_excerpt       = get_the_excerpt();
-            $trimmed_excerpt   = '';
+            $excerpt_length  = isset( $options['excerpt_length'] ) ? (int) $options['excerpt_length'] : 0;
+            $raw_excerpt     = get_the_excerpt();
+            $trimmed_excerpt = '';
 
             if ( $excerpt_length > 0 ) {
                 $trimmed_excerpt = wp_trim_words( $raw_excerpt, $excerpt_length, $excerpt_more );
             }
 
-            $has_excerpt_content = '' !== trim( strip_tags( $trimmed_excerpt ) );
+            $has_excerpt_content = '' !== trim( wp_strip_all_tags( $trimmed_excerpt ) );
 
             if ( $has_excerpt_content || $has_read_more ) {
                 ob_start();
@@ -2800,7 +2805,6 @@ JS;
         if ( $should_render_excerpt ) {
             $link_attributes['aria-describedby'] = $excerpt_id;
         }
-
         ?>
         <a
             <?php
@@ -2814,42 +2818,50 @@ JS;
             ?>
         >
             <div class="article-thumbnail-wrapper">
-                <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
-                <span class="article-thumbnail-link">
-                <?php if (has_post_thumbnail()):
-                    $image_id = get_post_thumbnail_id();
-                    $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
-
-                    if ( '' !== $thumbnail_html ) {
-                        echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-                    } else {
-                        $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
-                        the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
-                    }
-                else: ?>
-                    <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
-                    <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
+                <?php if ( $is_pinned && ! empty( $options['pinned_show_badge'] ) ) : ?>
+                    <span class="my-article-badge"><?php echo esc_html( $options['pinned_badge_text'] ); ?></span>
                 <?php endif; ?>
+                <span class="article-thumbnail-link">
+                    <?php if ( has_post_thumbnail() ) : ?>
+                        <?php
+                        $image_id       = get_post_thumbnail_id();
+                        $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
+
+                        if ( '' !== $thumbnail_html ) {
+                            echo $thumbnail_html; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                        } else {
+                            $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
+                            the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
+                        }
+                        ?>
+                    <?php else : ?>
+                        <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
+                        <img src="<?php echo esc_url( $fallback_placeholder ); ?>" alt="<?php esc_attr_e( 'Image non disponible', 'mon-articles' ); ?>">
+                    <?php endif; ?>
                 </span>
             </div>
-            <div class="<?php echo esc_attr($wrapper_class); ?>">
+            <div class="<?php echo esc_attr( $wrapper_class ); ?>">
                 <h2 class="article-title" id="<?php echo esc_attr( $title_id ); ?>">
                     <span class="article-title-link"><?php echo $title_display; ?></span>
                 </h2>
-                <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
+                <?php if ( ! empty( $options['show_category'] ) || ! empty( $options['show_author'] ) || ! empty( $options['show_date'] ) ) : ?>
                     <div class="article-meta">
-                        <?php if ($options['show_category'] && !empty($taxonomy) && !empty($term_names)) : ?>
+                        <?php if ( ! empty( $options['show_category'] ) && ! empty( $taxonomy ) && ! empty( $term_names ) ) : ?>
                             <span class="article-category"><?php echo esc_html( implode( ', ', $term_names ) ); ?></span>
                         <?php endif; ?>
-                        <?php if ( $options['show_author'] ) : ?>
-                            <span class="article-author"><?php printf('%s %s', esc_html__( 'par', 'mon-articles' ), esc_html( get_the_author() ) ); ?></span>
+                        <?php if ( ! empty( $options['show_author'] ) ) : ?>
+                            <span class="article-author"><?php printf( '%s %s', esc_html__( 'par', 'mon-articles' ), esc_html( get_the_author() ) ); ?></span>
                         <?php endif; ?>
-                        <?php if ($options['show_date']) : ?>
-                            <span class="article-date"><?php echo esc_html(get_the_date()); ?></span>
+                        <?php if ( ! empty( $options['show_date'] ) ) : ?>
+                            <span class="article-date"><?php echo esc_html( get_the_date() ); ?></span>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
-                <?php if ( $should_render_excerpt ) { echo $excerpt_markup; } ?>
+                <?php
+                if ( $should_render_excerpt ) {
+                    echo $excerpt_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                }
+                ?>
             </div>
         </a>
         <?php
@@ -2952,17 +2964,17 @@ JS;
         return $image_html;
     }
 
-    private function enqueue_swiper_scripts($options, $instance_id) {
-        wp_enqueue_style('swiper-css');
-        wp_enqueue_script('swiper-js');
-        wp_enqueue_script('my-articles-swiper-init');
+    private function enqueue_swiper_scripts( $options, $instance_id ) {
+        wp_enqueue_style( 'swiper-css' );
+        wp_enqueue_script( 'swiper-js' );
+        wp_enqueue_script( 'my-articles-swiper-init' );
 
         $autoplay_settings = array(
-            'enabled'                 => ! empty( $options['slideshow_autoplay'] ),
-            'delay'                   => (int) $options['slideshow_delay'],
-            'pause_on_interaction'    => ! empty( $options['slideshow_pause_on_interaction'] ),
-            'pause_on_mouse_enter'    => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
-            'respect_reduced_motion'  => ! empty( $options['slideshow_respect_reduced_motion'] ),
+            'enabled'                => ! empty( $options['slideshow_autoplay'] ),
+            'delay'                  => (int) $options['slideshow_delay'],
+            'pause_on_interaction'   => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter'   => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
         );
 
         $slider_id = 'my-articles-slideshow-' . (int) $instance_id;
@@ -3015,7 +3027,7 @@ JS;
             );
         }
     }
-    
+
     /**
      * Builds the HTML markup for numbered pagination links.
      *
