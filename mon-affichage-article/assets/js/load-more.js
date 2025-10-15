@@ -954,6 +954,78 @@
         return state;
     }
 
+    function getResultsContainer(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        var targetId = wrapper.attr('data-results-target');
+
+        if (targetId && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+            try {
+                var directNode = document.getElementById(targetId);
+
+                if (directNode) {
+                    return $(directNode);
+                }
+            } catch (error) {
+                // Ignore lookup errors and fallback to query selection.
+            }
+        }
+
+        var results = wrapper.find('[data-my-articles-role="results"]').first();
+
+        if (results.length) {
+            return results;
+        }
+
+        return $();
+    }
+
+    function setBusyState(wrapper, isBusy) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var busyValue = isBusy ? 'true' : 'false';
+        wrapper.attr('aria-busy', busyValue);
+
+        var results = getResultsContainer(wrapper);
+
+        if (results.length) {
+            results.attr('aria-busy', busyValue);
+
+            if (isBusy) {
+                results.attr('data-loading', 'true');
+            } else {
+                results.removeAttr('data-loading');
+            }
+        }
+    }
+
+    function getTimeMarker() {
+        if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+            return performance.now();
+        }
+
+        return Date.now();
+    }
+
+    function createDurationTracker() {
+        var start = getTimeMarker();
+
+        return function () {
+            var end = getTimeMarker();
+            var duration = end - start;
+
+            if (!isFinite(duration) || duration < 0) {
+                duration = 0;
+            }
+
+            return duration;
+        };
+    }
+
     function detachScrollFallback(state) {
         if (!state || !state.eventNamespace) {
             return;
@@ -1514,6 +1586,7 @@
                 instanceKey: instanceKey,
                 requestToken: requestToken
             });
+            var trackDuration = createDurationTracker();
 
             $.ajax({
                 url: requestUrl,
@@ -1555,6 +1628,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (response && response.success) {
                         handleSuccessResponse(response, durationMs);
                         return;
@@ -1568,7 +1643,8 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                handleErrorResponse(null, response, durationMs);
+                                var retryDurationMs = trackDuration();
+                                handleErrorResponse(null, response, retryDurationMs);
                             });
 
                         return;
@@ -1585,6 +1661,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
                         instrumentationDetail.hadNonceRefresh = true;
@@ -1593,7 +1671,8 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                handleErrorResponse(jqXHR, null, durationMs);
+                                var retryDurationMs = trackDuration();
+                                handleErrorResponse(jqXHR, null, retryDurationMs);
                             });
 
                         return;
@@ -1622,8 +1701,9 @@
                         wrapper.removeClass('is-loading-more');
                     }
 
-                    instrumentationDetail.lastDurationMs = typeof durationMs === 'number' && isFinite(durationMs)
-                        ? Math.max(durationMs, 0)
+                    var completeDurationMs = trackDuration();
+                    instrumentationDetail.lastDurationMs = typeof completeDurationMs === 'number' && isFinite(completeDurationMs)
+                        ? Math.max(completeDurationMs, 0)
                         : null;
                 }
             });
