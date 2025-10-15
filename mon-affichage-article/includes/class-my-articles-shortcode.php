@@ -2643,14 +2643,57 @@ JS;
             echo '<div class="swiper-pagination" role="tablist" aria-label="' . $pagination_label . '"></div>';
         }
 
-        $controls_attribute = '';
-        if ( $slider_id ) {
-            $controls_attribute = ' aria-controls="' . esc_attr( $slider_id ) . '"';
-        }
-
         if ( $show_navigation ) {
-            echo '<button type="button" class="swiper-button-next" aria-label="' . $next_slide_label . '"' . $controls_attribute . '></button>';
-            echo '<button type="button" class="swiper-button-prev" aria-label="' . $previous_slide_label . '"' . $controls_attribute . '></button>';
+            $loop_enabled        = ! empty( $options['slideshow_loop'] );
+            $has_multiple_slides = $post_count > 1;
+
+            $navigation_states = array(
+                'next' => ! $has_multiple_slides,
+                'prev' => ! $has_multiple_slides || ! $loop_enabled,
+            );
+
+            $buttons = array(
+                array(
+                    'class'       => 'swiper-button-next',
+                    'label'       => $next_slide_label,
+                    'is_disabled' => $navigation_states['next'],
+                ),
+                array(
+                    'class'       => 'swiper-button-prev',
+                    'label'       => $previous_slide_label,
+                    'is_disabled' => $navigation_states['prev'],
+                ),
+            );
+
+            foreach ( $buttons as $button ) {
+                $attributes = array(
+                    'type'          => 'button',
+                    'class'         => $button['class'],
+                    'aria-label'    => $button['label'],
+                    'aria-disabled' => $button['is_disabled'] ? 'true' : 'false',
+                );
+
+                if ( $slider_id ) {
+                    $attributes['aria-controls'] = $slider_id;
+                }
+
+                if ( $button['is_disabled'] ) {
+                    $attributes['tabindex'] = '-1';
+                    $attributes['disabled'] = 'disabled';
+                }
+
+                $attribute_strings = array();
+
+                foreach ( $attributes as $attribute => $value ) {
+                    if ( '' === $value ) {
+                        continue;
+                    }
+
+                    $attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+                }
+
+                echo '<button ' . implode( ' ', $attribute_strings ) . '></button>';
+            }
         }
         echo '</div>';
         echo '</div>';
