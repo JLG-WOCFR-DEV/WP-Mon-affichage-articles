@@ -2306,7 +2306,7 @@ JS;
         );
 
         if ( $options['display_mode'] === 'slideshow' ) {
-            $this->render_slideshow( $pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id, $adapter_items );
+            $this->render_slideshow( $pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id, $adapter_items, $id );
         } elseif ( $options['display_mode'] === 'list' ) {
             $displayed_pinned_ids = $this->render_list( $pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id, $adapter_items );
             if ( ! is_array( $displayed_pinned_ids ) ) {
@@ -2554,7 +2554,7 @@ JS;
         return $this->render_articles_in_container( $pinned_query, $regular_query, $options, $posts_per_page, 'my-articles-grid-content', $results_region_id, $adapter_items );
     }
 
-    private function render_slideshow( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
+    private function render_slideshow( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id = '', array $adapter_items = array(), $instance_id = 0 ) {
         $is_unlimited       = (int) $posts_per_page <= 0;
         $total_posts_needed = $is_unlimited ? PHP_INT_MAX : (int) $posts_per_page;
 
@@ -2563,30 +2563,38 @@ JS;
         $next_slide_label      = esc_attr( __( 'Aller à la diapositive suivante', 'mon-articles' ) );
         $previous_slide_label  = esc_attr( __( 'Revenir à la diapositive précédente', 'mon-articles' ) );
 
+        $slider_id             = 'my-articles-slideshow-' . (int) $instance_id;
+        $slide_role_description = esc_attr__( 'Diapositive', 'mon-articles' );
+
         echo '<div class="swiper-accessibility-wrapper" role="region" aria-roledescription="carousel" aria-label="' . $carousel_label . '">';
         $show_navigation  = ! empty( $options['slideshow_show_navigation'] );
         $show_pagination  = ! empty( $options['slideshow_show_pagination'] );
 
-        echo '<div class="swiper-container"><div class="swiper-wrapper">';
-        $post_count = 0;
+        echo '<div class="swiper-container" id="' . esc_attr( $slider_id ) . '" aria-live="polite"><div class="swiper-wrapper">';
+        $post_count     = 0;
+        $slide_position = 1;
 
         if ( $pinned_query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() && $post_count < $total_posts_needed ) {
                 $pinned_query->the_post();
-                echo '<div class="swiper-slide">';
+                $is_active = 0 === $post_count;
+                $this->render_accessible_slide_opening_tag( $is_active, $slide_position, $slide_role_description );
                 $this->render_article_item( $options, true );
                 echo '</div>';
                 $post_count++;
+                $slide_position++;
             }
         }
 
         if ( $regular_query && $regular_query->have_posts() ) {
             while ( $regular_query->have_posts() && $post_count < $total_posts_needed ) {
                 $regular_query->the_post();
-                echo '<div class="swiper-slide">';
+                $is_active = 0 === $post_count;
+                $this->render_accessible_slide_opening_tag( $is_active, $slide_position, $slide_role_description );
                 $this->render_article_item( $options, false );
                 echo '</div>';
                 $post_count++;
+                $slide_position++;
             }
         }
 
@@ -2606,13 +2614,17 @@ JS;
                     $adapter_post_processed = true;
                     $post = $adapter_item['post'];
                     setup_postdata( $post );
-                    echo '<div class="swiper-slide">';
+                    $this->render_accessible_slide_opening_tag( 0 === $post_count, $slide_position, $slide_role_description );
                     $this->render_article_item( $options, false );
                     echo '</div>';
                     $post_count++;
+                    $slide_position++;
                 } elseif ( 'html' === $adapter_item['type'] && isset( $adapter_item['html'] ) ) {
-                    echo '<div class="swiper-slide swiper-slide-external">' . $adapter_item['html'] . '</div>';
+                    $this->render_accessible_slide_opening_tag( 0 === $post_count, $slide_position, $slide_role_description, 'swiper-slide swiper-slide-external' );
+                    echo $adapter_item['html'];
+                    echo '</div>';
                     $post_count++;
+                    $slide_position++;
                 }
             }
 
@@ -2628,17 +2640,60 @@ JS;
         echo '</div>';
 
         if ( $show_pagination ) {
-            echo '<div class="swiper-pagination" aria-label="' . $pagination_label . '"></div>';
-        }
-
-        $controls_attribute = '';
-        if ( $results_region_id ) {
-            $controls_attribute = ' aria-controls="' . esc_attr( $results_region_id ) . '"';
+            echo '<div class="swiper-pagination" role="tablist" aria-label="' . $pagination_label . '"></div>';
         }
 
         if ( $show_navigation ) {
-            echo '<button type="button" class="swiper-button-next" aria-label="' . $next_slide_label . '"' . $controls_attribute . '></button>';
-            echo '<button type="button" class="swiper-button-prev" aria-label="' . $previous_slide_label . '"' . $controls_attribute . '></button>';
+            $loop_enabled        = ! empty( $options['slideshow_loop'] );
+            $has_multiple_slides = $post_count > 1;
+
+            $navigation_states = array(
+                'next' => ! $has_multiple_slides,
+                'prev' => ! $has_multiple_slides || ! $loop_enabled,
+            );
+
+            $buttons = array(
+                array(
+                    'class'       => 'swiper-button-next',
+                    'label'       => $next_slide_label,
+                    'is_disabled' => $navigation_states['next'],
+                ),
+                array(
+                    'class'       => 'swiper-button-prev',
+                    'label'       => $previous_slide_label,
+                    'is_disabled' => $navigation_states['prev'],
+                ),
+            );
+
+            foreach ( $buttons as $button ) {
+                $attributes = array(
+                    'type'          => 'button',
+                    'class'         => $button['class'],
+                    'aria-label'    => $button['label'],
+                    'aria-disabled' => $button['is_disabled'] ? 'true' : 'false',
+                );
+
+                if ( $slider_id ) {
+                    $attributes['aria-controls'] = $slider_id;
+                }
+
+                if ( $button['is_disabled'] ) {
+                    $attributes['tabindex'] = '-1';
+                    $attributes['disabled'] = 'disabled';
+                }
+
+                $attribute_strings = array();
+
+                foreach ( $attributes as $attribute => $value ) {
+                    if ( '' === $value ) {
+                        continue;
+                    }
+
+                    $attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+                }
+
+                echo '<button ' . implode( ' ', $attribute_strings ) . '></button>';
+            }
         }
         echo '</div>';
         echo '</div>';
@@ -2648,66 +2703,171 @@ JS;
         }
     }
 
+    private function render_accessible_slide_opening_tag( $is_active, $position, $role_description, $class_names = 'swiper-slide' ) {
+        $class_names = trim( $class_names );
+
+        $attributes = array(
+            'class'                 => $class_names,
+            'role'                  => 'group',
+            'aria-roledescription'  => $role_description,
+            'data-slide-position'    => max( 1, (int) $position ),
+            'aria-hidden'           => $is_active ? 'false' : 'true',
+        );
+
+        if ( ! $is_active ) {
+            $attributes['tabindex']               = '-1';
+            $attributes['data-my-articles-inert'] = 'true';
+            $attributes['inert']                  = 'inert';
+        }
+
+        $attribute_strings = array();
+        foreach ( $attributes as $attribute => $value ) {
+            if ( '' === $value ) {
+                continue;
+            }
+
+            $attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+        }
+
+        echo '<div ' . implode( ' ', $attribute_strings ) . '>';
+    }
+
     public function get_empty_state_html() {
         return '<p style="text-align: center; width: 100%; padding: 20px;">' . esc_html__( 'Aucun article trouvé dans cette catégorie.', 'mon-articles' ) . '</p>';
     }
 
     public function get_empty_state_slide_html() {
-        return '<div class="swiper-slide swiper-slide-empty">' . $this->get_empty_state_html() . '</div>';
+        ob_start();
+        $this->render_accessible_slide_opening_tag( true, 1, esc_attr__( 'Diapositive', 'mon-articles' ), 'swiper-slide swiper-slide-empty' );
+        echo $this->get_empty_state_html();
+        echo '</div>';
+
+        return ob_get_clean();
     }
 
     private function render_empty_state_message( $wrap_for_swiper = false ) {
         if ( $wrap_for_swiper ) {
-            echo $this->get_empty_state_slide_html();
+            ob_start();
+            $this->render_accessible_slide_opening_tag( true, 1, esc_attr__( 'Diapositive', 'mon-articles' ), 'swiper-slide swiper-slide-empty' );
+            echo $this->get_empty_state_html();
+            echo '</div>';
+            echo ob_get_clean();
             return;
         }
 
         echo $this->get_empty_state_html();
     }
 
-    public function render_article_item($options, $is_pinned = false) {
+    public function render_article_item( $options, $is_pinned = false ) {
         $item_classes = 'my-article-item';
-        if ($is_pinned) { $item_classes .= ' is-pinned'; }
-        $display_mode = $options['display_mode'] ?? 'grid';
-        $taxonomy = $options['resolved_taxonomy'] ?? self::resolve_taxonomy( $options );
-        $enable_lazy_load = !empty($options['enable_lazy_load']);
-        $excerpt_more = __( '…', 'mon-articles' );
+
+        if ( $is_pinned ) {
+            $item_classes .= ' is-pinned';
+        }
+
+        $display_mode     = isset( $options['display_mode'] ) ? $options['display_mode'] : 'grid';
+        $taxonomy         = isset( $options['resolved_taxonomy'] ) ? $options['resolved_taxonomy'] : self::resolve_taxonomy( $options );
+        $enable_lazy_load = ! empty( $options['enable_lazy_load'] );
+        $excerpt_more     = __( '…', 'mon-articles' );
         ?>
-        <article class="<?php echo esc_attr($item_classes); ?>">
+        <article class="<?php echo esc_attr( $item_classes ); ?>">
             <?php
-            if ($display_mode === 'list') {
-                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more);
+            if ( 'list' === $display_mode ) {
+                $this->render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-content-wrapper', $excerpt_more );
             } else {
-                $this->render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '');
+                $this->render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, 'article-title-wrapper', '' );
             }
             ?>
         </article>
         <?php
     }
 
-    private function render_article_common_block($options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more) {
+    private function render_article_common_block( $options, $is_pinned, $taxonomy, $enable_lazy_load, $wrapper_class, $excerpt_more ) {
         $permalink     = get_permalink();
         $escaped_link  = esc_url( $permalink );
         $raw_title     = get_the_title();
         $title_attr    = esc_attr( $raw_title );
         $title_display = esc_html( $raw_title );
-        $title_plain   = trim( wp_strip_all_tags( $raw_title ) );
         $term_names    = array();
 
-        if ( $options['show_category'] && ! empty( $taxonomy ) ) {
+        if ( ! empty( $options['show_category'] ) && ! empty( $taxonomy ) ) {
             $terms = get_the_terms( get_the_ID(), $taxonomy );
 
             if ( ! is_wp_error( $terms ) && ! empty( $terms ) ) {
                 $term_names = array_map( 'sanitize_text_field', wp_list_pluck( $terms, 'name' ) );
             }
         }
+
+        $title_id       = 'my-article-title-' . get_the_ID();
+        $excerpt_id     = $title_id . '-excerpt';
+        $read_more_text = isset( $options['excerpt_more_text'] ) ? trim( wp_strip_all_tags( (string) $options['excerpt_more_text'] ) ) : '';
+        $has_read_more  = '' !== $read_more_text;
+
+        $excerpt_markup        = '';
+        $should_render_excerpt = false;
+
+        if ( ! empty( $options['show_excerpt'] ) ) {
+            $excerpt_length  = isset( $options['excerpt_length'] ) ? (int) $options['excerpt_length'] : 0;
+            $raw_excerpt     = get_the_excerpt();
+            $trimmed_excerpt = '';
+
+            if ( $excerpt_length > 0 ) {
+                $trimmed_excerpt = wp_trim_words( $raw_excerpt, $excerpt_length, $excerpt_more );
+            }
+
+            $has_excerpt_content = '' !== trim( wp_strip_all_tags( $trimmed_excerpt ) );
+
+            if ( $has_excerpt_content || $has_read_more ) {
+                ob_start();
+                ?>
+                <div class="my-article-excerpt" id="<?php echo esc_attr( $excerpt_id ); ?>">
+                    <?php
+                    if ( $has_excerpt_content ) {
+                        echo wp_kses_post( $trimmed_excerpt );
+                    }
+
+                    if ( $has_read_more ) {
+                        ?>
+                        <span class="my-article-read-more" aria-hidden="true"><?php echo esc_html( $read_more_text ); ?></span>
+                        <?php
+                    }
+                    ?>
+                </div>
+                <?php
+                $excerpt_markup        = (string) ob_get_clean();
+                $should_render_excerpt = '' !== trim( $excerpt_markup );
+            }
+        }
+
+        $link_attributes = array(
+            'class'           => 'my-article-link',
+            'href'            => $escaped_link,
+            'aria-labelledby' => $title_id,
+        );
+
+        if ( $should_render_excerpt ) {
+            $link_attributes['aria-describedby'] = $excerpt_id;
+        }
         ?>
-        <div class="my-article-link">
+        <a
+            <?php
+            foreach ( $link_attributes as $attribute => $value ) {
+                if ( '' === $value ) {
+                    continue;
+                }
+
+                printf( ' %s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
+            }
+            ?>
+        >
             <div class="article-thumbnail-wrapper">
-                <?php if ($is_pinned && !empty($options['pinned_show_badge'])) : ?><span class="my-article-badge"><?php echo esc_html($options['pinned_badge_text']); ?></span><?php endif; ?>
-                <a href="<?php echo $escaped_link; ?>" class="article-thumbnail-link">
-                    <?php if (has_post_thumbnail()):
-                        $image_id = get_post_thumbnail_id();
+                <?php if ( $is_pinned && ! empty( $options['pinned_show_badge'] ) ) : ?>
+                    <span class="my-article-badge"><?php echo esc_html( $options['pinned_badge_text'] ); ?></span>
+                <?php endif; ?>
+                <span class="article-thumbnail-link">
+                    <?php if ( has_post_thumbnail() ) : ?>
+                        <?php
+                        $image_id       = get_post_thumbnail_id();
                         $thumbnail_html = $this->get_article_thumbnail_html( $image_id, $title_attr, $enable_lazy_load );
 
                         if ( '' !== $thumbnail_html ) {
@@ -2716,80 +2876,37 @@ JS;
                             $fallback_alt = $this->resolve_thumbnail_alt_text( $image_id, $title_attr );
                             the_post_thumbnail( 'large', array( 'alt' => $fallback_alt ) );
                         }
-                    else: ?>
+                        ?>
+                    <?php else : ?>
                         <?php $fallback_placeholder = MY_ARTICLES_PLUGIN_URL . 'assets/images/placeholder.svg'; ?>
-                        <img src="<?php echo esc_url($fallback_placeholder); ?>" alt="<?php esc_attr_e('Image non disponible', 'mon-articles'); ?>">
+                        <img src="<?php echo esc_url( $fallback_placeholder ); ?>" alt="<?php esc_attr_e( 'Image non disponible', 'mon-articles' ); ?>">
                     <?php endif; ?>
-                </a>
+                </span>
             </div>
-            <div class="<?php echo esc_attr($wrapper_class); ?>">
-                <h2 class="article-title">
-                    <a href="<?php echo $escaped_link; ?>" class="article-title-link"><?php echo $title_display; ?></a>
+            <div class="<?php echo esc_attr( $wrapper_class ); ?>">
+                <h2 class="article-title" id="<?php echo esc_attr( $title_id ); ?>">
+                    <span class="article-title-link"><?php echo $title_display; ?></span>
                 </h2>
-                <?php if ($options['show_category'] || $options['show_author'] || $options['show_date']) : ?>
+                <?php if ( ! empty( $options['show_category'] ) || ! empty( $options['show_author'] ) || ! empty( $options['show_date'] ) ) : ?>
                     <div class="article-meta">
-                        <?php if ($options['show_category'] && !empty($taxonomy) && !empty($term_names)) : ?>
+                        <?php if ( ! empty( $options['show_category'] ) && ! empty( $taxonomy ) && ! empty( $term_names ) ) : ?>
                             <span class="article-category"><?php echo esc_html( implode( ', ', $term_names ) ); ?></span>
                         <?php endif; ?>
-                        <?php if ( $options['show_author'] ) : ?>
-                            <span class="article-author"><?php printf('%s %s', esc_html__( 'par', 'mon-articles' ), esc_html( get_the_author() ) ); ?></span>
+                        <?php if ( ! empty( $options['show_author'] ) ) : ?>
+                            <span class="article-author"><?php printf( '%s %s', esc_html__( 'par', 'mon-articles' ), esc_html( get_the_author() ) ); ?></span>
                         <?php endif; ?>
-                        <?php if ($options['show_date']) : ?>
-                            <span class="article-date"><?php echo esc_html(get_the_date()); ?></span>
+                        <?php if ( ! empty( $options['show_date'] ) ) : ?>
+                            <span class="article-date"><?php echo esc_html( get_the_date() ); ?></span>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
                 <?php
-                if (!empty($options['show_excerpt'])) {
-                    $excerpt_length  = isset($options['excerpt_length']) ? (int) $options['excerpt_length'] : 0;
-                    $raw_excerpt       = get_the_excerpt();
-                    $trimmed_excerpt   = '';
-                    $read_more_text    = isset( $options['excerpt_more_text'] ) ? trim( wp_strip_all_tags( (string) $options['excerpt_more_text'] ) ) : '';
-                    $has_read_more     = '' !== $read_more_text;
-
-                    if ($excerpt_length > 0) {
-                        $trimmed_excerpt = wp_trim_words($raw_excerpt, $excerpt_length, $excerpt_more);
-                    }
-
-                    $has_excerpt_content = '' !== trim(strip_tags($trimmed_excerpt));
-
-                    if ($has_excerpt_content || $has_read_more) {
-                        ?>
-                    <div class="my-article-excerpt">
-                        <?php
-                        if ($has_excerpt_content) {
-                            echo wp_kses_post($trimmed_excerpt);
-                        }
-
-                        if ($has_read_more) {
-                            $read_more_label = $read_more_text;
-
-                            if ( '' !== $title_plain ) {
-                                $read_more_label = sprintf(
-                                    /* translators: 1: Read more link text, 2: article title. */
-                                    __( '%1$s: %2$s', 'mon-articles' ),
-                                    $read_more_text,
-                                    $title_plain
-                                );
-                            }
-                            ?>
-                            <a
-                                class="my-article-read-more"
-                                href="<?php echo $escaped_link; ?>"
-                                aria-label="<?php echo esc_attr( $read_more_label ); ?>"
-                            >
-                                <?php echo esc_html( $read_more_text ); ?>
-                            </a>
-                            <?php
-                        }
-                        ?>
-                    </div>
-                    <?php
-                    }
+                if ( $should_render_excerpt ) {
+                    echo $excerpt_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                 }
                 ?>
             </div>
-        </div>
+        </a>
         <?php
     }
 
@@ -2890,18 +3007,20 @@ JS;
         return $image_html;
     }
 
-    private function enqueue_swiper_scripts($options, $instance_id) {
-        wp_enqueue_style('swiper-css');
-        wp_enqueue_script('swiper-js');
-        wp_enqueue_script('my-articles-swiper-init');
+    private function enqueue_swiper_scripts( $options, $instance_id ) {
+        wp_enqueue_style( 'swiper-css' );
+        wp_enqueue_script( 'swiper-js' );
+        wp_enqueue_script( 'my-articles-swiper-init' );
 
         $autoplay_settings = array(
-            'enabled'                 => ! empty( $options['slideshow_autoplay'] ),
-            'delay'                   => (int) $options['slideshow_delay'],
-            'pause_on_interaction'    => ! empty( $options['slideshow_pause_on_interaction'] ),
-            'pause_on_mouse_enter'    => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
-            'respect_reduced_motion'  => ! empty( $options['slideshow_respect_reduced_motion'] ),
+            'enabled'                => ! empty( $options['slideshow_autoplay'] ),
+            'delay'                  => (int) $options['slideshow_delay'],
+            'pause_on_interaction'   => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter'   => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
         );
+
+        $slider_id = 'my-articles-slideshow-' . (int) $instance_id;
 
         $localized_settings = array(
             'columns_mobile'                  => $options['columns_mobile'],
@@ -2915,6 +3034,7 @@ JS;
             'show_pagination'                 => ! empty( $options['slideshow_show_pagination'] ),
             'respect_reduced_motion'          => ! empty( $options['slideshow_respect_reduced_motion'] ),
             'container_selector'              => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
+            'controlled_slider_selector'      => '#' . $slider_id,
             'a11y_prev_slide_message'         => __( 'Diapositive précédente', 'mon-articles' ),
             'a11y_next_slide_message'         => __( 'Diapositive suivante', 'mon-articles' ),
             'a11y_first_slide_message'        => __( 'Première diapositive', 'mon-articles' ),
@@ -2950,7 +3070,7 @@ JS;
             );
         }
     }
-    
+
     /**
      * Builds the HTML markup for numbered pagination links.
      *

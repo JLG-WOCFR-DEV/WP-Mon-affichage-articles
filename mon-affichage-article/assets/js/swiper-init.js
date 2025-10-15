@@ -10,6 +10,343 @@
 
     const doc = root && root.document;
 
+    function escapeAttribute(value) {
+        if (value === null || value === undefined) {
+            return '';
+        }
+
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
+    function formatMessage(template, replacements) {
+        if (typeof template !== 'string' || !template) {
+            return '';
+        }
+
+        return template.replace(/{{\s*(\w+)\s*}}/g, function (match, key) {
+            if (Object.prototype.hasOwnProperty.call(replacements, key)) {
+                return String(replacements[key]);
+            }
+
+            return match;
+        });
+    }
+
+    function getIdFromSelector(selector) {
+        if (typeof selector !== 'string') {
+            return '';
+        }
+
+        const trimmed = selector.trim();
+        if (!trimmed) {
+            return '';
+        }
+
+        if ('#' === trimmed.charAt(0)) {
+            return trimmed.slice(1);
+        }
+
+        return trimmed;
+    }
+
+    function applyInert(slide, shouldInert) {
+        if (!slide) {
+            return;
+        }
+
+        if (shouldInert) {
+            slide.setAttribute('inert', '');
+        } else {
+            slide.removeAttribute('inert');
+        }
+
+        if ('inert' in slide) {
+            try {
+                slide.inert = shouldInert;
+            } catch (error) {
+                // Ignore failures when the property is read-only.
+            }
+        }
+    }
+
+    function updateSlideAccessibility(swiper, settings) {
+        if (!swiper) {
+            return;
+        }
+
+        const slides = ensureArray(swiper.slides);
+        const totalSlides = slides.reduce(function (carry, slide) {
+            if (!slide || typeof slide.getAttribute !== 'function') {
+                return carry;
+            }
+
+            const candidate = Number(slide.getAttribute('data-slide-position'));
+            if (!Number.isNaN(candidate) && candidate > carry) {
+                return candidate;
+            }
+
+            return carry;
+        }, 0) || slides.length;
+        const labelTemplate = settings && settings.a11y_slide_label_message ? settings.a11y_slide_label_message : '';
+
+        slides.forEach(function (slide, index) {
+            if (!slide) {
+                return;
+            }
+
+            const isActive =
+                (slide.classList && slide.classList.contains('swiper-slide-active')) ||
+                (slide.classList && slide.classList.contains('swiper-slide-duplicate-active'));
+            const positionAttribute = slide.getAttribute && slide.getAttribute('data-slide-position');
+            const numericPosition = Number(positionAttribute);
+            const logicalIndex = !Number.isNaN(numericPosition) && numericPosition > 0 ? numericPosition : index + 1;
+            slide.setAttribute('aria-hidden', isActive ? 'false' : 'true');
+
+            if (isActive) {
+                slide.removeAttribute('tabindex');
+                slide.removeAttribute('data-my-articles-inert');
+            } else {
+                slide.setAttribute('tabindex', '-1');
+                slide.setAttribute('data-my-articles-inert', 'true');
+            }
+
+            applyInert(slide, !isActive);
+
+            if (labelTemplate) {
+                const label = formatMessage(labelTemplate, {
+                    index: logicalIndex,
+                    slidesLength: totalSlides,
+                });
+
+                if (label) {
+                    slide.setAttribute('aria-label', label);
+                }
+            }
+        });
+    }
+
+    function updatePaginationState(swiper) {
+        if (!swiper || !swiper.pagination) {
+            return;
+        }
+
+        const bullets = ensureArray(swiper.pagination.bullets);
+        const activeClass = swiper.params && swiper.params.pagination ? swiper.params.pagination.bulletActiveClass : '';
+        const activeIndex = typeof swiper.realIndex === 'number' ? swiper.realIndex : swiper.activeIndex || 0;
+
+        bullets.forEach(function (bullet, index) {
+            if (!bullet) {
+                return;
+            }
+
+            const isActive = activeClass
+                ? bullet.classList && bullet.classList.contains(activeClass)
+                : index === activeIndex;
+
+            bullet.setAttribute('aria-selected', isActive ? 'true' : 'false');
+
+            if (isActive) {
+                bullet.setAttribute('aria-current', 'true');
+                bullet.removeAttribute('tabindex');
+            } else {
+                bullet.removeAttribute('aria-current');
+                bullet.setAttribute('tabindex', '-1');
+            }
+        });
+    }
+
+    function getLogicalSlides(swiper) {
+        const slides = ensureArray(swiper && swiper.slides);
+        return slides.filter(function (slide) {
+            if (!slide || !slide.classList) {
+                return false;
+            }
+
+            if (slide.classList.contains('swiper-slide-duplicate')) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    function setNavigationButtonState(button, disabled) {
+        if (!button || typeof button.setAttribute !== 'function') {
+            return;
+        }
+
+        const isDisabled = !!disabled;
+        button.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+
+        if (isDisabled) {
+            button.setAttribute('tabindex', '-1');
+            button.setAttribute('data-my-articles-nav-disabled', 'true');
+            button.setAttribute('disabled', 'disabled');
+
+            try {
+                button.disabled = true;
+            } catch (error) {
+                // Ignore assignment failures (e.g. read-only properties).
+            }
+
+            return;
+        }
+
+        button.removeAttribute('tabindex');
+        button.removeAttribute('data-my-articles-nav-disabled');
+        button.removeAttribute('disabled');
+
+        if (typeof button.disabled === 'boolean') {
+            button.disabled = false;
+        }
+    }
+
+    function updateNavigationState(swiper) {
+        if (!swiper || !swiper.navigation) {
+            return;
+        }
+
+        const loopEnabled = !!(swiper.params && swiper.params.loop);
+        const logicalSlides = getLogicalSlides(swiper);
+        const hasMultipleSlides = logicalSlides.length > 1;
+
+        const activeIndex = typeof swiper.realIndex === 'number'
+            ? swiper.realIndex
+            : typeof swiper.activeIndex === 'number'
+                ? swiper.activeIndex
+                : 0;
+
+        const atBeginning = typeof swiper.isBeginning === 'boolean' ? swiper.isBeginning : activeIndex <= 0;
+        const atEnd = typeof swiper.isEnd === 'boolean'
+            ? swiper.isEnd
+            : logicalSlides.length > 0
+                ? activeIndex >= logicalSlides.length - 1
+                : true;
+
+        const disablePrev = !hasMultipleSlides || (!loopEnabled && atBeginning);
+        const disableNext = !hasMultipleSlides || (!loopEnabled && atEnd);
+
+        ensureArray(swiper.navigation.prevEl).forEach(function (button) {
+            setNavigationButtonState(button, disablePrev);
+        });
+
+        ensureArray(swiper.navigation.nextEl).forEach(function (button) {
+            setNavigationButtonState(button, disableNext);
+        });
+    }
+
+    function handlePaginationKeydown(swiper, event) {
+        if (!event || !swiper) {
+            return;
+        }
+
+        const key = event.key || event.keyCode;
+        const bullets = ensureArray(swiper.pagination && swiper.pagination.bullets);
+        if (!bullets.length) {
+            return;
+        }
+
+        const activeIndex = typeof swiper.realIndex === 'number' ? swiper.realIndex : swiper.activeIndex || 0;
+        let targetIndex = activeIndex;
+
+        if (key === 'ArrowRight' || key === 'Right' || key === 39) {
+            targetIndex = activeIndex + 1;
+        } else if (key === 'ArrowLeft' || key === 'Left' || key === 37) {
+            targetIndex = activeIndex - 1;
+        } else if (key === 'Home' || key === 36) {
+            targetIndex = 0;
+        } else if (key === 'End' || key === 35) {
+            targetIndex = bullets.length - 1;
+        } else {
+            return;
+        }
+
+        if (targetIndex < 0) {
+            targetIndex = 0;
+        }
+
+        if (targetIndex >= bullets.length) {
+            targetIndex = bullets.length - 1;
+        }
+
+        event.preventDefault();
+
+        const bullet = bullets[targetIndex];
+        if (bullet && typeof bullet.click === 'function') {
+            bullet.click();
+        } else {
+            swiper.slideTo(targetIndex);
+        }
+
+        const focusTarget = bullets[targetIndex];
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+            focusTarget.focus();
+        }
+    }
+
+    function enhancePagination(swiper, settings) {
+        if (!swiper || !swiper.pagination) {
+            return;
+        }
+
+        const paginationEl = swiper.pagination.el;
+        if (!paginationEl) {
+            return;
+        }
+
+        if (!paginationEl.hasAttribute('role')) {
+            paginationEl.setAttribute('role', 'tablist');
+        }
+
+        paginationEl.setAttribute('aria-orientation', 'horizontal');
+
+        const bullets = ensureArray(swiper.pagination.bullets);
+        const sliderId = getIdFromSelector(settings && settings.controlled_slider_selector ? settings.controlled_slider_selector : '');
+        const logicalSlides = getLogicalSlides(swiper);
+        const totalSlides = logicalSlides.length || bullets.length || (swiper.slides ? ensureArray(swiper.slides).length : 0);
+        const labelTemplate = settings && settings.a11y_pagination_bullet_message ? settings.a11y_pagination_bullet_message : '';
+        const fallbackTemplate = settings && settings.a11y_slide_label_message ? settings.a11y_slide_label_message : '';
+
+        bullets.forEach(function (bullet, index) {
+            if (!bullet) {
+                return;
+            }
+
+            bullet.setAttribute('role', 'tab');
+            bullet.setAttribute('type', 'button');
+            bullet.setAttribute('aria-selected', 'false');
+            bullet.setAttribute('tabindex', '-1');
+            bullet.setAttribute('data-pagination-index', String(index));
+
+            if (sliderId) {
+                bullet.setAttribute('aria-controls', sliderId);
+            }
+
+            const currentIndex = index + 1;
+            const label = labelTemplate
+                ? formatMessage(labelTemplate, { index: currentIndex, slidesLength: totalSlides })
+                : fallbackTemplate
+                    ? formatMessage(fallbackTemplate, { index: currentIndex, slidesLength: totalSlides })
+                    : 'Slide ' + currentIndex;
+
+            if (label) {
+                bullet.setAttribute('aria-label', label);
+                bullet.setAttribute('title', label);
+            }
+        });
+
+        if (!paginationEl.hasAttribute('data-my-articles-pagination-listener')) {
+            paginationEl.addEventListener('keydown', handlePaginationKeydown.bind(null, swiper));
+            paginationEl.setAttribute('data-my-articles-pagination-listener', 'true');
+        }
+
+        updatePaginationState(swiper);
+    }
+
     function ensureArray(value) {
         if (!value) {
             return [];
@@ -245,6 +582,33 @@
             ? {
                   el: settings.container_selector + ' .swiper-pagination',
                   clickable: true,
+                  renderBullet: function (index, className) {
+                      const template = settings.a11y_pagination_bullet_message || '';
+                      const replacements = {
+                          index: index + 1,
+                      };
+                      let label = template ? formatMessage(template, replacements) : '';
+
+                      if (!label) {
+                          label = 'Slide ' + String(index + 1);
+                      }
+                      const sliderId = getIdFromSelector(settings.controlled_slider_selector || '');
+                      const controlsAttribute = sliderId
+                          ? ' aria-controls="' + escapeAttribute(sliderId) + '"'
+                          : '';
+
+                      return (
+                          '<button type="button" class="' +
+                          escapeAttribute(className) +
+                          '" role="tab" data-pagination-index="' +
+                          String(index) +
+                          '" aria-label="' +
+                          escapeAttribute(label || '') +
+                          '" aria-selected="false" tabindex="-1"' +
+                          controlsAttribute +
+                          '></button>'
+                      );
+                  },
               }
             : false;
 
@@ -297,9 +661,15 @@
                     }
 
                     preloadNeighbouringSlides(this);
+                    enhancePagination(this, settings);
+                    updateSlideAccessibility(this, settings);
+                    updateNavigationState(this);
                 },
                 slideChange: function () {
                     preloadNeighbouringSlides(this);
+                    updatePaginationState(this);
+                    updateSlideAccessibility(this, settings);
+                    updateNavigationState(this);
                 },
             },
         });
