@@ -1022,6 +1022,78 @@
         return state;
     }
 
+    function getResultsContainer(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        var targetId = wrapper.attr('data-results-target');
+
+        if (targetId && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+            try {
+                var directNode = document.getElementById(targetId);
+
+                if (directNode) {
+                    return $(directNode);
+                }
+            } catch (error) {
+                // Ignore lookup errors and fallback to query selection.
+            }
+        }
+
+        var results = wrapper.find('[data-my-articles-role="results"]').first();
+
+        if (results.length) {
+            return results;
+        }
+
+        return $();
+    }
+
+    function setBusyState(wrapper, isBusy) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var busyValue = isBusy ? 'true' : 'false';
+        wrapper.attr('aria-busy', busyValue);
+
+        var results = getResultsContainer(wrapper);
+
+        if (results.length) {
+            results.attr('aria-busy', busyValue);
+
+            if (isBusy) {
+                results.attr('data-loading', 'true');
+            } else {
+                results.removeAttr('data-loading');
+            }
+        }
+    }
+
+    function getTimeMarker() {
+        if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+            return performance.now();
+        }
+
+        return Date.now();
+    }
+
+    function createDurationTracker() {
+        var start = getTimeMarker();
+
+        return function () {
+            var end = getTimeMarker();
+            var duration = end - start;
+
+            if (!isFinite(duration) || duration < 0) {
+                duration = 0;
+            }
+
+            return duration;
+        };
+    }
+
     function detachScrollFallback(state) {
         if (!state || !state.eventNamespace) {
             return;
@@ -1624,6 +1696,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (response && response.success) {
                         var successDuration = trackDuration();
                         handleSuccessResponse(response, successDuration);
@@ -1656,6 +1730,8 @@
                     if (isStaleLoadMoreResponse(instanceKey, requestToken)) {
                         return;
                     }
+
+                    var durationMs = trackDuration();
 
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
