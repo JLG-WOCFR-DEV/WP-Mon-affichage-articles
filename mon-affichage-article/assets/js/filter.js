@@ -1245,6 +1245,8 @@
                         return;
                     }
 
+                    var durationMs = trackDuration();
+
                     if (response && response.success) {
                         var responseData = response.data || {};
                         var successDuration = trackDuration();
@@ -1291,6 +1293,8 @@
                     if (isStaleFilterResponse()) {
                         return;
                     }
+
+                    var durationMs = trackDuration();
 
                     if (!hasRetried && isInvalidNonceResponse(jqXHR)) {
                         hasRetried = true;
