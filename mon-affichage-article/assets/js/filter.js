@@ -1249,7 +1249,8 @@
 
                     if (response && response.success) {
                         var responseData = response.data || {};
-                        emitSuccess(responseData, durationMs);
+                        var successDuration = trackDuration();
+                        emitSuccess(responseData, successDuration);
 
                         if (typeof callbacks.onSuccess === 'function') {
                             callbacks.onSuccess(responseData, response);
@@ -1265,8 +1266,8 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                var retryDurationMs = trackDuration();
-                                emitError(null, response, retryDurationMs);
+                                var retryFailDuration = trackDuration();
+                                emitError(null, response, retryFailDuration);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(null, response);
@@ -1276,7 +1277,8 @@
                         return;
                     }
 
-                    emitError(null, response, durationMs);
+                    var errorDuration = trackDuration();
+                    emitError(null, response, errorDuration);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(null, response);
@@ -1301,8 +1303,8 @@
                                 performRequest();
                             })
                             .fail(function () {
-                                var retryDurationMs = trackDuration();
-                                emitError(jqXHR, null, retryDurationMs);
+                                var retryErrorDuration = trackDuration();
+                                emitError(jqXHR, null, retryErrorDuration);
 
                                 if (typeof callbacks.onError === 'function') {
                                     callbacks.onError(jqXHR);
@@ -1312,7 +1314,8 @@
                         return;
                     }
 
-                    emitError(jqXHR, null, durationMs);
+                    var ajaxErrorDuration = trackDuration();
+                    emitError(jqXHR, null, ajaxErrorDuration);
 
                     if (typeof callbacks.onError === 'function') {
                         callbacks.onError(jqXHR);
@@ -1334,7 +1337,8 @@
                     }
 
                     if (typeof callbacks.onComplete === 'function') {
-                        callbacks.onComplete(trackDuration());
+                        var completeDuration = trackDuration();
+                        callbacks.onComplete(completeDuration);
                     }
                 }
             });

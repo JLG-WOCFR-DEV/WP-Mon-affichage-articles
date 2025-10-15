@@ -50,6 +50,74 @@
     var loadMoreRequestSequence = 0;
     var loadMoreRequestKeySeed = 0;
 
+    function getResultsContainer(wrapper) {
+        if (!wrapper || !wrapper.length) {
+            return $();
+        }
+
+        var targetId = wrapper.attr('data-results-target');
+        if (targetId && typeof document !== 'undefined' && document && typeof document.getElementById === 'function') {
+            try {
+                var directNode = document.getElementById(targetId);
+                if (directNode) {
+                    return $(directNode);
+                }
+            } catch (error) {
+                // Ignore lookup failures and fall back to DOM queries.
+            }
+        }
+
+        var results = wrapper.find('[data-my-articles-role="results"]').first();
+        if (results.length) {
+            return results;
+        }
+
+        return $();
+    }
+
+    function setBusyState(wrapper, isBusy) {
+        if (!wrapper || !wrapper.length) {
+            return;
+        }
+
+        var busyValue = isBusy ? 'true' : 'false';
+        wrapper.attr('aria-busy', busyValue);
+
+        var results = getResultsContainer(wrapper);
+        if (results.length) {
+            results.attr('aria-busy', busyValue);
+
+            if (isBusy) {
+                results.attr('data-loading', 'true');
+            } else {
+                results.removeAttr('data-loading');
+            }
+        }
+    }
+
+    function getTimeMarker() {
+        if (typeof performance !== 'undefined' && performance && typeof performance.now === 'function') {
+            return performance.now();
+        }
+
+        return Date.now();
+    }
+
+    function createDurationTracker() {
+        var start = getTimeMarker();
+
+        return function () {
+            var end = getTimeMarker();
+            var duration = end - start;
+
+            if (!isFinite(duration) || duration < 0) {
+                duration = 0;
+            }
+
+            return duration;
+        };
+    }
+
     function getLoadMoreInstanceKey(button, instanceId) {
         if (instanceId) {
             return 'instance-' + instanceId;
@@ -1631,7 +1699,8 @@
                     var durationMs = trackDuration();
 
                     if (response && response.success) {
-                        handleSuccessResponse(response, durationMs);
+                        var successDuration = trackDuration();
+                        handleSuccessResponse(response, successDuration);
                         return;
                     }
 
@@ -1643,14 +1712,15 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                var retryDurationMs = trackDuration();
-                                handleErrorResponse(null, response, retryDurationMs);
+                                var retryFailDuration = trackDuration();
+                                handleErrorResponse(null, response, retryFailDuration);
                             });
 
                         return;
                     }
 
-                    handleErrorResponse(null, response, durationMs);
+                    var errorDuration = trackDuration();
+                    handleErrorResponse(null, response, errorDuration);
                 },
                 error: function (jqXHR, textStatus) {
                     if (textStatus === 'abort') {
@@ -1671,14 +1741,15 @@
                                 sendAjaxRequest();
                             })
                             .fail(function () {
-                                var retryDurationMs = trackDuration();
-                                handleErrorResponse(jqXHR, null, retryDurationMs);
+                                var retryErrorDuration = trackDuration();
+                                handleErrorResponse(jqXHR, null, retryErrorDuration);
                             });
 
                         return;
                     }
 
-                    handleErrorResponse(jqXHR, null, durationMs);
+                    var ajaxErrorDuration = trackDuration();
+                    handleErrorResponse(jqXHR, null, ajaxErrorDuration);
                 },
                 complete: function (completedJqXHR, textStatus) {
                     var tracker = activeLoadMoreRequests[instanceKey];
@@ -1701,9 +1772,9 @@
                         wrapper.removeClass('is-loading-more');
                     }
 
-                    var completeDurationMs = trackDuration();
-                    instrumentationDetail.lastDurationMs = typeof completeDurationMs === 'number' && isFinite(completeDurationMs)
-                        ? Math.max(completeDurationMs, 0)
+                    var completeDuration = trackDuration();
+                    instrumentationDetail.lastDurationMs = typeof completeDuration === 'number' && isFinite(completeDuration)
+                        ? Math.max(completeDuration, 0)
                         : null;
                 }
             });
