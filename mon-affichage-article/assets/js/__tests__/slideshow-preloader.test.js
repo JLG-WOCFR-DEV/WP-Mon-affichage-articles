@@ -78,6 +78,9 @@ describe('slideshow utilities', () => {
         const result = initSwiperForWrapper(wrapper);
 
         expect(result).toBe(swiperInstance);
+
+        const swiperConfig = swiperConstructor.mock.calls[0][1];
+
         expect(swiperConstructor).toHaveBeenCalledWith('#my-articles-wrapper-123 .swiper-container', expect.objectContaining({
             keyboard: { enabled: true, onlyInViewport: true },
             watchOverflow: true,
@@ -94,5 +97,77 @@ describe('slideshow utilities', () => {
                 itemRoleDescriptionMessage: 'Diapositive',
             }),
         }));
+
+        expect(typeof swiperConfig.on.init).toBe('function');
+        expect(typeof swiperConfig.on.slideChange).toBe('function');
+
+        const paginationEl = document.createElement('div');
+        const bullet = document.createElement('button');
+        paginationEl.appendChild(bullet);
+
+        const prevButton = document.createElement('button');
+        const nextButton = document.createElement('button');
+
+        const activeSlide = {
+            classList: {
+                contains: (value) => value === 'swiper-slide-active',
+            },
+            dataset: {},
+            getAttribute: jest.fn((attribute) => {
+                if (attribute === 'data-slide-position') {
+                    return '1';
+                }
+
+                return null;
+            }),
+            setAttribute: jest.fn(),
+            removeAttribute: jest.fn(),
+            querySelectorAll: jest.fn(() => []),
+        };
+
+        const inactiveSlide = {
+            classList: {
+                contains: () => false,
+            },
+            dataset: {},
+            getAttribute: jest.fn((attribute) => {
+                if (attribute === 'data-slide-position') {
+                    return '2';
+                }
+
+                return null;
+            }),
+            setAttribute: jest.fn(),
+            removeAttribute: jest.fn(),
+            querySelectorAll: jest.fn(() => []),
+        };
+
+        const swiperMock = {
+            params: { loop: false, pagination: { bulletActiveClass: 'swiper-pagination-bullet-active' } },
+            navigation: { nextEl: nextButton, prevEl: prevButton },
+            pagination: { el: paginationEl, bullets: [bullet] },
+            slides: [activeSlide, inactiveSlide],
+            realIndex: 0,
+            activeIndex: 0,
+            isBeginning: true,
+            isEnd: false,
+        };
+
+        swiperConfig.on.init.call(swiperMock);
+
+        expect(prevButton.getAttribute('aria-disabled')).toBe('true');
+        expect(nextButton.getAttribute('aria-disabled')).toBe('false');
+        expect(prevButton.hasAttribute('disabled')).toBe(true);
+        expect(nextButton.hasAttribute('disabled')).toBe(false);
+
+        swiperMock.isBeginning = false;
+        swiperMock.isEnd = true;
+        swiperMock.realIndex = 1;
+
+        swiperConfig.on.slideChange.call(swiperMock);
+
+        expect(prevButton.getAttribute('aria-disabled')).toBe('false');
+        expect(nextButton.getAttribute('aria-disabled')).toBe('true');
+        expect(nextButton.hasAttribute('disabled')).toBe(true);
     });
 });

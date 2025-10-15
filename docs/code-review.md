@@ -1,36 +1,26 @@
-# Revue ergonomique et technique de « Tuiles – LCV »
+# Revue du plugin « Tuiles – LCV »
 
-## Ergonomie & présentation des options
-- La page d'administration juxtapose plus de vingt champs hétérogènes (catégorie par défaut, colonnes, marges, couleurs, instrumentation, etc.) sur un seul écran sans hiérarchie ni dépendances conditionnelles, ce qui surcharge l'utilisateur par rapport aux configurateurs professionnels qui segmentent par cas d'usage ou proposent des parcours guidés.【F:mon-affichage-article/includes/class-my-articles-settings.php†L212-L248】
-- Les contrôles numériques/couleurs sont rendus sous leur forme brute (`<input type="number">`, color picker natif) sans aperçu immédiat du rendu ou description contextuelle, obligeant des allers-retours entre l'écran d'options et l'éditeur/bloc pour valider l'effet réel.【F:mon-affichage-article/includes/class-my-articles-settings.php†L294-L316】
+## Résumé exécutif
+- Le cœur du plugin est bien structuré (services singleton, séparation helpers / REST / bloc) mais certains comportements JavaScript sont ré-implémentés « maison » et n’offrent pas les garanties attendues (gestion du carrousel notamment).
+- L’implémentation actuelle du diaporama enfreint plusieurs critères RGAA (clavier, lecture d’écran) : les puces de pagination ne sont pas accessibles et les diapositives hors champ restent exposées aux technologies d’assistance.
+- Les liens dupliqués dans chaque carte peuvent compliquer la navigation clavier et génèrent une répétition inutile pour les lecteurs d’écran.
 
-**Pistes d'amélioration**
-- Regrouper les options en sous-sections repliables (contenu, disposition, identité visuelle, instrumentation) avec un sommaire latéral ou un panneau à onglets secondaires, et masquer dynamiquement les réglages non pertinents selon le mode choisi (grille, liste, diaporama).
-- Ajouter un panneau d'aperçu côté admin (iframe, `wp.element` + `@wordpress/components`) qui reflète en temps réel les ajustements de couleurs/espacements pour réduire la charge cognitive.
+## Points de vigilance fonctionnels & debugging
+1. **Pagination Swiper minimaliste** – Le fichier `assets/vendor/swiper/swiper-bundle.min.js` ré-implémente Swiper en version simplifiée. Aucune gestion du clavier ou des attributs ARIA n’est fournie pour les puces de pagination, qui restent de simples `<span>` cliquables à la souris.【F:mon-affichage-article/assets/vendor/swiper/swiper-bundle.min.js†L96-L155】  
+   → Pour debug : vérifier `window.Swiper` dans la console, puis forcer `slideNext()` / `slidePrev()` pour constater l’absence d’état `aria-hidden` mis à jour.
+2. **Navigation du carrousel** – Le gabarit PHP ne fait que créer le conteneur `swiper-container`/`swiper-slide`, sans logique côté serveur pour l’accessibilité (ni `aria-hidden`, ni `tabindex`). Toute correction devra passer par le JS d’initialisation ou par un hook PHP ajoutant ces attributs après rendu.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2566-L2644】
+3. **Liens redondants** – Chaque carte possède deux liens vers le même article (thumbnail + titre). Pour déboguer les annonces répétées, tester avec NVDA/VoiceOver : l’utilisateur entend deux fois le même intitulé. Une refactorisation pour envelopper la carte d’un lien unique simplifierait la navigation.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2676-L2770】
 
-## UX / UI côté front
-- Le texte d'appel « Lire la suite » est rendu via un simple `<span>` sans lien ni focus clavier, ce qui rompt les attentes utilisateur et empêche un lecteur d'écran de l'annoncer comme action.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2470-L2516】
-- L'état vide renvoie un paragraphe inline fortement stylé en dur, sans classes ni tonalité visuelle cohérente avec le reste des cartes, ce qui donne une impression moins aboutie qu'une interface pro.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2328-L2335】
+## Analyse RGAA
+| Critère | État | Détails |
+| --- | --- | --- |
+| **RGAA 7.1 / 7.3 (Navigation clavier)** | ❌ Non conforme | Les puces de pagination sont rendues en `<span>` sans `tabindex` ni gestion `keydown`. Impossible d’y accéder au clavier.【F:mon-affichage-article/assets/vendor/swiper/swiper-bundle.min.js†L112-L143】 |
+| **RGAA 4.1 (Structuration de l’information)** | ⚠️ À surveiller | Les diapositives masquées restent exposées dans le DOM, faute d’attributs `aria-hidden` / `inert`. Les lecteurs d’écran lisent toutes les cartes d’un coup, ce qui va à l’encontre des recommandations ARIA pour les carrousels.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2566-L2644】【F:mon-affichage-article/assets/vendor/swiper/swiper-bundle.min.js†L130-L155】 |
+| **RGAA 6.1 (Compréhension des liens)** | ⚠️ À surveiller | Deux liens successifs avec le même intitulé (« Lire plus » + titre) alourdissent la navigation. Fusionner les liens ou ajouter du contexte éviterait la redondance.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2676-L2806】 |
 
-**Pistes d'amélioration**
-- Transformer l'appel « Lire la suite » en lien secondaire (`<a>` ou `<button>` accessible) pointant vers l'article ou permettant d'afficher l'intégralité du contenu, et prévoir un style focus cohérent.
-- Externaliser l'état vide dans un composant dédié (classe BEM + variables CSS) pour l'aligner sur la charte et permettre la traduction/illustration.
-
-## Accessibilité
-- La zone de suggestions de recherche est construite avec un conteneur `role="list"` mais chaque suggestion est un `<button role="listitem">`, combinaison non valide pour les lecteurs d'écran et sans annonce de visibilité (pas d'`aria-expanded` sur le champ).【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2079-L2084】【F:mon-affichage-article/assets/js/filter.js†L447-L465】【F:mon-affichage-article/assets/js/filter.js†L1524-L1581】
-- Le bouton « Charger plus » ne communique pas la relation avec la liste ciblée (absence d'`aria-controls` ou d'`aria-describedby`) et repose uniquement sur un changement de texte pour signaler le chargement, ce qui limite la compréhension pour les technologies d'assistance.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2168-L2235】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
-
-**Pistes d'amélioration**
-- Recomposer les suggestions en `<ul><li><button></button></li></ul>` ou utiliser `role="listbox"`/`role="option"` avec gestion d'`aria-expanded`, et annoncer l'ouverture/fermeture via `aria-live`.
-- Associer le bouton de pagination progressive à la grille avec `aria-controls` et fournir un `aria-label` dynamique (« Charger 6 articles supplémentaires sur 12 ») pour clarifier l'état courant.
-
-## Performance & fiabilité
-- Chaque instance injecte un bloc de styles inline complet via `wp_add_inline_style`, ce qui peut dupliquer plusieurs dizaines de lignes CSS quand on place plusieurs modules sur la même page, contrairement aux design systems pro qui factorisent les tokens et n'injectent que les deltas nécessaires.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2847-L2936】
-- Les scripts `filter.js` et `load-more.js` dupliquent la même logique d'instrumentation (gestion des canaux console/dataLayer/fetch), ce qui alourdit le bundle et multiplie les risques de divergence lors d'une évolution.【F:mon-affichage-article/assets/js/filter.js†L9-L154】【F:mon-affichage-article/assets/js/load-more.js†L112-L160】
-- Les requêtes AJAX ne sont jamais annulées quand l'utilisateur enchaîne rapidement filtres et recherches : si deux réponses arrivent hors ordre, la plus lente peut écraser le dernier état affiché, ce qui nuit à la fiabilité perçue.【F:mon-affichage-article/assets/js/filter.js†L1235-L1319】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
-
-**Pistes d'amélioration**
-- Remplacer l'injection CSS full par un système de classes utilitaires (ou CSS custom properties globales) et limiter l'inline aux seules variables personnalisées. On peut aussi sérialiser les styles spécifiques à la configuration dans un fichier généré et mis en cache (via `wp_enqueue_style` ou `asset.php`) pour supprimer les répétitions et rapprocher le fonctionnement d'un design system moderne.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L2847-L2936】
-- Extraire les fonctions communes d'instrumentation et de gestion du nonce dans un module partagé (ESM ou IIFE importé par les deux bundles) afin de factoriser la logique `console/dataLayer/fetch`, réduire la taille totale et aligner la télémétrie entre filtrage et chargement progressif. L'outil de build (Rollup/Webpack) peut produire un « chunk » partagé inclus par les deux scripts pour éviter la duplication.【F:mon-affichage-article/assets/js/filter.js†L9-L154】【F:mon-affichage-article/assets/js/load-more.js†L112-L160】
-- Stocker le `jqXHR`/`AbortController` courant pour annuler la requête précédente avant d'en lancer une nouvelle, et ignorer les réponses obsolètes via un identifiant incrémental pour sécuriser l'état de l'UI.【F:mon-affichage-article/assets/js/filter.js†L1235-L1319】【F:mon-affichage-article/assets/js/load-more.js†L1560-L1639】
+## Recommandations
+1. **Refondre les puces de pagination en boutons** avec un `role="tab"`, `tabindex` géré, et des étiquettes explicites (« Aller à la diapositive n »). Le JS devra écouter `keydown` (Entrée/Espace) en plus de `click`.
+2. **Masquer les diapositives inactives** : ajouter `aria-hidden="true"` et éventuellement `tabindex="-1"` sur les slides hors champ, puis inverser ces valeurs sur la diapositive active. L’API JS peut gérer cette bascule après chaque `slideTo`.
+3. **Limiter la duplication de liens** : transformer l’ensemble de la carte en lien unique (ou transformer le lien visuel en `div` non interactif) pour alléger la lecture.
+4. **Tests d’accessibilité** : prévoir une recette avec un lecteur d’écran (NVDA ou VoiceOver) + audit axe DevTools pour valider la conformité RGAA, en particulier sur la zone carrousel.
 
