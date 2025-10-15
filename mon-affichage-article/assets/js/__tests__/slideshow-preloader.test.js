@@ -159,6 +159,8 @@ describe('slideshow utilities', () => {
         expect(nextButton.getAttribute('aria-disabled')).toBe('false');
         expect(prevButton.hasAttribute('disabled')).toBe(true);
         expect(nextButton.hasAttribute('disabled')).toBe(false);
+        expect(bullet.getAttribute('aria-label')).toBe('Aller à 1');
+        expect(bullet.getAttribute('title')).toBe('Aller à 1');
 
         swiperMock.isBeginning = false;
         swiperMock.isEnd = true;

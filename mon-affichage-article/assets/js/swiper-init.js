@@ -306,6 +306,10 @@
 
         const bullets = ensureArray(swiper.pagination.bullets);
         const sliderId = getIdFromSelector(settings && settings.controlled_slider_selector ? settings.controlled_slider_selector : '');
+        const logicalSlides = getLogicalSlides(swiper);
+        const totalSlides = logicalSlides.length || bullets.length || (swiper.slides ? ensureArray(swiper.slides).length : 0);
+        const labelTemplate = settings && settings.a11y_pagination_bullet_message ? settings.a11y_pagination_bullet_message : '';
+        const fallbackTemplate = settings && settings.a11y_slide_label_message ? settings.a11y_slide_label_message : '';
 
         bullets.forEach(function (bullet, index) {
             if (!bullet) {
@@ -320,6 +324,18 @@
 
             if (sliderId) {
                 bullet.setAttribute('aria-controls', sliderId);
+            }
+
+            const currentIndex = index + 1;
+            const label = labelTemplate
+                ? formatMessage(labelTemplate, { index: currentIndex, slidesLength: totalSlides })
+                : fallbackTemplate
+                    ? formatMessage(fallbackTemplate, { index: currentIndex, slidesLength: totalSlides })
+                    : 'Slide ' + currentIndex;
+
+            if (label) {
+                bullet.setAttribute('aria-label', label);
+                bullet.setAttribute('title', label);
             }
         });
 
