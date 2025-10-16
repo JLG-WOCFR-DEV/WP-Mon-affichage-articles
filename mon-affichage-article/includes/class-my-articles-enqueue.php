@@ -8,6 +8,9 @@ if ( ! defined( 'WPINC' ) ) {
 class My_Articles_Enqueue {
 
     private static $instance;
+    private $script_dependencies = array();
+    private $style_dependencies = array();
+    private $inline_script_registry = array();
 
     public static function get_instance() {
         if ( ! isset( self::$instance ) ) {
@@ -45,6 +48,70 @@ class My_Articles_Enqueue {
 
         if ( function_exists( 'wp_script_add_data' ) ) {
             wp_script_add_data( 'lazysizes', 'async', true );
+        }
+    }
+
+    /**
+     * Declare a dependency on a registered asset handle.
+     *
+     * @param string $handle Asset handle.
+     * @param string $type   Asset type. Accepts 'script' or 'style'.
+     */
+    public function declare_dependency( $handle, $type = 'script' ) {
+        if ( '' === $handle ) {
+            return;
+        }
+
+        $type = 'style' === $type ? 'style' : 'script';
+
+        if ( 'script' === $type ) {
+            if ( isset( $this->script_dependencies[ $handle ] ) ) {
+                return;
+            }
+
+            $this->script_dependencies[ $handle ] = true;
+
+            if ( function_exists( 'wp_enqueue_script' ) ) {
+                wp_enqueue_script( $handle );
+            }
+
+            return;
+        }
+
+        if ( isset( $this->style_dependencies[ $handle ] ) ) {
+            return;
+        }
+
+        $this->style_dependencies[ $handle ] = true;
+
+        if ( function_exists( 'wp_enqueue_style' ) ) {
+            wp_enqueue_style( $handle );
+        }
+    }
+
+    /**
+     * Push an inline script payload associated with a registered script handle.
+     *
+     * @param string $handle   Script handle.
+     * @param string $code     JavaScript code snippet.
+     * @param string $position Optional. Position relative to the script. Accepts 'before' or 'after'. Default 'after'.
+     */
+    public function push_inline_payload( $handle, $code, $position = 'after' ) {
+        if ( '' === $handle || '' === trim( (string) $code ) ) {
+            return;
+        }
+
+        $position = 'before' === $position ? 'before' : 'after';
+        $signature = md5( $handle . '|' . $position . '|' . $code );
+
+        if ( isset( $this->inline_script_registry[ $signature ] ) ) {
+            return;
+        }
+
+        $this->inline_script_registry[ $signature ] = true;
+
+        if ( function_exists( 'wp_add_inline_script' ) ) {
+            wp_add_inline_script( $handle, $code, $position );
         }
     }
 
