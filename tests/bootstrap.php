@@ -110,6 +110,20 @@ if (!defined('HOUR_IN_SECONDS')) {
     define('HOUR_IN_SECONDS', 3600);
 }
 
+if (!function_exists('number_format_i18n')) {
+    function number_format_i18n($number, $decimals = 0)
+    {
+        return number_format((float) $number, (int) $decimals);
+    }
+}
+
+if (!function_exists('_n')) {
+    function _n($single, $plural, $number, $domain = 'default')
+    {
+        return abs((int) $number) === 1 ? $single : $plural;
+    }
+}
+
 if (!class_exists('WP_Error')) {
     class WP_Error
     {
@@ -1513,6 +1527,40 @@ if (!function_exists('esc_html__')) {
     }
 }
 
+if (!function_exists('esc_html_e')) {
+    function esc_html_e($text, $domain = null): void
+    {
+        echo esc_html($text);
+    }
+}
+
+if (!function_exists('esc_attr__')) {
+    function esc_attr__($text, $domain = null)
+    {
+        return esc_attr($text);
+    }
+}
+
+if (!function_exists('load_template')) {
+    /**
+     * @param string               $template
+     * @param bool                 $require_once
+     * @param array<string, mixed> $args
+     */
+    function load_template($template, $require_once = true, $args = array()): void
+    {
+        if (is_array($args)) {
+            extract($args, EXTR_SKIP);
+        }
+
+        if ($require_once) {
+            require $template;
+        } else {
+            include $template;
+        }
+    }
+}
+
 if (!function_exists('has_post_thumbnail')) {
     function has_post_thumbnail($post = null)
     {
@@ -1761,8 +1809,9 @@ require_once __DIR__ . '/../mon-affichage-article/includes/interface-my-articles
 require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode-data-preparer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-settings-sanitizer.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-render-controller.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
-require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-render-result.php';
-require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-renderer.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-frontend-data.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-enqueue.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-cache-key.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/rest/class-my-articles-controller.php';

@@ -21,6 +21,11 @@ class My_Articles_Shortcode {
      */
     private $data_preparer;
 
+    /**
+     * @var My_Articles_Render_Controller
+     */
+    private $render_controller;
+
     public static function get_thumbnail_aspect_ratio_choices() {
         if ( null === self::$thumbnail_aspect_ratio_choices ) {
             self::$thumbnail_aspect_ratio_choices = array(
@@ -1067,6 +1072,14 @@ JS;
         return $this->data_preparer;
     }
 
+    public function get_render_controller() {
+        if ( ! $this->render_controller instanceof My_Articles_Render_Controller ) {
+            $this->render_controller = new My_Articles_Render_Controller( $this );
+        }
+
+        return $this->render_controller;
+    }
+
     public static function get_default_options() {
         static $cached_defaults = null;
 
@@ -1672,7 +1685,8 @@ JS;
             $atts,
             'mon_affichage_articles'
         );
-        $id   = absint( $atts['id'] );
+
+        $id        = absint( $atts['id'] );
         $overrides = array();
 
         if ( ! empty( $atts['overrides'] ) && is_array( $atts['overrides'] ) ) {
@@ -1710,75 +1724,47 @@ JS;
             }
         }
 
-        if ( ! $id || 'mon_affichage' !== get_post_type( $id ) ) {
+        $controller = $this->get_render_controller();
+
+        if ( ! $controller instanceof My_Articles_Render_Controller ) {
             return '';
         }
 
-        $post_status      = get_post_status( $id );
-        $allowed_statuses = self::get_allowed_instance_statuses( $id );
+        $prepared = $controller->prepare(
+            $id,
+            array(
+                'overrides' => $overrides,
+            )
+        );
 
-        if ( empty( $post_status ) || ! in_array( $post_status, $allowed_statuses, true ) ) {
+        if ( is_wp_error( $prepared ) ) {
             return '';
         }
 
-        $preparation = $this->get_data_preparer()->prepare( $id, $overrides );
+        $assets  = isset( $prepared['assets'] ) && is_array( $prepared['assets'] ) ? $prepared['assets'] : array();
+        $summary = isset( $prepared['summary'] ) && is_array( $prepared['summary'] ) ? $prepared['summary'] : array();
+        $context = isset( $prepared['context'] ) && is_array( $prepared['context'] ) ? $prepared['context'] : array();
 
-        if ( is_wp_error( $preparation ) ) {
-            return '';
-        }
+        $enqueue = My_Articles_Enqueue::get_instance();
 
-        $options            = isset( $preparation['options'] ) ? $preparation['options'] : array();
-        $requested_values   = isset( $preparation['requested'] ) && is_array( $preparation['requested'] )
-            ? $preparation['requested']
-            : array();
-        $request_query_vars = isset( $preparation['request_query_vars'] ) && is_array( $preparation['request_query_vars'] )
-            ? $preparation['request_query_vars']
-            : array();
-
-        $requested_category = isset( $requested_values['category'] ) ? $requested_values['category'] : '';
-        $requested_search   = isset( $requested_values['search'] ) ? $requested_values['search'] : '';
-        $requested_sort     = isset( $requested_values['sort'] ) ? $requested_values['sort'] : '';
-        $requested_page     = isset( $requested_values['page'] ) ? (int) $requested_values['page'] : 1;
-
-        $category_query_var = isset( $request_query_vars['category'] ) ? $request_query_vars['category'] : 'my_articles_cat_' . $id;
-        $search_query_var   = isset( $request_query_vars['search'] ) ? $request_query_vars['search'] : 'my_articles_search_' . $id;
-        $sort_query_var     = isset( $request_query_vars['sort'] ) ? $request_query_vars['sort'] : 'my_articles_sort_' . $id;
-        $paged_var          = isset( $request_query_vars['paged'] ) ? $request_query_vars['paged'] : 'paged_' . $id;
-
-        $available_categories = isset( $options['available_categories'] ) ? $options['available_categories'] : array();
-
-        $resolved_aria_label = '';
-        if ( isset( $options['aria_label'] ) && is_string( $options['aria_label'] ) ) {
-            $resolved_aria_label = trim( $options['aria_label'] );
-        }
-
-        if ( '' === $resolved_aria_label ) {
-            $fallback_label = trim( wp_strip_all_tags( get_the_title( $id ) ) );
-
-            if ( '' === $fallback_label ) {
-                /* translators: %d: module (post) ID. */
-                $fallback_label = sprintf( __( "Module d'articles %d", 'mon-articles' ), $id );
+        if ( $enqueue instanceof My_Articles_Enqueue ) {
+            foreach ( (array) ( $assets['styles'] ?? array() ) as $style_handle ) {
+                $enqueue->declare_dependency( $style_handle, 'style' );
             }
 
-            $resolved_aria_label = $fallback_label;
-        }
+            foreach ( (array) ( $assets['scripts'] ?? array() ) as $script_handle ) {
+                if ( 'lazysizes' === $script_handle && self::$lazysizes_enqueued ) {
+                    continue;
+                }
 
-        $script_payloads = isset( $preparation['script_data'] ) && is_array( $preparation['script_data'] )
-            ? $preparation['script_data']
-            : array();
+                $enqueue->declare_dependency( $script_handle );
 
-        if ( ! empty( $options['show_category_filter'] ) || ! empty( $options['enable_keyword_search'] ) ) {
-            wp_enqueue_script( 'my-articles-filter' );
-        }
+                if ( 'lazysizes' === $script_handle ) {
+                    self::$lazysizes_enqueued = true;
+                }
+            }
 
-        if ( isset( $options['pagination_mode'] ) && 'load_more' === $options['pagination_mode'] ) {
-            wp_enqueue_script( 'my-articles-load-more' );
-        }
-
-        if ( ! empty( $script_payloads ) ) {
-            $enqueue = My_Articles_Enqueue::get_instance();
-
-            foreach ( $script_payloads as $payload ) {
+            foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
                 if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
                     continue;
                 }
@@ -1789,412 +1775,38 @@ JS;
                     (array) $payload['data']
                 );
             }
+
+            foreach ( (array) ( $assets['inline_scripts'] ?? array() ) as $inline ) {
+                if ( empty( $inline['handle'] ) || empty( $inline['code'] ) ) {
+                    continue;
+                }
+
+                $enqueue->push_inline_payload(
+                    $inline['handle'],
+                    (string) $inline['code'],
+                    isset( $inline['position'] ) ? (string) $inline['position'] : 'after'
+                );
+            }
         }
 
-        if ( isset( $options['pagination_mode'] ) && 'numbered' === $options['pagination_mode'] ) {
-            wp_enqueue_script( 'my-articles-scroll-fix' );
-        }
-
-        if ( ! empty( $options['enable_lazy_load'] ) ) {
-            if ( ! self::$lazysizes_enqueued ) {
-                wp_enqueue_script( 'lazysizes' );
+        if ( ! empty( $assets['requires_lazyload'] ) ) {
+            if ( ! self::$lazysizes_enqueued && $enqueue instanceof My_Articles_Enqueue ) {
+                $enqueue->declare_dependency( 'lazysizes' );
                 self::$lazysizes_enqueued = true;
             }
 
             self::ensure_lazyload_fallback_script();
         }
 
-        if ( $requested_page < 1 ) {
-            $requested_page = 1;
-        }
+        self::$last_render_summary = $summary;
 
-        $paged = $requested_page;
-
-        $all_excluded_ids = isset( $options['all_excluded_ids'] ) ? (array) $options['all_excluded_ids'] : array();
-
-        $state = $this->build_display_state(
-            $options,
-            array(
-                'paged'                   => $paged,
-                'pagination_strategy'     => 'page',
-                'enforce_unlimited_batch' => ( ! empty( $options['is_unlimited'] ) && 'slideshow' !== $options['display_mode'] ),
-            )
-        );
-
-        $pinned_query           = $state['pinned_query'];
-        $articles_query         = $state['regular_query'];
-        $total_matching_pinned  = $state['total_pinned_posts'];
-        $total_regular_posts    = (int) $state['total_regular_posts'];
-        $initial_total_results  = max( 0, (int) $total_matching_pinned ) + max( 0, $total_regular_posts );
-        $search_suggestions     = $this->build_search_suggestions( $options, $available_categories, $pinned_query, $articles_query );
-        $result_count_label     = $this->format_result_count_label( $initial_total_results );
-        $first_page_projected_pinned = $total_matching_pinned;
-        $should_limit_display = $state['should_limit_display'];
-        $render_limit         = $state['render_limit'];
-        $regular_posts_needed = $state['regular_posts_needed'];
-        $is_unlimited         = ! empty( $state['is_unlimited'] );
-        $effective_posts_per_page = $state['effective_posts_per_page'];
-
-        if ( 'slideshow' === $options['display_mode'] ) {
-            $should_limit_display = false;
-        }
-        
-        if ($options['display_mode'] === 'slideshow') { $this->enqueue_swiper_scripts($options, $id); }
-
-        wp_enqueue_style('my-articles-styles');
-
-        $default_min_card_width = 220;
-        $options['min_card_width'] = max(1, (int) apply_filters('my_articles_min_card_width', $default_min_card_width, $options, $id));
-
-        if ( in_array( $options['display_mode'], array( 'grid', 'list', 'slideshow' ), true ) ) {
-            wp_enqueue_script( 'my-articles-responsive-layout' );
-        }
-
-        $summary_metrics = array(
-            'total_results'          => (int) $initial_total_results,
-            'total_pinned_available' => (int) $total_matching_pinned,
-            'rendered_pinned'        => count( (array) $state['rendered_pinned_ids'] ),
-            'total_regular'          => (int) $total_regular_posts,
-            'per_page'               => (int) $effective_posts_per_page,
-            'render_limit'           => (int) $render_limit,
-            'is_unlimited'           => (bool) $is_unlimited,
-            'should_limit_display'   => (bool) $should_limit_display,
-            'unlimited_batch_size'   => (int) $state['unlimited_batch_size'],
-            'regular_posts_needed'   => (int) $regular_posts_needed,
-            'filters_available'      => is_array( $available_categories ) ? count( $available_categories ) : 0,
-            'active_filters'         => isset( $options['active_tax_filters'] ) && is_array( $options['active_tax_filters'] )
-                ? count( $options['active_tax_filters'] )
-                : 0,
-            'current_page'           => (int) $paged,
-        );
-
-        $summary_options = array(
-            'display_mode'          => sanitize_key( $options['display_mode'] ),
-            'pagination_mode'       => sanitize_key( $options['pagination_mode'] ),
-            'load_more_auto'        => ! empty( $options['load_more_auto'] ),
-            'show_category_filter'  => ! empty( $options['show_category_filter'] ),
-            'enable_keyword_search' => ! empty( $options['enable_keyword_search'] ),
-        );
-
-        self::$last_render_summary = array(
-            'instance_id' => $id,
-            'metrics'     => $summary_metrics,
-            'options'     => $summary_options,
-        );
+        $template_path = MY_ARTICLES_PLUGIN_DIR . 'templates/shortcode-instance.php';
 
         ob_start();
-        $inline_styles = $this->render_inline_styles( $options, $id );
-
-        $wrapper_class = 'my-articles-wrapper my-articles-' . esc_attr($options['display_mode']);
-
-        if ( ! empty( $options['hover_lift_desktop'] ) ) {
-            $wrapper_class .= ' my-articles-has-hover-lift';
+        if ( file_exists( $template_path ) ) {
+            load_template( $template_path, false, $context );
         }
 
-        if ( ! empty( $options['hover_neon_pulse'] ) ) {
-            $wrapper_class .= ' my-articles-has-neon-pulse';
-        }
-
-        $columns_mobile    = max( 1, (int) $options['columns_mobile'] );
-        $columns_tablet    = max( 1, (int) $options['columns_tablet'] );
-        $columns_desktop   = max( 1, (int) $options['columns_desktop'] );
-        $columns_ultrawide = max( 1, (int) $options['columns_ultrawide'] );
-        $min_card_width    = max( 1, (int) $options['min_card_width'] );
-
-        $active_filters_json = wp_json_encode( $options['active_tax_filters'] ?? array() );
-        if ( false === $active_filters_json ) {
-            $active_filters_json = '[]';
-        }
-
-        $results_region_id = 'my-articles-results-' . $id;
-        $wrapper_attributes = array(
-            'id'                   => 'my-articles-wrapper-' . $id,
-            'class'                => $wrapper_class,
-            'data-instance-id'     => $id,
-            'data-cols-mobile'     => $columns_mobile,
-            'data-cols-tablet'     => $columns_tablet,
-            'data-cols-desktop'    => $columns_desktop,
-            'data-cols-ultrawide'  => $columns_ultrawide,
-            'data-min-card-width'  => $min_card_width,
-            'data-search-enabled'  => ! empty( $options['enable_keyword_search'] ) ? 'true' : 'false',
-            'data-search-query'    => $options['search_query'],
-            'data-search-param'    => $search_query_var,
-            'data-sort'            => $options['sort'],
-            'data-sort-param'      => $sort_query_var,
-            'data-filters'         => $active_filters_json,
-            'data-total-results'   => $initial_total_results,
-            'role'                 => 'region',
-            'aria-live'            => 'polite',
-            'aria-label'           => $resolved_aria_label,
-            'aria-busy'            => 'false',
-            'data-results-target'  => $results_region_id,
-        );
-
-        if ( '' !== $inline_styles ) {
-            $wrapper_attributes['style'] = $inline_styles;
-        }
-
-        $wrapper_attribute_strings = array();
-        foreach ( $wrapper_attributes as $attribute => $value ) {
-            $wrapper_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
-        }
-
-        echo '<div ' . implode( ' ', $wrapper_attribute_strings ) . '>';
-
-        if ( ! empty( $options['enable_keyword_search'] ) ) {
-            $search_form_classes = 'my-articles-search-form';
-
-            if ( '' !== $options['search_query'] ) {
-                $search_form_classes .= ' has-value';
-            }
-
-            $search_label        = __( 'Rechercher des articles', 'mon-articles' );
-            $search_placeholder  = __( 'Rechercher par mots-clés…', 'mon-articles' );
-            $search_submit_text  = __( 'Rechercher', 'mon-articles' );
-            $search_clear_label  = __( 'Effacer la recherche', 'mon-articles' );
-            $search_input_id     = 'my-articles-search-input-' . $id;
-            $search_form_id     = 'my-articles-search-form-' . $id;
-            $search_count_id    = 'my-articles-search-count-' . $id;
-            $search_datalist_id = '';
-
-            if ( ! empty( $search_suggestions ) ) {
-                $search_datalist_id = 'my-articles-search-suggestions-' . $id;
-            }
-
-            echo '<form id="' . esc_attr( $search_form_id ) . '" class="' . esc_attr( $search_form_classes ) . '" role="search" aria-label="' . esc_attr( $search_label ) . '" data-instance-id="' . esc_attr( $id ) . '" data-search-param="' . esc_attr( $search_query_var ) . '" data-current-search="' . esc_attr( $options['search_query'] ) . '">';
-            echo '<div class="my-articles-search-inner">';
-            echo '<label class="my-articles-search-label screen-reader-text" for="' . esc_attr( $search_input_id ) . '">' . esc_html( $search_label ) . '</label>';
-            echo '<div class="my-articles-search-controls">';
-            echo '<span class="my-articles-search-icon" aria-hidden="true">' . $this->get_search_icon_svg() . '</span>';
-            echo '<input type="search" id="' . esc_attr( $search_input_id ) . '" class="my-articles-search-input" name="my-articles-search" value="' . esc_attr( $options['search_query'] ) . '" placeholder="' . esc_attr( $search_placeholder ) . '" autocomplete="off"' . ( $search_datalist_id ? ' list="' . esc_attr( $search_datalist_id ) . '"' : '' ) . ' aria-describedby="' . esc_attr( $search_count_id ) . '" />';
-            echo '<button type="submit" class="my-articles-search-submit"><span class="my-articles-search-submit-label">' . esc_html( $search_submit_text ) . '</span><span class="my-articles-search-spinner" aria-hidden="true"></span></button>';
-            echo '<button type="button" class="my-articles-search-clear" aria-label="' . esc_attr( $search_clear_label ) . '"><span aria-hidden="true">&times;</span><span class="screen-reader-text">' . esc_html( $search_clear_label ) . '</span></button>';
-            echo '</div>';
-            echo '<div class="my-articles-search-meta">';
-            echo '<output id="' . esc_attr( $search_count_id ) . '" class="my-articles-search-count" role="status" aria-live="polite" aria-atomic="true" data-count="' . esc_attr( $initial_total_results ) . '" for="' . esc_attr( $search_input_id ) . '">' . esc_html( $result_count_label ) . '</output>';
-            echo '</div>';
-
-            if ( ! empty( $search_suggestions ) ) {
-                echo '<div class="my-articles-search-suggestions" role="list" aria-label="' . esc_attr__( 'Suggestions de recherche', 'mon-articles' ) . '">';
-                foreach ( $search_suggestions as $suggestion ) {
-                    echo '<button type="button" class="my-articles-search-suggestion" role="listitem" data-suggestion="' . esc_attr( $suggestion ) . '"><span>' . esc_html( $suggestion ) . '</span></button>';
-                }
-                echo '</div>';
-            }
-
-            echo '</div>';
-
-            if ( $search_datalist_id ) {
-                echo '<datalist id="' . esc_attr( $search_datalist_id ) . '">';
-                foreach ( $search_suggestions as $suggestion ) {
-                    echo '<option value="' . esc_attr( $suggestion ) . '"></option>';
-                }
-                echo '</datalist>';
-            }
-
-            echo '</form>';
-        }
-
-        $active_tab_id = '';
-
-        if ( ! empty( $options['show_category_filter'] ) && ! empty( $resolved_taxonomy ) && ! empty( $available_categories ) ) {
-            $alignment_class = 'filter-align-' . esc_attr( $options['filter_alignment'] );
-            $nav_attributes = array(
-                'class'      => 'my-articles-filter-nav ' . $alignment_class,
-                'aria-label' => $options['category_filter_aria_label'],
-            );
-
-            $nav_attribute_strings = array();
-            foreach ( $nav_attributes as $attribute => $value ) {
-                if ( '' === $value ) {
-                    continue;
-                }
-
-                $nav_attribute_strings[] = sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
-            }
-
-            $tablist_id = 'my-articles-tabs-' . $id;
-            echo '<nav ' . implode( ' ', $nav_attribute_strings ) . '><ul role="tablist" id="' . esc_attr( $tablist_id ) . '">';
-            $default_cat   = $options['term'] ?? '';
-            $is_all_active = '' === $default_cat || 'all' === $default_cat;
-
-            $all_tab_id = 'my-articles-tab-' . $id . '-all';
-            if ( $is_all_active ) {
-                $active_tab_id = $all_tab_id;
-            }
-
-            echo '<li class="' . ( $is_all_active ? 'active' : '' ) . '" role="presentation">';
-            echo '<button type="button" role="tab" id="' . esc_attr( $all_tab_id ) . '" data-category="all" aria-controls="' . esc_attr( $results_region_id ) . '" aria-selected="' . ( $is_all_active ? 'true' : 'false' ) . '" tabindex="' . ( $is_all_active ? '0' : '-1' ) . '">' . esc_html__( 'Tout', 'mon-articles' ) . '</button>';
-            echo '</li>';
-
-            foreach ( $available_categories as $category ) {
-                $is_active = ( $default_cat === $category->slug );
-                $tab_id    = 'my-articles-tab-' . $id . '-' . $category->slug;
-
-                if ( $is_active ) {
-                    $active_tab_id = $tab_id;
-                }
-
-                echo '<li class="' . ( $is_active ? 'active' : '' ) . '" role="presentation">';
-                echo '<button type="button" role="tab" id="' . esc_attr( $tab_id ) . '" data-category="' . esc_attr( $category->slug ) . '" aria-controls="' . esc_attr( $results_region_id ) . '" aria-selected="' . ( $is_active ? 'true' : 'false' ) . '" tabindex="' . ( $is_active ? '0' : '-1' ) . '">' . esc_html( $category->name ) . '</button>';
-                echo '</li>';
-            }
-
-            echo '</ul></nav>';
-        }
-        $displayed_pinned_ids = array();
-
-        $posts_per_page_for_render    = $render_limit > 0 ? $render_limit : $effective_posts_per_page;
-        $posts_per_page_for_slideshow = $effective_posts_per_page;
-
-        if ( $is_unlimited && 0 === $posts_per_page_for_render ) {
-            $posts_per_page_for_render = 0;
-        }
-
-        if ( $is_unlimited && 0 === $posts_per_page_for_slideshow ) {
-            $posts_per_page_for_slideshow = 0;
-        }
-
-        $results_attributes = array(
-            'id'                  => $results_region_id,
-            'class'               => 'my-articles-results',
-            'role'                => 'tabpanel',
-            'data-my-articles-role' => 'results',
-            'aria-live'           => 'polite',
-            'aria-busy'           => 'false',
-        );
-
-        if ( ! empty( $active_tab_id ) ) {
-            $results_attributes['aria-labelledby'] = $active_tab_id;
-        }
-
-        echo '<div ' . implode( ' ', array_map( function ( $attribute, $value ) {
-            return sprintf( '%s="%s"', esc_attr( $attribute ), esc_attr( (string) $value ) );
-        }, array_keys( $results_attributes ), $results_attributes ) ) . '>';
-
-        $adapter_items = self::collect_content_adapter_items(
-            $options,
-            array(
-                'instance_id'          => $id,
-                'render_limit'         => $render_limit,
-                'display_mode'         => $options['display_mode'] ?? '',
-                'rendered_pinned_ids'  => $state['rendered_pinned_ids'] ?? array(),
-            )
-        );
-
-        if ( $options['display_mode'] === 'slideshow' ) {
-            $this->render_slideshow( $pinned_query, $articles_query, $options, $posts_per_page_for_slideshow, $results_region_id, $adapter_items, $id );
-        } elseif ( $options['display_mode'] === 'list' ) {
-            $displayed_pinned_ids = $this->render_list( $pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id, $adapter_items );
-            if ( ! is_array( $displayed_pinned_ids ) ) {
-                $displayed_pinned_ids = array();
-            }
-        } else {
-            $displayed_pinned_ids = $this->render_grid( $pinned_query, $articles_query, $options, $posts_per_page_for_render, $results_region_id, $adapter_items );
-            if ( ! is_array( $displayed_pinned_ids ) ) {
-                $displayed_pinned_ids = array();
-            }
-        }
-
-        echo '</div>';
-
-        if ( $paged === 1 ) {
-            $first_page_projected_pinned = count( $displayed_pinned_ids );
-            if ( 0 === $total_matching_pinned && ! empty( $displayed_pinned_ids ) ) {
-                $total_matching_pinned = count( $displayed_pinned_ids );
-            }
-        }
-
-        if ($options['display_mode'] === 'grid' || $options['display_mode'] === 'list') {
-            $total_regular_posts = (int) $state['total_regular_posts'];
-
-            if ( 0 === $total_regular_posts && ! ( $articles_query instanceof WP_Query ) ) {
-                $count_query_args = [
-                    'post_type' => $options['post_type'],
-                    'post_status' => 'publish',
-                    'posts_per_page' => 1,
-                    'post__not_in' => $all_excluded_ids,
-                    'ignore_sticky_posts' => (int) $options['ignore_native_sticky'],
-                    'fields' => 'ids',
-                ];
-
-                if ( '' !== $options['search_query'] ) {
-                    $count_query_args['s'] = $options['search_query'];
-                }
-
-                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
-                    $count_query_args = self::merge_meta_query_clauses( $count_query_args, $options['meta_query'] );
-                }
-
-                if ( '' !== $resolved_taxonomy && '' !== $options['term'] && 'all' !== $options['term'] ) {
-                    $count_query_args['tax_query'] = [[
-                        'taxonomy' => $resolved_taxonomy,
-                        'field'    => 'slug',
-                        'terms'    => $options['term'],
-                    ]];
-                }
-
-                $count_query = new WP_Query($count_query_args);
-                $total_regular_posts = (int) $count_query->found_posts;
-            }
-
-            $pagination_context = array(
-                'current_page' => $paged,
-            );
-
-            if ( ! empty( $state['is_unlimited'] ) ) {
-                $pagination_context['unlimited_page_size'] = $state['unlimited_batch_size'];
-                $pagination_context['analytics_page_size'] = $state['unlimited_batch_size'];
-            }
-
-            $pagination_totals = my_articles_calculate_total_pages(
-                $total_matching_pinned,
-                $total_regular_posts,
-                $effective_posts_per_page,
-                $pagination_context
-            );
-            $total_pages = $pagination_totals['total_pages'];
-
-            if ($options['pagination_mode'] === 'load_more') {
-                if ( $total_pages > 1 && $paged < $total_pages) {
-                    $next_page = min( $paged + 1, $total_pages );
-                    $load_more_pinned_ids = ! empty( $displayed_pinned_ids ) ? array_map( 'absint', $displayed_pinned_ids ) : array();
-                    echo '<div class="my-articles-load-more-container"><button class="my-articles-load-more-btn" data-instance-id="' . esc_attr($id) . '" data-paged="' . esc_attr( $next_page ) . '" data-total-pages="' . esc_attr($total_pages) . '" data-pinned-ids="' . esc_attr(implode(',', $load_more_pinned_ids)) . '" data-category="' . esc_attr($options['term']) . '" data-search="' . esc_attr( $options['search_query'] ) . '" data-sort="' . esc_attr( $options['sort'] ) . '" data-filters="' . esc_attr( $active_filters_json ) . '" data-auto-load="' . esc_attr( $options['load_more_auto'] ? '1' : '0' ) . '">' . esc_html__( 'Charger plus', 'mon-articles' ) . '</button></div>';
-                }
-            } elseif ($options['pagination_mode'] === 'numbered') {
-                $pagination_query_args = array();
-                if ( '' !== $options['term'] ) {
-                    $pagination_query_args[ $category_query_var ] = $options['term'];
-                }
-                $this->render_numbered_pagination($total_pages, $paged, $paged_var, $pagination_query_args);
-            }
-        }
-        
-        if ( ! empty( $options['enable_debug_mode'] ) ) {
-            echo '<div style="background: #fff; border: 2px solid red; padding: 15px; margin: 20px 0; text-align: left; color: #000; font-family: monospace; line-height: 1.6; clear: both;">';
-            echo '<h4 style="margin: 0 0 10px 0;">-- DEBUG MODE --</h4>';
-            echo '<ul>';
-            echo '<li>Réglage "Lazy Load" activé : <strong>' . ( ! empty( $options['enable_lazy_load'] ) ? 'Oui' : 'Non' ) . '</strong></li>';
-            echo '<li>Statut du script lazysizes : <strong id="lazysizes-status-' . esc_attr( $id ) . '" style="color: red;">En attente...</strong></li>';
-            echo '</ul>';
-            echo '</div>';
-
-            wp_enqueue_script( 'my-articles-debug-helper' );
-
-            $status_span_id = 'lazysizes-status-' . $id;
-            $debug_script   = sprintf(
-                "document.addEventListener('DOMContentLoaded',function(){var statusSpan=document.getElementById(%s);if(!statusSpan){return;}setTimeout(function(){if(window.lazySizes){statusSpan.textContent=%s;statusSpan.style.color='green';}else{statusSpan.textContent=%s;}},500);});",
-                wp_json_encode( $status_span_id ),
-                wp_json_encode( '✅ Chargé et actif !' ),
-                wp_json_encode( '❌ ERREUR : Non trouvé !' )
-            );
-
-            wp_add_inline_script( 'my-articles-debug-helper', $debug_script );
-        }
-        
-        echo '</div>';
-        
-        wp_reset_postdata();
         return ob_get_clean();
     }
     
@@ -2785,66 +2397,62 @@ JS;
     }
 
     private function enqueue_swiper_scripts( $options, $instance_id ) {
-        wp_enqueue_style( 'swiper-css' );
-        wp_enqueue_script( 'swiper-js' );
-        wp_enqueue_script( 'my-articles-swiper-init' );
-
-        $autoplay_settings = array(
-            'enabled'                => ! empty( $options['slideshow_autoplay'] ),
-            'delay'                  => (int) $options['slideshow_delay'],
-            'pause_on_interaction'   => ! empty( $options['slideshow_pause_on_interaction'] ),
-            'pause_on_mouse_enter'   => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
-            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
-        );
-
-        $slider_id = 'my-articles-slideshow-' . (int) $instance_id;
-
-        $localized_settings = array(
-            'columns_mobile'                  => $options['columns_mobile'],
-            'columns_tablet'                  => $options['columns_tablet'],
-            'columns_desktop'                 => $options['columns_desktop'],
-            'columns_ultrawide'               => $options['columns_ultrawide'],
-            'gap_size'                        => $options['gap_size'],
-            'loop'                            => ! empty( $options['slideshow_loop'] ),
-            'autoplay'                        => $autoplay_settings,
-            'show_navigation'                 => ! empty( $options['slideshow_show_navigation'] ),
-            'show_pagination'                 => ! empty( $options['slideshow_show_pagination'] ),
-            'respect_reduced_motion'          => ! empty( $options['slideshow_respect_reduced_motion'] ),
-            'container_selector'              => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
-            'controlled_slider_selector'      => '#' . $slider_id,
-            'a11y_prev_slide_message'         => __( 'Diapositive précédente', 'mon-articles' ),
-            'a11y_next_slide_message'         => __( 'Diapositive suivante', 'mon-articles' ),
-            'a11y_first_slide_message'        => __( 'Première diapositive', 'mon-articles' ),
-            'a11y_last_slide_message'         => __( 'Dernière diapositive', 'mon-articles' ),
-            'a11y_pagination_bullet_message'  => __( 'Aller à la diapositive {{index}}', 'mon-articles' ),
-            'a11y_slide_label_message'        => __( 'Diapositive {{index}} sur {{slidesLength}}', 'mon-articles' ),
-            'a11y_container_message'          => __( 'Ce carrousel est navigable au clavier : utilisez les flèches pour changer de diapositive.', 'mon-articles' ),
-            'a11y_container_role_description' => __( 'Carrousel d\'articles', 'mon-articles' ),
-            'a11y_item_role_description'      => __( 'Diapositive', 'mon-articles' ),
-        );
+        $assets = $this->get_swiper_assets( $options, $instance_id );
 
         if ( class_exists( 'My_Articles_Enqueue' ) ) {
             $enqueue = My_Articles_Enqueue::get_instance();
 
             if ( $enqueue instanceof My_Articles_Enqueue ) {
-                $enqueue->register_script_data(
-                    'my-articles-swiper-init',
-                    'myArticlesSwiperSettings',
-                    array(
-                        (string) $instance_id => $localized_settings,
-                    )
-                );
+                foreach ( (array) ( $assets['styles'] ?? array() ) as $style_handle ) {
+                    $enqueue->declare_dependency( $style_handle, 'style' );
+                }
+
+                foreach ( (array) ( $assets['scripts'] ?? array() ) as $script_handle ) {
+                    $enqueue->declare_dependency( $script_handle, 'script' );
+                }
+
+                foreach ( (array) ( $assets['payloads'] ?? array() ) as $payload ) {
+                    if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                        continue;
+                    }
+
+                    $enqueue->register_script_data(
+                        $payload['handle'],
+                        $payload['object'],
+                        (array) $payload['data']
+                    );
+                }
 
                 return;
             }
         }
 
+        if ( function_exists( 'wp_enqueue_style' ) ) {
+            foreach ( (array) ( $assets['styles'] ?? array() ) as $style_handle ) {
+                wp_enqueue_style( $style_handle );
+            }
+        }
+
+        if ( function_exists( 'wp_enqueue_script' ) ) {
+            foreach ( (array) ( $assets['scripts'] ?? array() ) as $script_handle ) {
+                wp_enqueue_script( $script_handle );
+            }
+        }
+
         if ( function_exists( 'wp_localize_script' ) ) {
-            wp_localize_script(
-                'my-articles-swiper-init',
-                'myArticlesSwiperSettings_' . $instance_id,
-                $localized_settings
-            );
+            foreach ( (array) ( $assets['payloads'] ?? array() ) as $payload ) {
+                if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                    continue;
+                }
+
+                foreach ( $payload['data'] as $key => $settings ) {
+                    wp_localize_script(
+                        $payload['handle'],
+                        $payload['object'] . '_' . $key,
+                        $settings
+                    );
+                }
+            }
         }
     }
 
@@ -3151,5 +2759,116 @@ JS;
         }
 
         return '';
+    }
+
+    public function get_inline_styles_declaration( array $options, $instance_id ) {
+        return $this->render_inline_styles( $options, $instance_id );
+    }
+
+    public function get_search_icon_markup() {
+        return $this->get_search_icon_svg();
+    }
+
+    public function get_result_count_label( $total_results ) {
+        return $this->format_result_count_label( $total_results );
+    }
+
+    public function get_search_suggestions( array $options, $available_categories, $pinned_query, $regular_query ) {
+        return $this->build_search_suggestions( $options, $available_categories, $pinned_query, $regular_query );
+    }
+
+    public function get_grid_fragment( $pinned_query, $regular_query, array $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
+        ob_start();
+        $displayed_pinned_ids = $this->render_grid( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id, $adapter_items );
+        $html = ob_get_clean();
+
+        if ( ! is_array( $displayed_pinned_ids ) ) {
+            $displayed_pinned_ids = array();
+        }
+
+        return array(
+            'html'                 => $html,
+            'displayed_pinned_ids' => array_map( 'absint', $displayed_pinned_ids ),
+        );
+    }
+
+    public function get_list_fragment( $pinned_query, $regular_query, array $options, $posts_per_page, $results_region_id = '', array $adapter_items = array() ) {
+        ob_start();
+        $displayed_pinned_ids = $this->render_list( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id, $adapter_items );
+        $html = ob_get_clean();
+
+        if ( ! is_array( $displayed_pinned_ids ) ) {
+            $displayed_pinned_ids = array();
+        }
+
+        return array(
+            'html'                 => $html,
+            'displayed_pinned_ids' => array_map( 'absint', $displayed_pinned_ids ),
+        );
+    }
+
+    public function get_slideshow_fragment( $pinned_query, $regular_query, array $options, $posts_per_page, $results_region_id, array $adapter_items = array(), $instance_id = 0 ) {
+        ob_start();
+        $this->render_slideshow( $pinned_query, $regular_query, $options, $posts_per_page, $results_region_id, $adapter_items, $instance_id );
+        return ob_get_clean();
+    }
+
+    public function get_numbered_pagination_fragment( $total_pages, $current_page, $query_var, array $query_args = array(), $referer = '' ) {
+        ob_start();
+        $this->render_numbered_pagination( $total_pages, $current_page, $query_var, $query_args, $referer );
+        return ob_get_clean();
+    }
+
+    public function get_swiper_assets( array $options, $instance_id ) {
+        $scripts = array( 'swiper-js', 'my-articles-swiper-init' );
+        $styles  = array( 'swiper-css' );
+
+        $autoplay_settings = array(
+            'enabled'                => ! empty( $options['slideshow_autoplay'] ),
+            'delay'                  => (int) ( $options['slideshow_delay'] ?? 0 ),
+            'pause_on_interaction'   => ! empty( $options['slideshow_pause_on_interaction'] ),
+            'pause_on_mouse_enter'   => ! empty( $options['slideshow_pause_on_mouse_enter'] ),
+            'respect_reduced_motion' => ! empty( $options['slideshow_respect_reduced_motion'] ),
+        );
+
+        $slider_id = 'my-articles-slideshow-' . (int) $instance_id;
+
+        $localized_settings = array(
+            'columns_mobile'                  => $options['columns_mobile'] ?? 1,
+            'columns_tablet'                  => $options['columns_tablet'] ?? 1,
+            'columns_desktop'                 => $options['columns_desktop'] ?? 1,
+            'columns_ultrawide'               => $options['columns_ultrawide'] ?? 1,
+            'gap_size'                        => $options['gap_size'] ?? 0,
+            'loop'                            => ! empty( $options['slideshow_loop'] ),
+            'autoplay'                        => $autoplay_settings,
+            'show_navigation'                 => ! empty( $options['slideshow_show_navigation'] ),
+            'show_pagination'                 => ! empty( $options['slideshow_show_pagination'] ),
+            'respect_reduced_motion'          => ! empty( $options['slideshow_respect_reduced_motion'] ),
+            'container_selector'              => '#my-articles-wrapper-' . $instance_id . ' .swiper-container',
+            'controlled_slider_selector'      => '#' . $slider_id,
+            'a11y_prev_slide_message'         => __( 'Diapositive précédente', 'mon-articles' ),
+            'a11y_next_slide_message'         => __( 'Diapositive suivante', 'mon-articles' ),
+            'a11y_first_slide_message'        => __( 'Première diapositive', 'mon-articles' ),
+            'a11y_last_slide_message'         => __( 'Dernière diapositive', 'mon-articles' ),
+            'a11y_pagination_bullet_message'  => __( 'Aller à la diapositive {{index}}', 'mon-articles' ),
+            'a11y_slide_label_message'        => __( 'Diapositive {{index}} sur {{slidesLength}}', 'mon-articles' ),
+            'a11y_container_message'          => __( 'Ce carrousel est navigable au clavier : utilisez les flèches pour changer de diapositive.', 'mon-articles' ),
+            'a11y_container_role_description' => __( "Carrousel d'articles", 'mon-articles' ),
+            'a11y_item_role_description'      => __( 'Diapositive', 'mon-articles' ),
+        );
+
+        return array(
+            'scripts'  => $scripts,
+            'styles'   => $styles,
+            'payloads' => array(
+                array(
+                    'handle' => 'my-articles-swiper-init',
+                    'object' => 'myArticlesSwiperSettings',
+                    'data'   => array(
+                        (string) $instance_id => $localized_settings,
+                    ),
+                ),
+            ),
+        );
     }
 }
