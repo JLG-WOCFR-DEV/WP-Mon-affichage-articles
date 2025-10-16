@@ -1697,7 +1697,7 @@ if (!class_exists('WP_Query')) {
     class WP_Query
     {
         /** @var array<int, array<string, mixed>> */
-        private array $posts;
+        public array $posts;
 
         private int $current_index = 0;
 

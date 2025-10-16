@@ -6,6 +6,7 @@ namespace MonAffichageArticles\Tests;
 
 use Mon_Affichage_Articles;
 use My_Articles_Shortcode;
+use My_Articles_Display_State_Builder;
 use My_Articles_Shortcode_Data_Preparer;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -34,6 +35,7 @@ final class PrepareLoadMoreArticlesResponseTest extends TestCase
         );
 
         My_Articles_Shortcode_Data_Preparer::reset_runtime_cache();
+        My_Articles_Display_State_Builder::reset_runtime_cache();
     }
 
     protected function tearDown(): void
@@ -66,6 +68,7 @@ final class PrepareLoadMoreArticlesResponseTest extends TestCase
             $GLOBALS['mon_articles_test_transients_store'] = $this->previousGlobals['transients_store'];
         }
 
+        My_Articles_Display_State_Builder::reset_runtime_cache();
         parent::tearDown();
     }
 
