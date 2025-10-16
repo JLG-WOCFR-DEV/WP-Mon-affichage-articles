@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MonAffichageArticles\Tests;
 
 use Mon_Affichage_Articles;
+use My_Articles_Display_State_Builder;
 use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -32,6 +33,8 @@ final class PrepareFilterArticlesResponseTest extends TestCase
             'transients_store' => $GLOBALS['mon_articles_test_transients_store'] ?? null,
             'filters'          => $GLOBALS['mon_articles_test_filters'] ?? null,
         );
+
+        My_Articles_Display_State_Builder::reset_runtime_cache();
     }
 
     protected function tearDown(): void
@@ -65,6 +68,8 @@ final class PrepareFilterArticlesResponseTest extends TestCase
             $GLOBALS['mon_articles_test_transients_store'] = $this->previousGlobals['transients_store'];
             $GLOBALS['mon_articles_test_filters'] = $this->previousGlobals['filters'];
         }
+
+        My_Articles_Display_State_Builder::reset_runtime_cache();
 
         parent::tearDown();
     }

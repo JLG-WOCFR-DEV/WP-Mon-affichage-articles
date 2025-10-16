@@ -6,6 +6,7 @@ namespace MonAffichageArticles\Tests;
 
 use My_Articles_Shortcode;
 use My_Articles_Settings_Sanitizer;
+use My_Articles_Display_State_Builder;
 use WP_Query;
 use WP_UnitTestCase;
 use ReflectionClass;
@@ -16,11 +17,13 @@ final class MetaQuerySupportTest extends WP_UnitTestCase
     {
         parent::setUp();
         $this->resetShortcodeNormalizationCache();
+        My_Articles_Display_State_Builder::reset_runtime_cache();
     }
 
     protected function tearDown(): void
     {
         $this->resetShortcodeNormalizationCache();
+        My_Articles_Display_State_Builder::reset_runtime_cache();
         parent::tearDown();
     }
 

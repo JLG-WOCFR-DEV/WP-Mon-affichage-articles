@@ -787,7 +787,7 @@ JS;
         return $args;
     }
 
-    private static function merge_meta_query_clauses( array $args, array $meta_query ) {
+    public static function merge_meta_query_clauses( array $args, array $meta_query ) {
         if ( empty( $meta_query ) || ! is_array( $meta_query ) ) {
             return $args;
         }
@@ -896,7 +896,7 @@ JS;
         return self::merge_tax_query_clauses( $args, $clauses );
     }
 
-    private static function build_regular_query( array $options, array $overrides = array(), $active_category = null ) {
+    public static function build_regular_query( array $options, array $overrides = array(), $active_category = null ) {
         $base_args = array(
             'post_type'           => $options['post_type'],
             'post_status'         => 'publish',
@@ -1039,232 +1039,9 @@ JS;
     }
 
     public function build_display_state( array $options, array $args = array() ) {
-        $defaults = array(
-            'paged'                     => 1,
-            'pagination_strategy'       => 'page',
-            'seen_pinned_ids'           => array(),
-            'enforce_unlimited_batch'   => false,
-        );
+        $builder = new My_Articles_Display_State_Builder( $this, $options, $args );
 
-        $args  = wp_parse_args( $args, $defaults );
-        $paged = max( 1, (int) $args['paged'] );
-
-        $posts_per_page = isset( $options['posts_per_page'] ) ? (int) $options['posts_per_page'] : 0;
-        $is_unlimited   = ! empty( $options['is_unlimited'] );
-        $batch_cap      = isset( $options['unlimited_query_cap'] ) ? (int) $options['unlimited_query_cap'] : 0;
-
-        if ( $batch_cap <= 0 ) {
-            $batch_cap = (int) apply_filters( 'my_articles_unlimited_batch_size', 50, $options, $args );
-            $batch_cap = max( 1, $batch_cap );
-        }
-
-        $should_enforce_unlimited = ! empty( $args['enforce_unlimited_batch'] );
-
-        if ( 'slideshow' === ( $options['display_mode'] ?? '' ) ) {
-            $should_enforce_unlimited = true;
-        }
-
-        if ( $is_unlimited ) {
-            if ( $should_enforce_unlimited ) {
-                $effective_limit           = $batch_cap;
-                $effective_posts_per_page  = $batch_cap;
-                $should_limit_display      = true;
-            } else {
-                $effective_limit           = -1;
-                $effective_posts_per_page  = 0;
-                $should_limit_display      = false;
-            }
-        } else {
-            $effective_limit          = max( 0, $posts_per_page );
-            $effective_posts_per_page = $effective_limit;
-            $should_limit_display     = $effective_limit > 0;
-        }
-
-        $matching_pinned_ids = self::get_matching_pinned_ids( $options );
-        $total_matching_pinned = count( $matching_pinned_ids );
-
-        $pinned_query         = null;
-        $regular_query        = null;
-        $rendered_pinned_ids  = array();
-        $updated_seen_pinned  = array();
-        $regular_posts_needed = -1;
-        $regular_posts_limit  = -1;
-        $regular_offset       = 0;
-        $max_items_before_current_page = 0;
-
-        if ( $effective_limit > 0 ) {
-            $max_items_before_current_page = max( 0, ( $paged - 1 ) * $effective_limit );
-        }
-
-        if ( 'sequential' === $args['pagination_strategy'] ) {
-            $seen_pinned_ids = array_map( 'absint', (array) $args['seen_pinned_ids'] );
-            $seen_pinned_ids = array_values( array_intersect( $matching_pinned_ids, $seen_pinned_ids ) );
-
-            if ( $effective_limit > 0 ) {
-                $remaining_pinned_ids = array_slice( $matching_pinned_ids, count( $seen_pinned_ids ) );
-                $pinned_ids_for_request = array_slice( $remaining_pinned_ids, 0, $effective_limit );
-            } else {
-                $pinned_ids_for_request = array_values( array_diff( $matching_pinned_ids, $seen_pinned_ids ) );
-            }
-
-            if ( ! empty( $pinned_ids_for_request ) ) {
-                $pinned_query_args = array(
-                    'post_type'      => $options['post_type'],
-                    'post_status'    => 'publish',
-                    'post__in'       => $pinned_ids_for_request,
-                    'orderby'        => 'post__in',
-                    'posts_per_page' => count( $pinned_ids_for_request ),
-                    'no_found_rows'  => true,
-                );
-
-                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
-                    $pinned_query_args = self::merge_meta_query_clauses( $pinned_query_args, $options['meta_query'] );
-                }
-
-                $pinned_query = new WP_Query( $pinned_query_args );
-
-                if ( $pinned_query->have_posts() ) {
-                    $rendered_pinned_ids = array_map( 'absint', wp_list_pluck( $pinned_query->posts, 'ID' ) );
-                }
-            }
-
-            if ( empty( $rendered_pinned_ids ) && ! empty( $pinned_ids_for_request ) ) {
-                $rendered_pinned_ids = array_map( 'absint', $pinned_ids_for_request );
-            }
-
-            $updated_seen_pinned = array_values( array_unique( array_merge( $seen_pinned_ids, $rendered_pinned_ids ) ) );
-
-            if ( $effective_limit > 0 ) {
-                $regular_posts_already_displayed = max( 0, $max_items_before_current_page - count( $seen_pinned_ids ) );
-                $regular_posts_limit             = max( 0, $effective_limit - count( $rendered_pinned_ids ) );
-                $regular_offset                  = $regular_posts_already_displayed;
-                $regular_posts_needed            = $regular_posts_limit;
-            }
-
-            $regular_excluded_ids = array_unique(
-                array_merge(
-                    $updated_seen_pinned,
-                    isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
-                    $matching_pinned_ids
-                )
-            );
-
-            if ( $effective_limit > 0 ) {
-                if ( $regular_posts_limit > 0 ) {
-                    $regular_query = self::build_regular_query(
-                        $options,
-                        array(
-                            'posts_per_page' => $regular_posts_limit,
-                            'post__not_in'   => $regular_excluded_ids,
-                            'offset'         => $regular_offset,
-                        ),
-                        $options['term'] ?? ''
-                    );
-                }
-            } else {
-                $regular_query = self::build_regular_query(
-                    $options,
-                    array(
-                        'posts_per_page' => -1,
-                        'post__not_in'   => $regular_excluded_ids,
-                    ),
-                    $options['term'] ?? ''
-                );
-            }
-        } else {
-            if ( $effective_limit > 0 ) {
-                $pinned_offset          = min( $total_matching_pinned, $max_items_before_current_page );
-                $pinned_ids_for_request = array_slice( $matching_pinned_ids, $pinned_offset, $effective_limit );
-                $regular_offset         = max( 0, $max_items_before_current_page - $pinned_offset );
-            } else {
-                $pinned_ids_for_request = $matching_pinned_ids;
-                $regular_offset         = 0;
-            }
-
-            if ( ! empty( $pinned_ids_for_request ) ) {
-                $pinned_query_args = array(
-                    'post_type'      => $options['post_type'],
-                    'post_status'    => 'publish',
-                    'post__in'       => $pinned_ids_for_request,
-                    'orderby'        => 'post__in',
-                    'posts_per_page' => count( $pinned_ids_for_request ),
-                    'no_found_rows'  => true,
-                    'post__not_in'   => isset( $options['exclude_post_ids'] ) ? (array) $options['exclude_post_ids'] : array(),
-                );
-
-                if ( ! empty( $options['meta_query'] ) && is_array( $options['meta_query'] ) ) {
-                    $pinned_query_args = self::merge_meta_query_clauses( $pinned_query_args, $options['meta_query'] );
-                }
-
-                $pinned_query = new WP_Query( $pinned_query_args );
-
-                if ( $pinned_query->have_posts() ) {
-                    $rendered_pinned_ids = array_map( 'absint', wp_list_pluck( $pinned_query->posts, 'ID' ) );
-                }
-            }
-
-            if ( empty( $rendered_pinned_ids ) && ! empty( $pinned_ids_for_request ) ) {
-                $rendered_pinned_ids = array_map( 'absint', $pinned_ids_for_request );
-            }
-
-            if ( $effective_limit > 0 ) {
-                $projected_pinned_display = min( $effective_limit, count( $rendered_pinned_ids ) );
-                if ( empty( $rendered_pinned_ids ) && ! empty( $pinned_ids_for_request ) ) {
-                    $projected_pinned_display = min( $effective_limit, count( $pinned_ids_for_request ) );
-                }
-
-                $regular_posts_needed = max( 0, $effective_limit - $projected_pinned_display );
-                $regular_posts_limit  = $regular_posts_needed;
-            }
-
-            if ( $effective_limit > 0 ) {
-                if ( $regular_posts_limit > 0 ) {
-                    $regular_query = self::build_regular_query(
-                        $options,
-                        array(
-                            'posts_per_page' => $regular_posts_limit,
-                            'offset'         => $regular_offset,
-                        ),
-                        $options['term'] ?? ''
-                    );
-                }
-            } else {
-                $regular_query = self::build_regular_query(
-                    $options,
-                    array(
-                        'posts_per_page' => -1,
-                    ),
-                    $options['term'] ?? ''
-                );
-            }
-        }
-
-        $total_regular_posts = (int) ( $regular_query instanceof WP_Query ? $regular_query->found_posts : 0 );
-
-        return array(
-            'pinned_query'                => $pinned_query,
-            'regular_query'               => $regular_query,
-            'rendered_pinned_ids'         => $rendered_pinned_ids,
-            'should_limit_display'        => $should_limit_display,
-            'render_limit'                => $effective_limit > 0 ? $effective_limit : 0,
-            'regular_posts_needed'        => $regular_posts_needed,
-            'total_pinned_posts'          => $total_matching_pinned,
-            'total_regular_posts'         => $total_regular_posts,
-            'effective_posts_per_page'    => $effective_posts_per_page,
-            'is_unlimited'                => $is_unlimited,
-            'updated_seen_pinned_ids'     => $updated_seen_pinned,
-            'unlimited_batch_size'        => $batch_cap,
-            'should_enforce_unlimited'    => (bool) $should_enforce_unlimited,
-            'meta_query'                  => isset( $options['meta_query'] ) && is_array( $options['meta_query'] )
-                ? $options['meta_query']
-                : array(),
-            'meta_query_relation'         => isset( $options['meta_query_relation'] ) && is_string( $options['meta_query_relation'] )
-                ? $options['meta_query_relation']
-                : 'AND',
-            'content_adapters'            => isset( $options['content_adapters'] ) && is_array( $options['content_adapters'] )
-                ? $options['content_adapters']
-                : array(),
-        );
+        return $builder->build();
     }
 
     public static function get_instance() {

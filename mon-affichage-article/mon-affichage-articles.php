@@ -238,6 +238,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-preset-registry.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-metaboxes.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode-data-preparer.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-display-state-builder.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
@@ -1398,6 +1399,10 @@ public function prepare_filter_articles_response( array $args ) {
         }
 
         do_action( 'my_articles_response_cache_flushed' );
+
+        if ( class_exists( 'My_Articles_Display_State_Builder' ) ) {
+            My_Articles_Display_State_Builder::reset_runtime_cache();
+        }
     }
 
     private function generate_cache_namespace() {
