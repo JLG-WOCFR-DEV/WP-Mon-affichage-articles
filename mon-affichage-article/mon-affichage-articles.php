@@ -414,6 +414,7 @@ final class Mon_Affichage_Articles {
         $displayed_posts_count = 0;
         $displayed_pinned_ids  = array();
         $pinned_rendered       = 0;
+        $regular_rendered      = 0;
 
         if ( $pinned_query instanceof WP_Query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() ) {
@@ -422,6 +423,7 @@ final class Mon_Affichage_Articles {
                 }
 
                 $pinned_query->the_post();
+                $post_id = absint( get_the_ID() );
 
                 if ( $wrap_slides ) {
                     echo '<div class="swiper-slide">';
@@ -437,12 +439,53 @@ final class Mon_Affichage_Articles {
                 $pinned_rendered++;
 
                 if ( $track_pinned ) {
-                    $displayed_pinned_ids[] = absint( get_the_ID() );
+                    $displayed_pinned_ids[] = $post_id;
                 }
+
+                /**
+                 * Fires after a pinned article has been rendered for an HTTP response.
+                 *
+                 * The hook allows instrumentation layers to collect metadata about the
+                 * rendered article without having to duplicate the rendering logic. The
+                 * callback receives a context array describing the current post along
+                 * with the shortcode instance used for rendering.
+                 *
+                 * @param array               $article_context {
+                 *     Contextual information describing the rendered article.
+                 *
+                 *     @type int       $post_id               Displayed post identifier.
+                 *     @type bool      $is_pinned             Whether the article comes from the pinned query.
+                 *     @type string    $query_type            Machine readable query identifier ("pinned").
+                 *     @type int       $position              1-based position of the article in the rendered collection.
+                 *     @type array     $counts                Running counters for the rendered collection (total, pinned, regular).
+                 *     @type array     $options               Shortcode options applied to the rendering.
+                 *     @type array     $args                  Arguments passed to the renderer.
+                 *     @type bool      $wrap_slides           Whether the output is wrapped in Swiper slides.
+                 *     @type WP_Query  $query                 Source query that produced the article.
+                 * }
+                 * @param My_Articles_Shortcode $shortcode_instance Shortcode instance responsible for rendering.
+                 */
+                do_action(
+                    'my_articles_render_article',
+                    array(
+                        'post_id'     => $post_id,
+                        'is_pinned'   => true,
+                        'query_type'  => 'pinned',
+                        'position'    => $displayed_posts_count,
+                        'counts'      => array(
+                            'total'   => $displayed_posts_count,
+                            'pinned'  => $pinned_rendered,
+                            'regular' => $regular_rendered,
+                        ),
+                        'options'     => $options,
+                        'args'        => $args,
+                        'wrap_slides' => $wrap_slides,
+                        'query'       => $pinned_query,
+                    ),
+                    $shortcode_instance
+                );
             }
         }
-
-        $regular_rendered = 0;
 
         if ( $regular_query instanceof WP_Query && $regular_query->have_posts() ) {
             while ( $regular_query->have_posts() ) {
@@ -455,6 +498,7 @@ final class Mon_Affichage_Articles {
                 }
 
                 $regular_query->the_post();
+                $post_id = absint( get_the_ID() );
 
                 if ( $wrap_slides ) {
                     echo '<div class="swiper-slide">';
@@ -468,6 +512,26 @@ final class Mon_Affichage_Articles {
 
                 $displayed_posts_count++;
                 $regular_rendered++;
+
+                do_action(
+                    'my_articles_render_article',
+                    array(
+                        'post_id'     => $post_id,
+                        'is_pinned'   => false,
+                        'query_type'  => 'regular',
+                        'position'    => $displayed_posts_count,
+                        'counts'      => array(
+                            'total'   => $displayed_posts_count,
+                            'pinned'  => $pinned_rendered,
+                            'regular' => $regular_rendered,
+                        ),
+                        'options'     => $options,
+                        'args'        => $args,
+                        'wrap_slides' => $wrap_slides,
+                        'query'       => $regular_query,
+                    ),
+                    $shortcode_instance
+                );
             }
         }
 
@@ -491,13 +555,43 @@ final class Mon_Affichage_Articles {
             }
         }
 
-        return array(
+        $collection_context = array(
+            'options'               => $options,
+            'args'                  => $args,
+            'wrap_slides'           => $wrap_slides,
+            'displayed_posts_count' => $displayed_posts_count,
+            'pinned_rendered_count' => $pinned_rendered,
+            'regular_rendered_count'=> $regular_rendered,
+            'displayed_pinned_ids'  => $displayed_pinned_ids,
+            'queries'               => array(
+                'pinned'  => $pinned_query,
+                'regular' => $regular_query,
+            ),
+        );
+
+        $result = array(
             'html'                   => $html,
             'displayed_posts_count'  => $displayed_posts_count,
             'displayed_pinned_ids'   => $displayed_pinned_ids,
             'pinned_rendered_count'  => $pinned_rendered,
             'regular_rendered_count' => $regular_rendered,
         );
+
+        $result = apply_filters( 'my_articles_render_articles_result', $result, $collection_context, $shortcode_instance );
+
+        /**
+         * Fires after the collection of articles has been rendered and the response payload prepared.
+         *
+         * Instrumentation or logging layers can leverage this hook to track performance metrics or
+         * enrich external systems with the final rendering statistics.
+         *
+         * @param array                  $result              Final response payload returned by the renderer.
+         * @param array                  $collection_context  Contextual information shared with the filter above.
+         * @param My_Articles_Shortcode  $shortcode_instance  Shortcode instance responsible for rendering.
+         */
+        do_action( 'my_articles_render_articles_summary', $result, $collection_context, $shortcode_instance );
+
+        return $result;
     }
 
 public function prepare_filter_articles_response( array $args ) {
