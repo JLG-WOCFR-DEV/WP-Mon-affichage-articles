@@ -240,7 +240,10 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode-data-preparer.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-render-controller.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-render-result.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-response-renderer.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block-preview-adapter.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-response-cache-key.php';
@@ -393,55 +396,37 @@ final class Mon_Affichage_Articles {
 
         $render_limit  = (int) $args['render_limit'];
         $regular_limit = (int) $args['regular_limit'];
-        $track_pinned  = ! empty( $args['track_pinned'] );
-        $wrap_slides   = ! empty( $args['wrap_slides'] );
+        $track_pinned     = ! empty( $args['track_pinned'] );
+        $wrap_slides      = ! empty( $args['wrap_slides'] );
         $skip_empty_state = ! empty( $args['skip_empty_state_when_empty'] );
         $include_skeleton = ! empty( $args['include_skeleton'] );
-        $should_limit  = ( $render_limit > 0 && ! $wrap_slides );
+        $should_limit     = ( $render_limit > 0 && ! $wrap_slides );
 
-        ob_start();
+        $renderer = new My_Articles_Response_Renderer();
+        $result   = new My_Articles_Render_Result( $options, $args, $wrap_slides, $pinned_query, $regular_query );
 
-        if ( $include_skeleton && ! $wrap_slides && method_exists( $shortcode_instance, 'get_skeleton_placeholder_markup' ) ) {
-            $display_mode = $options['display_mode'] ?? 'grid';
+        if ( $include_skeleton && ! $wrap_slides ) {
+            $skeleton_markup = $renderer->render_skeleton_placeholder( $shortcode_instance, $options, $render_limit );
 
-            if ( in_array( $display_mode, array( 'grid', 'list' ), true ) ) {
-                $container_class = ( 'list' === $display_mode ) ? 'my-articles-list-content' : 'my-articles-grid-content';
-                if ( method_exists( $shortcode_instance, 'get_skeleton_placeholder_markup' ) ) {
-                    echo $shortcode_instance->get_skeleton_placeholder_markup( $container_class, $options, $render_limit );
-                }
+            if ( '' !== $skeleton_markup ) {
+                $result->append_fragment( $skeleton_markup );
             }
         }
 
-        $displayed_posts_count = 0;
-        $displayed_pinned_ids  = array();
-        $pinned_rendered       = 0;
-        $regular_rendered      = 0;
-
         if ( $pinned_query instanceof WP_Query && $pinned_query->have_posts() ) {
             while ( $pinned_query->have_posts() ) {
-                if ( $should_limit && $displayed_posts_count >= $render_limit ) {
+                if ( $should_limit && $result->get_displayed_posts_count() >= $render_limit ) {
                     break;
                 }
 
                 $pinned_query->the_post();
                 $post_id = absint( get_the_ID() );
 
-                if ( $wrap_slides ) {
-                    echo '<div class="swiper-slide">';
-                }
+                $item_markup = $renderer->render_article_item( $shortcode_instance, $options, true, $wrap_slides );
+                $result->append_fragment( $item_markup );
 
-                $shortcode_instance->render_article_item( $options, true );
-
-                if ( $wrap_slides ) {
-                    echo '</div>';
-                }
-
-                $displayed_posts_count++;
-                $pinned_rendered++;
-
-                if ( $track_pinned ) {
-                    $displayed_pinned_ids[] = $post_id;
-                }
+                $position        = $result->record_pinned_article( $post_id, $track_pinned );
+                $article_context = $result->build_article_context( $post_id, true, 'pinned', $position, $pinned_query );
 
                 /**
                  * Fires after a pinned article has been rendered for an HTTP response.
@@ -451,92 +436,36 @@ final class Mon_Affichage_Articles {
                  * callback receives a context array describing the current post along
                  * with the shortcode instance used for rendering.
                  *
-                 * @param array               $article_context {
-                 *     Contextual information describing the rendered article.
-                 *
-                 *     @type int       $post_id               Displayed post identifier.
-                 *     @type bool      $is_pinned             Whether the article comes from the pinned query.
-                 *     @type string    $query_type            Machine readable query identifier ("pinned").
-                 *     @type int       $position              1-based position of the article in the rendered collection.
-                 *     @type array     $counts                Running counters for the rendered collection (total, pinned, regular).
-                 *     @type array     $options               Shortcode options applied to the rendering.
-                 *     @type array     $args                  Arguments passed to the renderer.
-                 *     @type bool      $wrap_slides           Whether the output is wrapped in Swiper slides.
-                 *     @type WP_Query  $query                 Source query that produced the article.
-                 * }
-                 * @param My_Articles_Shortcode $shortcode_instance Shortcode instance responsible for rendering.
+                 * @param array                      $article_context     Contextual information describing the rendered article.
+                 * @param My_Articles_Render_Result  $render_result       Aggregated rendering data transfer object.
+                 * @param My_Articles_Shortcode      $shortcode_instance  Shortcode instance responsible for rendering.
                  */
-                do_action(
-                    'my_articles_render_article',
-                    array(
-                        'post_id'     => $post_id,
-                        'is_pinned'   => true,
-                        'query_type'  => 'pinned',
-                        'position'    => $displayed_posts_count,
-                        'counts'      => array(
-                            'total'   => $displayed_posts_count,
-                            'pinned'  => $pinned_rendered,
-                            'regular' => $regular_rendered,
-                        ),
-                        'options'     => $options,
-                        'args'        => $args,
-                        'wrap_slides' => $wrap_slides,
-                        'query'       => $pinned_query,
-                    ),
-                    $shortcode_instance
-                );
+                do_action( 'my_articles_render_article', $article_context, $result, $shortcode_instance );
             }
         }
 
         if ( $regular_query instanceof WP_Query && $regular_query->have_posts() ) {
             while ( $regular_query->have_posts() ) {
-                if ( $should_limit && $displayed_posts_count >= $render_limit ) {
+                if ( $should_limit && $result->get_displayed_posts_count() >= $render_limit ) {
                     break;
                 }
 
-                if ( $regular_limit >= 0 && $regular_rendered >= $regular_limit ) {
+                if ( $regular_limit >= 0 && $result->get_regular_rendered_count() >= $regular_limit ) {
                     break;
                 }
 
                 $regular_query->the_post();
                 $post_id = absint( get_the_ID() );
 
-                if ( $wrap_slides ) {
-                    echo '<div class="swiper-slide">';
-                }
+                $item_markup = $renderer->render_article_item( $shortcode_instance, $options, false, $wrap_slides );
+                $result->append_fragment( $item_markup );
 
-                $shortcode_instance->render_article_item( $options, false );
+                $position        = $result->record_regular_article();
+                $article_context = $result->build_article_context( $post_id, false, 'regular', $position, $regular_query );
 
-                if ( $wrap_slides ) {
-                    echo '</div>';
-                }
-
-                $displayed_posts_count++;
-                $regular_rendered++;
-
-                do_action(
-                    'my_articles_render_article',
-                    array(
-                        'post_id'     => $post_id,
-                        'is_pinned'   => false,
-                        'query_type'  => 'regular',
-                        'position'    => $displayed_posts_count,
-                        'counts'      => array(
-                            'total'   => $displayed_posts_count,
-                            'pinned'  => $pinned_rendered,
-                            'regular' => $regular_rendered,
-                        ),
-                        'options'     => $options,
-                        'args'        => $args,
-                        'wrap_slides' => $wrap_slides,
-                        'query'       => $regular_query,
-                    ),
-                    $shortcode_instance
-                );
+                do_action( 'my_articles_render_article', $article_context, $result, $shortcode_instance );
             }
         }
-
-        $html = ob_get_clean();
 
         if ( $pinned_query instanceof WP_Query ) {
             wp_reset_postdata();
@@ -546,39 +475,23 @@ final class Mon_Affichage_Articles {
             wp_reset_postdata();
         }
 
-        if ( 0 === $displayed_posts_count ) {
+        if ( 0 === $result->get_displayed_posts_count() ) {
             if ( $skip_empty_state ) {
-                $html = '';
-            } elseif ( $wrap_slides ) {
-                $html = $shortcode_instance->get_empty_state_slide_html();
+                $result->replace_html( '' );
             } else {
-                $html = $shortcode_instance->get_empty_state_html();
+                $empty_markup = $renderer->render_empty_state( $shortcode_instance, $options, $wrap_slides );
+                $result->replace_html( $empty_markup );
             }
         }
 
-        $collection_context = array(
-            'options'               => $options,
-            'args'                  => $args,
-            'wrap_slides'           => $wrap_slides,
-            'displayed_posts_count' => $displayed_posts_count,
-            'pinned_rendered_count' => $pinned_rendered,
-            'regular_rendered_count'=> $regular_rendered,
-            'displayed_pinned_ids'  => $displayed_pinned_ids,
-            'queries'               => array(
-                'pinned'  => $pinned_query,
-                'regular' => $regular_query,
-            ),
-        );
+        $collection_context = $result->get_collection_context();
 
-        $result = array(
-            'html'                   => $html,
-            'displayed_posts_count'  => $displayed_posts_count,
-            'displayed_pinned_ids'   => $displayed_pinned_ids,
-            'pinned_rendered_count'  => $pinned_rendered,
-            'regular_rendered_count' => $regular_rendered,
-        );
+        $filtered_result = apply_filters( 'my_articles_render_articles_result', $result, $collection_context, $shortcode_instance );
 
-        $result = apply_filters( 'my_articles_render_articles_result', $result, $collection_context, $shortcode_instance );
+        if ( $filtered_result instanceof My_Articles_Render_Result ) {
+            $result              = $filtered_result;
+            $collection_context  = $result->get_collection_context();
+        }
 
         /**
          * Fires after the collection of articles has been rendered and the response payload prepared.
@@ -586,9 +499,9 @@ final class Mon_Affichage_Articles {
          * Instrumentation or logging layers can leverage this hook to track performance metrics or
          * enrich external systems with the final rendering statistics.
          *
-         * @param array                  $result              Final response payload returned by the renderer.
-         * @param array                  $collection_context  Contextual information shared with the filter above.
-         * @param My_Articles_Shortcode  $shortcode_instance  Shortcode instance responsible for rendering.
+         * @param My_Articles_Render_Result $result              Final response payload returned by the renderer.
+         * @param array                     $collection_context  Contextual information shared with the filter above.
+         * @param My_Articles_Shortcode     $shortcode_instance  Shortcode instance responsible for rendering.
          */
         do_action( 'my_articles_render_articles_summary', $result, $collection_context, $shortcode_instance );
 
@@ -798,11 +711,11 @@ public function prepare_filter_articles_response( array $args ) {
             )
         );
 
-        $html                   = $render_results['html'];
-        $displayed_pinned_ids   = $render_results['displayed_pinned_ids'];
-        $displayed_count        = (int) $render_results['displayed_posts_count'];
-        $rendered_regular_count = (int) $render_results['regular_rendered_count'];
-        $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
+        $html                   = $render_results->get_html();
+        $displayed_pinned_ids   = $render_results->get_displayed_pinned_ids();
+        $displayed_count        = (int) $render_results->get_displayed_posts_count();
+        $rendered_regular_count = (int) $render_results->get_regular_rendered_count();
+        $rendered_pinned_count  = (int) $render_results->get_pinned_rendered_count();
 
         $pagination_context = array(
             'current_page' => 1,
@@ -1151,10 +1064,10 @@ public function prepare_filter_articles_response( array $args ) {
             )
         );
 
-        $html                   = $render_results['html'];
-        $displayed_count        = (int) $render_results['displayed_posts_count'];
-        $rendered_regular_count = (int) $render_results['regular_rendered_count'];
-        $rendered_pinned_count  = (int) $render_results['pinned_rendered_count'];
+        $html                   = $render_results->get_html();
+        $displayed_count        = (int) $render_results->get_displayed_posts_count();
+        $rendered_regular_count = (int) $render_results->get_regular_rendered_count();
+        $rendered_pinned_count  = (int) $render_results->get_pinned_rendered_count();
 
         $pinned_ids_string = ! empty( $updated_seen_pinned ) ? implode( ',', array_map( 'absint', $updated_seen_pinned ) ) : '';
 
@@ -1399,6 +1312,10 @@ public function prepare_filter_articles_response( array $args ) {
         }
 
         do_action( 'my_articles_response_cache_flushed' );
+
+        if ( class_exists( 'My_Articles_Display_State_Builder' ) ) {
+            My_Articles_Display_State_Builder::reset_runtime_cache();
+        }
     }
 
     private function generate_cache_namespace() {

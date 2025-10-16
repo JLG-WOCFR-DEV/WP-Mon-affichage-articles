@@ -976,6 +976,20 @@ if (!function_exists('add_action')) {
     }
 }
 
+if (!function_exists('is_admin')) {
+    function is_admin(): bool
+    {
+        return !empty($GLOBALS['mon_articles_test_is_admin']);
+    }
+}
+
+if (!function_exists('wp_doing_ajax')) {
+    function wp_doing_ajax(): bool
+    {
+        return !empty($GLOBALS['mon_articles_test_doing_ajax']);
+    }
+}
+
 if (!function_exists('did_action')) {
     function did_action($hook_name)
     {
@@ -1731,7 +1745,7 @@ if (!class_exists('WP_Query')) {
     class WP_Query
     {
         /** @var array<int, array<string, mixed>> */
-        private array $posts;
+        public array $posts;
 
         private int $current_index = 0;
 

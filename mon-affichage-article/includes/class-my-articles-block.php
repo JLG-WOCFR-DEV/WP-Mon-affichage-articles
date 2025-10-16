@@ -35,11 +35,16 @@ class My_Articles_Block {
     }
 
     public function render_block( $attributes = array(), $content = '' ) {
+        $attributes = is_array( $attributes ) ? $attributes : array();
+
+        if ( $this->should_render_preview() ) {
+            return $this->render_editor_preview( $attributes );
+        }
+
         if ( ! class_exists( 'My_Articles_Shortcode' ) ) {
             return '';
         }
 
-        $attributes  = is_array( $attributes ) ? $attributes : array();
         $instance_id = isset( $attributes['instanceId'] ) ? absint( $attributes['instanceId'] ) : 0;
 
         if ( $instance_id <= 0 ) {
@@ -56,6 +61,112 @@ class My_Articles_Block {
                 'overrides' => $overrides,
             )
         );
+    }
+
+    private function should_render_preview() {
+        if ( defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+            return true;
+        }
+
+        if ( function_exists( 'wp_doing_ajax' ) && wp_doing_ajax() ) {
+            return true;
+        }
+
+        if ( function_exists( 'is_admin' ) && is_admin() ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function render_editor_preview( array $attributes ) {
+        if ( ! class_exists( 'My_Articles_Block_Preview_Adapter' ) ) {
+            return '';
+        }
+
+        $adapter = new My_Articles_Block_Preview_Adapter();
+        $data    = $adapter->get_items(
+            array(),
+            array(),
+            array(
+                'attributes' => $attributes,
+            )
+        );
+
+        if ( ! is_array( $data ) ) {
+            $data = array();
+        }
+
+        $items = isset( $data['items'] ) && is_array( $data['items'] ) ? $data['items'] : array();
+        $cta   = isset( $data['cta'] ) && is_array( $data['cta'] ) ? $data['cta'] : array();
+
+        $output  = '<div class="my-articles-block-preview" aria-hidden="true">';
+
+        foreach ( $items as $item ) {
+            $output .= $this->render_preview_item( is_array( $item ) ? $item : array() );
+        }
+
+        $cta_label = isset( $cta['label'] ) ? $this->sanitize_preview_text( $cta['label'] ) : '';
+
+        if ( '' !== $cta_label ) {
+            $output .= '<div class="my-articles-block-preview__footer"><span class="my-articles-block-preview__cta">' . esc_html( $cta_label ) . '</span></div>';
+        }
+
+        $output .= '</div>';
+
+        return $output;
+    }
+
+    private function render_preview_item( array $item ) {
+        $title    = $this->sanitize_preview_text( isset( $item['title'] ) ? $item['title'] : '' );
+        $excerpt  = $this->sanitize_preview_text( isset( $item['excerpt'] ) ? $item['excerpt'] : '' );
+        $category = $this->sanitize_preview_text( isset( $item['category'] ) ? $item['category'] : '' );
+        $date     = $this->sanitize_preview_text( isset( $item['date'] ) ? $item['date'] : '' );
+
+        $meta_parts = array();
+
+        if ( '' !== $category ) {
+            $meta_parts[] = '<span class="my-articles-block-preview__category">' . esc_html( $category ) . '</span>';
+        }
+
+        if ( '' !== $date ) {
+            $meta_parts[] = '<span class="my-articles-block-preview__date">' . esc_html( $date ) . '</span>';
+        }
+
+        $meta_html = '';
+
+        if ( ! empty( $meta_parts ) ) {
+            $meta_html = implode( '<span class="my-articles-block-preview__separator">•</span>', $meta_parts );
+        }
+
+        $output  = '<article class="my-articles-block-preview__item">';
+        $output .= '<div class="my-articles-block-preview__media" aria-hidden="true"></div>';
+        $output .= '<div class="my-articles-block-preview__content">';
+
+        if ( '' !== $meta_html ) {
+            $output .= '<p class="my-articles-block-preview__meta">' . $meta_html . '</p>';
+        }
+
+        $output .= '<h3 class="my-articles-block-preview__title">' . esc_html( $title ) . '</h3>';
+
+        if ( '' !== $excerpt ) {
+            $output .= '<p class="my-articles-block-preview__excerpt">' . esc_html( $excerpt ) . '</p>';
+        }
+
+        $output .= '</div>';
+        $output .= '</article>';
+
+        return $output;
+    }
+
+    private function sanitize_preview_text( $value ) {
+        if ( is_scalar( $value ) || ( is_object( $value ) && method_exists( $value, '__toString' ) ) ) {
+            $value = (string) $value;
+        } else {
+            $value = '';
+        }
+
+        return trim( wp_strip_all_tags( $value ) );
     }
 
     public static function prepare_overrides_from_attributes( array $attributes ) {

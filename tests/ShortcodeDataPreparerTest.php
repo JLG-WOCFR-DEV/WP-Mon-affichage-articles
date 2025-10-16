@@ -129,7 +129,7 @@ final class ShortcodeDataPreparerTest extends TestCase
         $this->assertSame(array(), $prepared['requested']['filters'] ?? null);
     }
 
-    public function test_prepare_cache_key_includes_namespace(): void
+    public function test_prepare_cache_key_includes_namespace_when_filters_change(): void
     {
         $instanceId = 777;
 
