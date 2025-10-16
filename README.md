@@ -159,6 +159,16 @@ window.addEventListener('my-articles:load-more', (event) => {
 
 Vous pouvez également fournir un callback personnalisé via `myArticlesFilter.instrumentation.callback` ou `myArticlesLoadMore.instrumentation.callback` pour centraliser le traitement.
 
+### Hooks côté serveur
+
+Pour instrumenter le rendu directement depuis WordPress (logs, télémétrie applicative, A/B testing), plusieurs hooks PHP sont disponibles :
+
+- `my_articles_render_article` — Action déclenchée après le rendu de chaque article. Elle reçoit un tableau de contexte (`post_id`, type de requête, position, compteurs cumulés, options) ainsi que l’instance du shortcode, ce qui facilite la corrélation avec vos outils de monitoring.【F:mon-affichage-article/mon-affichage-articles.php†L407-L459】
+- `my_articles_render_articles_result` — Filtre permettant d’ajuster la payload finale renvoyée par le renderer (HTML, compteur d’articles, IDs épinglés, etc.) avant livraison au front.【F:mon-affichage-article/mon-affichage-articles.php†L492-L506】
+- `my_articles_render_articles_summary` — Action appelée une fois la collection entièrement calculée pour publier des métriques consolidées ou alimenter un bus d’événements serveur.【F:mon-affichage-article/mon-affichage-articles.php†L508-L514】
+
+Ces points d’extension s’ajoutent à l’action REST `my_articles_track_interaction` et complètent les événements front pour obtenir une vision bout-en-bout des interactions utilisateurs.
+
 ### Relayer les interactions côté serveur
 
 ## Prochaines améliorations prioritaires
