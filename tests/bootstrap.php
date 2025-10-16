@@ -1748,5 +1748,7 @@ require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode-data-preparer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-settings-sanitizer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-render-result.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-renderer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-cache-key.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/rest/class-my-articles-controller.php';
