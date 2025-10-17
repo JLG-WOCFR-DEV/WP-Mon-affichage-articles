@@ -266,6 +266,41 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
             WP_CLI::success( sprintf( 'Catalogue de préréglages synchronisé (%d manifestes).', $count ) );
         }
 
+        private static function join_paths( $base, $segment ) {
+            $base    = rtrim( (string) $base, '/\\' );
+            $segment = ltrim( (string) $segment, '/\\' );
+
+            if ( '' === $base ) {
+                return $segment;
+            }
+
+            if ( '' === $segment ) {
+                return $base;
+            }
+
+            return $base . DIRECTORY_SEPARATOR . $segment;
+        }
+
+        private static function normalize_path( $path ) {
+            $normalized = str_replace( '\\', '/', (string) $path );
+            $normalized = preg_replace( '#/+#', '/', $normalized );
+
+            return rtrim( $normalized, '/' );
+        }
+
+        private static function is_path_within_base( $path, $base_dir ) {
+            $normalized_base = self::normalize_path( $base_dir );
+            $normalized_path = self::normalize_path( $path );
+
+            if ( '' === $normalized_base || '' === $normalized_path ) {
+                return false;
+            }
+
+            $normalized_base .= '/';
+
+            return 0 === strpos( $normalized_path . '/', $normalized_base );
+        }
+
         private static function get_json_flags() {
             $flags = 0;
             if ( defined( 'JSON_PRETTY_PRINT' ) ) {

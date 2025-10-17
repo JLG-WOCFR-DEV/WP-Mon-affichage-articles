@@ -458,6 +458,7 @@ final class ControllerRoutesTest extends TestCase
         $controller = $this->createControllerWithHandlers(array());
 
         $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
         $request->set_header('origin', 'http://example.com/page');
 
         $response = $controller->get_rest_nonce($request);
@@ -477,6 +478,7 @@ final class ControllerRoutesTest extends TestCase
         $controller = $this->createControllerWithHandlers(array());
 
         $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
         $request->set_header('referer', '/subdir/page?foo=bar');
 
         $response = $controller->get_rest_nonce($request);
@@ -503,6 +505,35 @@ final class ControllerRoutesTest extends TestCase
 
         $this->assertInstanceOf(WP_Error::class, $response);
         $this->assertSame('my_articles_invalid_request_origin', $response->get_error_code());
+        $this->assertSame(403, $response->get_error_data()['status']);
+    }
+
+    public function test_nonce_route_rejects_missing_nonce_header(): void
+    {
+        $controller = $this->createControllerWithHandlers(array());
+
+        $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('origin', 'http://example.com/page');
+
+        $response = $controller->get_rest_nonce($request);
+
+        $this->assertInstanceOf(WP_Error::class, $response);
+        $this->assertSame('my_articles_invalid_nonce', $response->get_error_code());
+        $this->assertSame(403, $response->get_error_data()['status']);
+    }
+
+    public function test_nonce_route_rejects_invalid_nonce_header(): void
+    {
+        $controller = $this->createControllerWithHandlers(array());
+
+        $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('origin', 'http://example.com/page');
+        $request->set_header('X-WP-Nonce', 'invalid-rest-nonce');
+
+        $response = $controller->get_rest_nonce($request);
+
+        $this->assertInstanceOf(WP_Error::class, $response);
+        $this->assertSame('my_articles_invalid_nonce', $response->get_error_code());
         $this->assertSame(403, $response->get_error_data()['status']);
     }
 
