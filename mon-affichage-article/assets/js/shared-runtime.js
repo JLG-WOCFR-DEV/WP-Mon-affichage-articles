@@ -265,6 +265,7 @@
 
         var mirrorAccessors = Array.isArray(options.mirrors) ? options.mirrors : [];
         var pendingNonceDeferred = null;
+        var fallbackReloadTriggered = false;
 
         function resolveMirrors(explicitSettings) {
             var targets = [];
@@ -296,6 +297,22 @@
 
             for (var i = 0; i < targets.length; i += 1) {
                 targets[i].restNonce = nonce;
+            }
+        }
+
+        function triggerFallbackReload() {
+            if (fallbackReloadTriggered) {
+                return;
+            }
+
+            fallbackReloadTriggered = true;
+
+            if (root && root.location && typeof root.location.reload === 'function') {
+                try {
+                    root.location.reload();
+                } catch (error) {
+                    logError(error);
+                }
             }
         }
 
@@ -344,6 +361,7 @@
             var ajaxOptions = {
                 url: endpoint,
                 type: 'GET',
+                headers: headers,
                 success: function (response) {
                     var nonce = extractNonceFromResponse(response);
 
@@ -356,10 +374,12 @@
 
                     reloadOnRejection();
                     deferred.reject(new Error('Invalid nonce payload'));
+                    triggerFallbackReload();
                 },
                 error: function () {
                     reloadOnRejection();
                     deferred.reject(new Error('Nonce request failed'));
+                    triggerFallbackReload();
                 },
                 complete: function () {
                     pendingNonceDeferred = null;

@@ -458,6 +458,7 @@ final class ControllerRoutesTest extends TestCase
         $controller = $this->createControllerWithHandlers(array());
 
         $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
         $request->set_header('origin', 'http://example.com/page');
         $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
 
@@ -478,6 +479,7 @@ final class ControllerRoutesTest extends TestCase
         $controller = $this->createControllerWithHandlers(array());
 
         $request = new WP_REST_Request('GET', '/my-articles/v1/nonce');
+        $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
         $request->set_header('referer', '/subdir/page?foo=bar');
         $request->set_header('X-WP-Nonce', 'valid-rest-nonce');
 
