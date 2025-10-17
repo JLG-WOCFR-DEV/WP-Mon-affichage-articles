@@ -332,6 +332,24 @@
             pendingNonceDeferred = deferred;
 
             var endpoint = getNonceEndpoint(settings);
+            var nonceHeader = settings && typeof settings.restNonce === 'string' ? settings.restNonce : '';
+            var reloadTriggered = false;
+
+            function reloadOnRejection() {
+                if (reloadTriggered) {
+                    return;
+                }
+
+                reloadTriggered = true;
+
+                if (root && root.location && typeof root.location.reload === 'function') {
+                    try {
+                        root.location.reload();
+                    } catch (error) {
+                        logError(error);
+                    }
+                }
+            }
 
             if (!endpoint) {
                 deferred.reject(new Error('Missing nonce endpoint'));
@@ -340,14 +358,7 @@
                 return deferred.promise();
             }
 
-            var headers = {};
-            var nonceHeader = settings && typeof settings.restNonce === 'string' ? settings.restNonce : '';
-
-            if (nonceHeader) {
-                headers['X-WP-Nonce'] = nonceHeader;
-            }
-
-            $.ajax({
+            var ajaxOptions = {
                 url: endpoint,
                 type: 'GET',
                 headers: headers,
@@ -361,17 +372,27 @@
                         return;
                     }
 
+                    reloadOnRejection();
                     deferred.reject(new Error('Invalid nonce payload'));
                     triggerFallbackReload();
                 },
                 error: function () {
+                    reloadOnRejection();
                     deferred.reject(new Error('Nonce request failed'));
                     triggerFallbackReload();
                 },
                 complete: function () {
                     pendingNonceDeferred = null;
                 }
-            });
+            };
+
+            if (nonceHeader) {
+                ajaxOptions.headers = {
+                    'X-WP-Nonce': nonceHeader
+                };
+            }
+
+            $.ajax(ajaxOptions);
 
             return deferred.promise();
         }
