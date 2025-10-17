@@ -112,6 +112,12 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
                 }
             }
 
+            $base_real = realpath( $base_dir );
+
+            if ( false === $base_real ) {
+                WP_CLI::error( sprintf( 'Impossible de résoudre le dossier des préréglages : %s', $base_dir ) );
+            }
+
             $presets_payload = array();
 
             if ( isset( $decoded['presets'] ) && is_array( $decoded['presets'] ) ) {
@@ -123,19 +129,29 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
             $created = 0;
 
             foreach ( $presets_payload as $key => $definition ) {
+                $raw_preset_id = '';
+
                 if ( is_array( $definition ) && isset( $definition['id'] ) ) {
-                    $preset_id = (string) $definition['id'];
+                    $raw_preset_id = (string) $definition['id'];
                 } elseif ( is_string( $key ) ) {
-                    $preset_id = $key;
-                } else {
-                    continue;
+                    $raw_preset_id = $key;
                 }
+
+                $preset_id = self::sanitize_preset_id( $raw_preset_id );
 
                 if ( '' === $preset_id ) {
+                    if ( '' !== $raw_preset_id ) {
+                        WP_CLI::warning( sprintf( 'Identifiant de préréglage ignoré car invalide : %s', $raw_preset_id ) );
+                    }
                     continue;
                 }
 
-                $target_dir = trailingslashit( $base_dir ) . $preset_id;
+                $target_dir = self::join_paths( $base_real, $preset_id );
+
+                if ( ! self::is_path_within_directory( $target_dir, $base_real ) ) {
+                    WP_CLI::warning( sprintf( 'Identifiant de préréglage ignoré car hors limites : %s', $raw_preset_id ) );
+                    continue;
+                }
 
                 if ( ! is_dir( $target_dir ) ) {
                     if ( function_exists( 'wp_mkdir_p' ) ) {
@@ -161,8 +177,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
                     $manifest['tags'] = $definition['tags'];
                 }
 
-                $manifest_path = trailingslashit( $target_dir ) . 'manifest.json';
-                $tags_path     = trailingslashit( $target_dir ) . 'tags.json';
+                $manifest_path = self::join_paths( $target_dir, 'manifest.json' );
+                $tags_path     = self::join_paths( $target_dir, 'tags.json' );
 
                 $json_flags = self::get_json_flags();
 
@@ -263,6 +279,55 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
             }
 
             return $flags;
+        }
+
+        private static function sanitize_preset_id( $candidate ) {
+            if ( ! is_scalar( $candidate ) ) {
+                return '';
+            }
+
+            $normalized = (string) $candidate;
+
+            if ( function_exists( 'sanitize_key' ) ) {
+                $normalized = sanitize_key( $normalized );
+            } else {
+                $normalized = strtolower( preg_replace( '/[^a-z0-9_\-]/', '', $normalized ) );
+            }
+
+            return $normalized;
+        }
+
+        private static function join_paths( $base, $segment ) {
+            $base    = rtrim( str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, (string) $base ), DIRECTORY_SEPARATOR );
+            $segment = ltrim( str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, (string) $segment ), DIRECTORY_SEPARATOR );
+
+            if ( '' === $base ) {
+                return $segment;
+            }
+
+            if ( '' === $segment ) {
+                return $base;
+            }
+
+            return $base . DIRECTORY_SEPARATOR . $segment;
+        }
+
+        private static function normalize_directory_path( $path ) {
+            $normalized = str_replace( array( '/', '\\' ), DIRECTORY_SEPARATOR, (string) $path );
+            $normalized = rtrim( $normalized, DIRECTORY_SEPARATOR );
+
+            if ( '' === $normalized ) {
+                return DIRECTORY_SEPARATOR;
+            }
+
+            return $normalized . DIRECTORY_SEPARATOR;
+        }
+
+        private static function is_path_within_directory( $path, $base ) {
+            $normalized_base = strtolower( self::normalize_directory_path( $base ) );
+            $normalized_path = strtolower( self::normalize_directory_path( $path ) );
+
+            return 0 === strpos( $normalized_path, $normalized_base );
         }
     }
 
