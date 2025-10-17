@@ -439,6 +439,12 @@ class My_Articles_Controller extends WP_REST_Controller {
             return $origin_validation;
         }
 
+        $nonce_validation = $this->validate_request_nonce( $request );
+
+        if ( is_wp_error( $nonce_validation ) ) {
+            return $nonce_validation;
+        }
+
         return rest_ensure_response(
             array(
                 'success' => true,
