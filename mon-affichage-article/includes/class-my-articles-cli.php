@@ -124,18 +124,31 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
 
             foreach ( $presets_payload as $key => $definition ) {
                 if ( is_array( $definition ) && isset( $definition['id'] ) ) {
-                    $preset_id = (string) $definition['id'];
+                    $raw_preset_id = (string) $definition['id'];
                 } elseif ( is_string( $key ) ) {
-                    $preset_id = $key;
+                    $raw_preset_id = $key;
                 } else {
                     continue;
                 }
 
+                $preset_id = sanitize_key( $raw_preset_id );
+
                 if ( '' === $preset_id ) {
+                    WP_CLI::warning( sprintf( 'Identifiant de préréglage invalide ignoré : %s', $raw_preset_id ) );
                     continue;
                 }
 
-                $target_dir = trailingslashit( $base_dir ) . $preset_id;
+                $base_dir_for_writing = realpath( $base_dir );
+                if ( false === $base_dir_for_writing ) {
+                    $base_dir_for_writing = $base_dir;
+                }
+
+                $target_dir = self::join_paths( $base_dir_for_writing, $preset_id );
+
+                if ( ! self::is_path_within_base( $target_dir, $base_dir_for_writing ) ) {
+                    WP_CLI::warning( sprintf( 'Identifiant de préréglage invalide ignoré : %s', $raw_preset_id ) );
+                    continue;
+                }
 
                 if ( ! is_dir( $target_dir ) ) {
                     if ( function_exists( 'wp_mkdir_p' ) ) {
@@ -161,8 +174,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
                     $manifest['tags'] = $definition['tags'];
                 }
 
-                $manifest_path = trailingslashit( $target_dir ) . 'manifest.json';
-                $tags_path     = trailingslashit( $target_dir ) . 'tags.json';
+                $manifest_path = self::join_paths( $target_dir, 'manifest.json' );
+                $tags_path     = self::join_paths( $target_dir, 'tags.json' );
 
                 $json_flags = self::get_json_flags();
 
@@ -248,6 +261,41 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
             $count = isset( $index['presets'] ) && is_array( $index['presets'] ) ? count( $index['presets'] ) : 0;
 
             WP_CLI::success( sprintf( 'Catalogue de préréglages synchronisé (%d manifestes).', $count ) );
+        }
+
+        private static function join_paths( $base, $segment ) {
+            $base    = rtrim( (string) $base, '/\\' );
+            $segment = ltrim( (string) $segment, '/\\' );
+
+            if ( '' === $base ) {
+                return $segment;
+            }
+
+            if ( '' === $segment ) {
+                return $base;
+            }
+
+            return $base . DIRECTORY_SEPARATOR . $segment;
+        }
+
+        private static function normalize_path( $path ) {
+            $normalized = str_replace( '\\', '/', (string) $path );
+            $normalized = preg_replace( '#/+#', '/', $normalized );
+
+            return rtrim( $normalized, '/' );
+        }
+
+        private static function is_path_within_base( $path, $base_dir ) {
+            $normalized_base = self::normalize_path( $base_dir );
+            $normalized_path = self::normalize_path( $path );
+
+            if ( '' === $normalized_base || '' === $normalized_path ) {
+                return false;
+            }
+
+            $normalized_base .= '/';
+
+            return 0 === strpos( $normalized_path . '/', $normalized_base );
         }
 
         private static function get_json_flags() {
