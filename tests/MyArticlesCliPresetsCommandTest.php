@@ -1,27 +1,12 @@
 <?php
 declare(strict_types=1);
 
-use PHPUnit\Framework\TestCase;
-
-if (!function_exists('trailingslashit')) {
-    function trailingslashit($string)
-    {
-        $string = (string) $string;
-
-        if ('' === $string) {
-            return '/';
-        }
-
-        return rtrim($string, "\\/") . '/';
-    }
-}
-
 if (!defined('WP_CLI')) {
     define('WP_CLI', true);
 }
 
 if (!class_exists('WP_CLI_Command')) {
-    abstract class WP_CLI_Command
+    class WP_CLI_Command
     {
     }
 }
@@ -32,9 +17,21 @@ if (!class_exists('WP_CLI')) {
         /** @var array<int, string> */
         public static array $warnings = array();
 
-        public static function reset(): void
+        /** @var array<int, string> */
+        public static array $errors = array();
+
+        /** @var array<int, string> */
+        public static array $successes = array();
+
+        /** @var array<int, string> */
+        public static array $logs = array();
+
+        /** @var array<int, array{0: string, 1: mixed}> */
+        public static array $added_commands = array();
+
+        public static function add_command($name, $callable): void
         {
-            self::$warnings = array();
+            self::$added_commands[] = array((string) $name, $callable);
         }
 
         public static function warning($message): void
@@ -42,159 +39,198 @@ if (!class_exists('WP_CLI')) {
             self::$warnings[] = (string) $message;
         }
 
-        public static function success($message): void
-        {
-            // No-op for tests.
-        }
-
         public static function error($message): void
         {
+            self::$errors[] = (string) $message;
             throw new RuntimeException((string) $message);
+        }
+
+        public static function success($message): void
+        {
+            self::$successes[] = (string) $message;
         }
 
         public static function log($message): void
         {
-            // No-op for tests.
+            self::$logs[] = (string) $message;
         }
 
         public static function line($message): void
         {
-            // No-op for tests.
-        }
-
-        public static function add_command($name, $callable): void
-        {
-            // No-op for tests.
+            self::$logs[] = (string) $message;
         }
     }
 }
 
-if (!class_exists('My_Articles_CLI_Presets_Command')) {
-    require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-cli.php';
-}
-
 if (!class_exists('My_Articles_Preset_Registry')) {
-    require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-preset-registry.php';
+    require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-preset-registry.php';
 }
 
 if (!class_exists('My_Articles_Shortcode')) {
-    require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
+    require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-shortcode.php';
 }
 
-final class MyArticlesCliPresetsCommandTest extends TestCase
+require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-cli.php';
+
+final class MyArticlesCliPresetsCommandTest extends WP_UnitTestCase
 {
-    /** @var string */
-    private $tempRoot;
+    private string $tempRoot;
 
-    /** @var string */
-    private $presetsDir;
+    private string $baseDir;
 
-    /** @var ReflectionProperty */
-    private $registryProperty;
-
-    /** @var My_Articles_Preset_Registry|null */
-    private $originalRegistry;
+    /** @var mixed */
+    private $previousRegistry;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        WP_CLI::reset();
+        WP_CLI::$warnings = array();
+        WP_CLI::$errors = array();
+        WP_CLI::$successes = array();
+        WP_CLI::$logs = array();
 
         $this->tempRoot = sys_get_temp_dir() . '/my-articles-cli-' . uniqid('', true);
-        $this->presetsDir = $this->tempRoot . '/config/design-presets';
+        $this->baseDir  = $this->tempRoot . '/config/design-presets';
 
-        if (!is_dir($this->presetsDir) && !mkdir($concurrentDirectory = $this->presetsDir, 0777, true) && !is_dir($concurrentDirectory)) {
-            throw new RuntimeException('Unable to create temporary presets directory.');
-        }
+        mkdir($this->baseDir, 0777, true);
 
-        $this->registryProperty = new ReflectionProperty(My_Articles_Preset_Registry::class, 'instance');
-        $this->registryProperty->setAccessible(true);
-        /** @var My_Articles_Preset_Registry|null $original */
-        $original = $this->registryProperty->getValue();
-        $this->originalRegistry = $original instanceof My_Articles_Preset_Registry ? $original : null;
-
-        $override = new class($this->presetsDir) extends My_Articles_Preset_Registry {
-            /** @var string */
-            private $overrideDir;
-
-            public function __construct($overrideDir)
-            {
-                $this->overrideDir = (string) $overrideDir;
-            }
-
-            public function get_presets_dir()
-            {
-                return $this->overrideDir;
-            }
-        };
-
-        $this->registryProperty->setValue($override);
-
-        My_Articles_Shortcode::flush_design_presets_cache();
+        $this->previousRegistry = $this->replacePresetRegistry($this->baseDir);
     }
 
     protected function tearDown(): void
     {
-        $this->registryProperty->setValue($this->originalRegistry);
-        My_Articles_Shortcode::flush_design_presets_cache();
-
+        $this->restorePresetRegistry($this->previousRegistry);
         $this->removeDirectory($this->tempRoot);
 
         parent::tearDown();
     }
 
-    public function test_import_rejects_unsafe_preset_identifiers(): void
+    public function test_import_rejects_unsafe_preset_ids(): void
     {
+        $source = $this->tempRoot . '/import.json';
         $payload = array(
-            'version' => '1.0.0',
             'presets' => array(
                 array(
                     'id'     => '../../outside',
-                    'label'  => 'Outside',
+                    'label'  => 'Unsafe preset',
                     'values' => array(),
                 ),
                 array(
-                    'id'     => '..',
-                    'label'  => 'Dots',
-                    'values' => array(),
-                ),
-                array(
-                    'id'     => 'safe-id',
-                    'label'  => 'Safe',
+                    'id'     => '$$$',
+                    'label'  => 'Invalid preset',
                     'values' => array(),
                 ),
             ),
         );
 
-        $sourceFile = $this->tempRoot . '/payload.json';
-        file_put_contents($sourceFile, wp_json_encode($payload));
+        file_put_contents($source, json_encode($payload));
 
         $command = new My_Articles_CLI_Presets_Command();
-        $command->import(array($sourceFile), array());
+        $command->import(array($source), array());
+
+        $insideDir = $this->baseDir . '/outside';
+        $this->assertDirectoryExists($insideDir);
+        $this->assertFileExists($insideDir . '/manifest.json');
 
         $outsideDir = $this->tempRoot . '/outside';
-        $this->assertFalse(is_dir($outsideDir), 'Preset import should not create directories outside of the presets base path.');
+        $this->assertDirectoryDoesNotExist($outsideDir);
 
-        $safeDir = $this->presetsDir . '/safe-id';
-        $this->assertTrue(is_dir($safeDir), 'Safe presets should still be imported successfully.');
-        $this->assertFileExists($safeDir . '/manifest.json');
+        $createdDirectories = $this->listDirectories($this->baseDir);
+        $this->assertSame(array('outside'), $createdDirectories);
 
-        $skippedManifest = $this->presetsDir . '/manifest.json';
-        $this->assertFileDoesNotExist($skippedManifest, 'Unsafe preset identifiers should be skipped entirely.');
-
-        $warnings = WP_CLI::$warnings;
-        $this->assertNotEmpty($warnings, 'CLI should emit a warning for unsafe preset identifiers.');
-        $this->assertStringContainsString('..', implode(' ', $warnings));
+        $this->assertNotEmpty(WP_CLI::$successes);
+        $this->assertCount(1, WP_CLI::$warnings);
+        $this->assertStringContainsString('$$$', WP_CLI::$warnings[0]);
     }
 
-    private function removeDirectory(string $directory): void
+    /**
+     * @param string $baseDir
+     * @return mixed Previous registry instance.
+     */
+    private function replacePresetRegistry(string $baseDir)
     {
-        if (!is_dir($directory)) {
+        $registry = new class($baseDir) extends My_Articles_Preset_Registry {
+            private string $baseDir;
+
+            public function __construct(string $baseDir)
+            {
+                $this->baseDir = $baseDir;
+            }
+
+            public function get_presets_dir()
+            {
+                return $this->baseDir;
+            }
+        };
+
+        $reflection = new ReflectionProperty(My_Articles_Preset_Registry::class, 'instance');
+        $reflection->setAccessible(true);
+        $previous = $reflection->getValue();
+        $reflection->setValue($registry);
+
+        return $previous;
+    }
+
+    /**
+     * @param mixed $previous
+     */
+    private function restorePresetRegistry($previous): void
+    {
+        $reflection = new ReflectionProperty(My_Articles_Preset_Registry::class, 'instance');
+        $reflection->setAccessible(true);
+        $reflection->setValue($previous);
+    }
+
+    /**
+     * @param string $path
+     * @return array<int, string>
+     */
+    private function listDirectories(string $path): array
+    {
+        if (!is_dir($path)) {
+            return array();
+        }
+
+        $entries = array();
+        $handle  = opendir($path);
+
+        if (false === $handle) {
+            return $entries;
+        }
+
+        try {
+            while (false !== ($item = readdir($handle))) {
+                if ('.' === $item || '..' === $item) {
+                    continue;
+                }
+
+                $candidate = $path . DIRECTORY_SEPARATOR . $item;
+                if (is_dir($candidate)) {
+                    $entries[] = $item;
+                }
+            }
+        } finally {
+            closedir($handle);
+        }
+
+        sort($entries);
+
+        return $entries;
+    }
+
+    private function removeDirectory(string $path): void
+    {
+        if (!file_exists($path)) {
             return;
         }
 
-        $items = scandir($directory);
+        if (is_file($path)) {
+            @unlink($path);
+            return;
+        }
+
+        $items = scandir($path);
         if (false === $items) {
             return;
         }
@@ -204,16 +240,14 @@ final class MyArticlesCliPresetsCommandTest extends TestCase
                 continue;
             }
 
-            $path = $directory . DIRECTORY_SEPARATOR . $item;
-
-            if (is_dir($path)) {
-                $this->removeDirectory($path);
-                continue;
+            $target = $path . DIRECTORY_SEPARATOR . $item;
+            if (is_dir($target)) {
+                $this->removeDirectory($target);
+            } else {
+                @unlink($target);
             }
-
-            @unlink($path);
         }
 
-        @rmdir($directory);
+        @rmdir($path);
     }
 }
