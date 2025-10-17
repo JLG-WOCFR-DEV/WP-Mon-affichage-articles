@@ -361,7 +361,6 @@
             var ajaxOptions = {
                 url: endpoint,
                 type: 'GET',
-                headers: headers,
                 success: function (response) {
                     var nonce = extractNonceFromResponse(response);
 

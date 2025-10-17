@@ -71,6 +71,14 @@
                 }
             });
 
+            $selectField.on('select2:open', function () {
+                $(this).next('.select2-container').attr('aria-hidden', 'false');
+            });
+
+            $selectField.on('select2:close', function () {
+                $(this).next('.select2-container').attr('aria-hidden', 'true');
+            });
+
             var $selection = $selectField.next('.select2-container').find('.select2-selection__rendered');
 
             $selection.sortable({
