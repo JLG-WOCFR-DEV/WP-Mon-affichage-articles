@@ -242,6 +242,7 @@ final class Mon_Affichage_Articles {
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-shortcode.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-render-result.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-response-renderer.php';
+        require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-asset-payload-registry.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-frontend-data.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-block-preview-adapter.php';
         require_once MY_ARTICLES_PLUGIN_DIR . 'includes/class-my-articles-enqueue.php';

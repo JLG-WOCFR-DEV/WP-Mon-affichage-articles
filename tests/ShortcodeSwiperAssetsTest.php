@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MonAffichageArticles\Tests;
 
+use My_Articles_Asset_Payload_Registry;
 use My_Articles_Enqueue;
 use My_Articles_Frontend_Data;
 use My_Articles_Shortcode;
@@ -41,6 +42,8 @@ final class ShortcodeSwiperAssetsTest extends TestCase
         $mon_articles_test_enqueued_scripts   = array();
         $mon_articles_test_inline_scripts     = array();
         $mon_articles_test_marked_scripts     = array();
+
+        My_Articles_Asset_Payload_Registry::get_instance()->reset();
     }
 
     public function test_enqueue_swiper_scripts_registers_inline_data(): void

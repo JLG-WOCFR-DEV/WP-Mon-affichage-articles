@@ -125,6 +125,7 @@ if (!function_exists('is_object_in_taxonomy')) {
 
 namespace MonAffichageArticles\Tests {
 
+use My_Articles_Asset_Payload_Registry;
 use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 
@@ -145,16 +146,16 @@ final class ShortcodeLocalizationTest extends TestCase
         global $mon_articles_test_post_type_map,
             $mon_articles_test_post_status_map,
             $mon_articles_test_post_meta_map,
-            $mon_articles_test_localized_scripts,
             $mon_articles_test_enqueued_scripts,
             $mon_articles_test_enqueued_styles;
 
         $mon_articles_test_post_type_map   = array();
         $mon_articles_test_post_status_map = array();
         $mon_articles_test_post_meta_map   = array();
-        $mon_articles_test_localized_scripts = array();
         $mon_articles_test_enqueued_scripts  = array();
         $mon_articles_test_enqueued_styles   = array();
+
+        My_Articles_Asset_Payload_Registry::get_instance()->reset();
     }
 
     public function test_localized_scripts_include_feedback_labels(): void
@@ -163,8 +164,7 @@ final class ShortcodeLocalizationTest extends TestCase
 
         global $mon_articles_test_post_type_map,
             $mon_articles_test_post_status_map,
-            $mon_articles_test_post_meta_map,
-            $mon_articles_test_localized_scripts;
+            $mon_articles_test_post_meta_map;
 
         $mon_articles_test_post_type_map[$instanceId]   = 'mon_affichage';
         $mon_articles_test_post_status_map[$instanceId] = 'publish';
@@ -181,18 +181,10 @@ final class ShortcodeLocalizationTest extends TestCase
 
         $shortcode->render_shortcode(array('id' => (string) $instanceId));
 
-        $filterData = null;
-        $loadMoreData = null;
+        $registry = My_Articles_Asset_Payload_Registry::get_instance();
 
-        foreach ($mon_articles_test_localized_scripts as $entry) {
-            if ($entry['handle'] === 'my-articles-filter') {
-                $filterData = $entry['data'];
-            }
-
-            if ($entry['handle'] === 'my-articles-load-more') {
-                $loadMoreData = $entry['data'];
-            }
-        }
+        $filterData = $registry->get_payload('my-articles-filter', 'myArticlesFilter');
+        $loadMoreData = $registry->get_payload('my-articles-load-more', 'myArticlesLoadMore');
 
         $this->assertIsArray($filterData);
         $this->assertArrayHasKey('countSingle', $filterData);
