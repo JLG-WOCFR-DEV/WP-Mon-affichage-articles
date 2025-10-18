@@ -2,31 +2,31 @@
     --my-articles-admin-radius: 18px;
     --my-articles-admin-radius-sm: 12px;
     --my-articles-admin-radius-pill: 999px;
-    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 16%, transparent);
+    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #1f2937) 16%, #dfe6f4 84%);
     --my-articles-admin-border: 1px solid var(--my-articles-admin-border-color);
-    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 28%, transparent);
-    --my-articles-admin-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 6%);
+    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #1f2937) 26%, #ced8eb 74%);
+    --my-articles-admin-bg: color-mix(in srgb, #ffffff 96%, var(--wp-admin-theme-color, #1f2937) 4%);
     --my-articles-admin-surface: #ffffff;
-    --my-articles-admin-surface-muted: color-mix(in srgb, #f7f8fc 90%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-surface-muted: color-mix(in srgb, #eef2ff 94%, var(--wp-admin-theme-color, #1f2937) 6%);
     --my-articles-admin-elevated: #ffffff;
-    --my-articles-admin-text: #111827;
-    --my-articles-admin-muted: #6b7280;
-    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 45%, var(--my-articles-admin-muted) 55%);
-    --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 35%, transparent);
-    --my-articles-admin-accent: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #2563eb 25%);
-    --my-articles-admin-accent-soft: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 12%, #e8f1ff 88%);
+    --my-articles-admin-text: #0f172a;
+    --my-articles-admin-muted: color-mix(in srgb, var(--my-articles-admin-text) 35%, #94a3b8 65%);
+    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 55%, var(--my-articles-admin-muted) 45%);
+    --my-articles-admin-outline: color-mix(in srgb, #2563eb 32%, transparent);
+    --my-articles-admin-accent: color-mix(in srgb, #2563eb 72%, var(--wp-admin-theme-color, #1f2937) 28%);
+    --my-articles-admin-accent-soft: color-mix(in srgb, var(--my-articles-admin-accent) 20%, #f1f5ff 80%);
     --my-articles-admin-accent-contrast: #ffffff;
-    --my-articles-admin-shadow: 0 18px 35px -18px rgba(15, 23, 42, 0.25);
-    --my-articles-admin-shadow-soft: 0 20px 45px -30px rgba(15, 23, 42, 0.3);
-    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 22%, transparent);
+    --my-articles-admin-shadow: 0 22px 45px -28px rgba(15, 23, 42, 0.22);
+    --my-articles-admin-shadow-soft: 0 26px 60px -36px rgba(15, 23, 42, 0.2);
+    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, #2563eb 26%, transparent);
     --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
-    --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, #f0f9ff 70%) 0%, #ffffff 60%, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 18%, #eef2ff 82%) 100%);
-    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 8%);
-    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 92%, #1f2937 8%);
-    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 70%, #ffffff 30%);
-    --my-articles-admin-success-text: #14532d;
-    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 70%, #ffffff 30%);
-    --my-articles-admin-error-text: #991b1b;
+    --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, #dce7ff 80%, #eef2ff 20%) 0%, #ffffff 55%, color-mix(in srgb, #c7d2fe 65%, #ffffff 35%) 100%);
+    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 96%, var(--my-articles-admin-accent) 4%);
+    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 96%, #1f2937 4%);
+    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 78%, #ffffff 22%);
+    --my-articles-admin-success-text: #166534;
+    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 78%, #ffffff 22%);
+    --my-articles-admin-error-text: #b91c1c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -164,37 +164,47 @@ body.wp-admin.is-dark-theme .my-articles-admin__notices .notice-error {
 
 @supports not (color: color-mix(in srgb, black 50%, white 50%)) {
     :root {
-        --my-articles-admin-border-color: rgba(60, 67, 74, 0.16);
-        --my-articles-admin-border: 1px solid rgba(60, 67, 74, 0.16);
-        --my-articles-admin-border-strong: 1px solid rgba(60, 67, 74, 0.28);
-        --my-articles-admin-bg: #f5f6fb;
-        --my-articles-admin-surface-muted: #f7f8fc;
-        --my-articles-admin-outline: rgba(37, 99, 235, 0.35);
+        --my-articles-admin-border-color: rgba(15, 23, 42, 0.12);
+        --my-articles-admin-border: 1px solid rgba(15, 23, 42, 0.12);
+        --my-articles-admin-border-strong: 1px solid rgba(15, 23, 42, 0.18);
+        --my-articles-admin-bg: #f4f7ff;
+        --my-articles-admin-surface: #ffffff;
+        --my-articles-admin-surface-muted: #eef2ff;
+        --my-articles-admin-elevated: #ffffff;
+        --my-articles-admin-text: #0f172a;
+        --my-articles-admin-muted: #516075;
+        --my-articles-admin-outline: rgba(37, 99, 235, 0.32);
         --my-articles-admin-accent: #2563eb;
-        --my-articles-admin-accent-soft: #e8f1ff;
-        --my-articles-admin-muted-strong: #424a58;
+        --my-articles-admin-accent-soft: #e4ecff;
+        --my-articles-admin-accent-contrast: #ffffff;
+        --my-articles-admin-shadow: 0 22px 45px -28px rgba(15, 23, 42, 0.22);
+        --my-articles-admin-shadow-soft: 0 26px 60px -36px rgba(15, 23, 42, 0.2);
+        --my-articles-admin-shadow-focus: 0 0 0 3px rgba(37, 99, 235, 0.26);
+        --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
+        --my-articles-admin-gradient: linear-gradient(135deg, #dce7ff 0%, #ffffff 55%, #c7d2fe 100%);
+        --my-articles-admin-muted-strong: #334155;
         --my-articles-admin-notice-bg: #ffffff;
         --my-articles-admin-notice-text: #1f2937;
         --my-articles-admin-success-bg: #dcfce7;
-        --my-articles-admin-success-text: #14532d;
+        --my-articles-admin-success-text: #166534;
         --my-articles-admin-error-bg: #fee2e2;
-        --my-articles-admin-error-text: #991b1b;
+        --my-articles-admin-error-text: #b91c1c;
     }
 
     .my-articles-admin__header {
-        background: linear-gradient(135deg, #c7d2fe 0%, #e8efff 55%, #aebff8 100%);
+        background: linear-gradient(135deg, #dce7ff 0%, #ffffff 55%, #c7d2fe 100%);
     }
 
     .my-articles-admin__tabs {
-        background-color: #f8f9fd;
+        background-color: #f2f6ff;
     }
 
     .my-articles-card--primary {
-        background: linear-gradient(180deg, #f8f9ff 0%, #ffffff 65%);
+        background: linear-gradient(180deg, #f6f8ff 0%, #ffffff 65%);
     }
 
     .my-articles-card--muted {
-        background-color: #f7f8fc;
+        background-color: #eef2ff;
     }
 
     @media (prefers-color-scheme: dark) {
@@ -263,12 +273,7 @@ body.wp-admin.is-dark-theme .my-articles-admin__notices .notice-error {
     gap: clamp(1rem, 0.8rem + 0.6vw, 1.6rem);
     padding: clamp(1.8rem, 1.4rem + 1vw, 2.5rem);
     margin-bottom: clamp(1.5rem, 1rem + 1vw, 2.75rem);
-    background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 55%, #dbeafe 45%) 0%,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 40%, #e5edff 60%) 52%,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #cbd5f5 35%) 100%
-    );
+    background: var(--my-articles-admin-gradient);
     border-radius: var(--my-articles-admin-radius);
     border: var(--my-articles-admin-border-strong);
     box-shadow: var(--my-articles-admin-shadow-soft);
@@ -315,7 +320,7 @@ body.wp-admin.is-dark-theme .my-articles-admin__notices .notice-error {
 .my-articles-admin__subtitle {
     margin: 0.25rem 0 0;
     font-size: 0.95rem;
-    color: color-mix(in srgb, var(--my-articles-admin-text) 65%, #ffffff 35%);
+    color: color-mix(in srgb, var(--my-articles-admin-text) 82%, #475569 18%);
     max-width: 36ch;
 }
 
@@ -910,52 +915,47 @@ body.wp-admin.is-dark-theme .my-articles-admin__notices .notice-error {
 
 .my-articles-admin[data-theme="light"] {
     color-scheme: light;
-    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 16%, transparent);
+    --my-articles-admin-border-color: color-mix(in srgb, var(--wp-admin-theme-color, #1f2937) 16%, #dfe6f4 84%);
     --my-articles-admin-border: 1px solid var(--my-articles-admin-border-color);
-    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 28%, transparent);
-    --my-articles-admin-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 6%);
+    --my-articles-admin-border-strong: 1px solid color-mix(in srgb, var(--wp-admin-theme-color, #1f2937) 26%, #ced8eb 74%);
+    --my-articles-admin-bg: color-mix(in srgb, #ffffff 96%, var(--wp-admin-theme-color, #1f2937) 4%);
     --my-articles-admin-surface: #ffffff;
-    --my-articles-admin-surface-muted: color-mix(in srgb, #f7f8fc 90%, var(--wp-admin-theme-color, #3c434a) 8%);
+    --my-articles-admin-surface-muted: color-mix(in srgb, #eef2ff 94%, var(--wp-admin-theme-color, #1f2937) 6%);
     --my-articles-admin-elevated: #ffffff;
-    --my-articles-admin-text: #111827;
-    --my-articles-admin-muted: #6b7280;
-    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 45%, var(--my-articles-admin-muted) 55%);
-    --my-articles-admin-outline: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 35%, transparent);
-    --my-articles-admin-accent: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #2563eb 25%);
-    --my-articles-admin-accent-soft: color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 12%, #e8f1ff 88%);
+    --my-articles-admin-text: #0f172a;
+    --my-articles-admin-muted: color-mix(in srgb, var(--my-articles-admin-text) 35%, #94a3b8 65%);
+    --my-articles-admin-muted-strong: color-mix(in srgb, var(--my-articles-admin-text) 55%, var(--my-articles-admin-muted) 45%);
+    --my-articles-admin-outline: color-mix(in srgb, #2563eb 32%, transparent);
+    --my-articles-admin-accent: color-mix(in srgb, #2563eb 72%, var(--wp-admin-theme-color, #1f2937) 28%);
+    --my-articles-admin-accent-soft: color-mix(in srgb, var(--my-articles-admin-accent) 20%, #f1f5ff 80%);
     --my-articles-admin-accent-contrast: #ffffff;
-    --my-articles-admin-shadow: 0 18px 35px -18px rgba(15, 23, 42, 0.25);
-    --my-articles-admin-shadow-soft: 0 20px 45px -30px rgba(15, 23, 42, 0.3);
-    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 22%, transparent);
+    --my-articles-admin-shadow: 0 22px 45px -28px rgba(15, 23, 42, 0.22);
+    --my-articles-admin-shadow-soft: 0 26px 60px -36px rgba(15, 23, 42, 0.2);
+    --my-articles-admin-shadow-focus: 0 0 0 3px color-mix(in srgb, #2563eb 26%, transparent);
     --my-articles-admin-gap: clamp(1.5rem, 1rem + 1vw, 2.5rem);
-    --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 30%, #f0f9ff 70%) 0%, #ffffff 60%, color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 18%, #eef2ff 82%) 100%);
-    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 92%, var(--wp-admin-theme-color, #3c434a) 8%);
-    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 92%, #1f2937 8%);
-    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 70%, #ffffff 30%);
-    --my-articles-admin-success-text: #14532d;
-    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 70%, #ffffff 30%);
-    --my-articles-admin-error-text: #991b1b;
+    --my-articles-admin-gradient: linear-gradient(135deg, color-mix(in srgb, #dce7ff 80%, #eef2ff 20%) 0%, #ffffff 55%, color-mix(in srgb, #c7d2fe 65%, #ffffff 35%) 100%);
+    --my-articles-admin-notice-bg: color-mix(in srgb, #ffffff 96%, var(--my-articles-admin-accent) 4%);
+    --my-articles-admin-notice-text: color-mix(in srgb, var(--my-articles-admin-text) 96%, #1f2937 4%);
+    --my-articles-admin-success-bg: color-mix(in srgb, #dcfce7 78%, #ffffff 22%);
+    --my-articles-admin-success-text: #166534;
+    --my-articles-admin-error-bg: color-mix(in srgb, #fee2e2 78%, #ffffff 22%);
+    --my-articles-admin-error-text: #b91c1c;
 }
 
 .my-articles-admin[data-theme="light"] .my-articles-admin__header {
-    background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 55%, #dbeafe 45%) 0%,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 40%, #e5edff 60%) 52%,
-        color-mix(in srgb, var(--wp-admin-theme-color, #3c434a) 65%, #cbd5f5 35%) 100%
-    );
+    background: var(--my-articles-admin-gradient);
 }
 
 .my-articles-admin[data-theme="light"] .my-articles-admin__tabs {
-    background: color-mix(in srgb, var(--my-articles-admin-surface) 75%, transparent);
+    background: color-mix(in srgb, var(--my-articles-admin-surface) 82%, #dbeafe 18%);
 }
 
 .my-articles-admin[data-theme="light"] .my-articles-card--muted {
-    background-color: #f7f8fc;
+    background-color: color-mix(in srgb, #ffffff 75%, #e7ecff 25%);
 }
 
 .my-articles-admin[data-theme="light"] .my-articles-admin__meta {
-    background-color: color-mix(in srgb, var(--my-articles-admin-surface) 80%, transparent);
+    background-color: color-mix(in srgb, #ffffff 85%, #e0eaff 15%);
 }
 
 .my-articles-admin[data-theme="dark"] {
