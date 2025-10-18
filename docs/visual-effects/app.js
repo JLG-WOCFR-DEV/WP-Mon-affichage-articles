@@ -328,7 +328,7 @@
         navButtons.forEach((button) => {
             const matches = button.dataset.target === effectId;
             button.setAttribute('aria-selected', matches ? 'true' : 'false');
-            button.tabIndex = matches ? 0 : -1;
+            button.removeAttribute('tabindex');
         });
     }
 
