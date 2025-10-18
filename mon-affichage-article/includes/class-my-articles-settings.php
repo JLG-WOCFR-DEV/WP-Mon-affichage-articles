@@ -50,27 +50,6 @@ class My_Articles_Settings {
     }
 
     public function create_admin_page() {
-        $active_tab   = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings';
-        $allowed_tabs = array( 'settings', 'tutorial' );
-
-        if ( ! in_array( $active_tab, $allowed_tabs, true ) ) {
-            $active_tab = 'settings';
-        }
-
-        $tabs = array(
-            'settings' => array(
-                'label'    => __( 'Réglages', 'mon-articles' ),
-                'panel_id' => 'my-articles-panel-settings',
-            ),
-            'tutorial' => array(
-                'label'    => __( 'Tutoriel', 'mon-articles' ),
-                'panel_id' => 'my-articles-panel-tutorial',
-            ),
-        );
-
-        $is_settings_active = ( 'settings' === $active_tab );
-        $is_tutorial_active = ( 'tutorial' === $active_tab );
-
         $options = get_option( $this->option_name, array() );
         $admin_theme = isset( $options['admin_theme'] ) ? (string) $options['admin_theme'] : 'auto';
         if ( ! in_array( $admin_theme, array( 'auto', 'light', 'dark' ), true ) ) {
@@ -99,31 +78,6 @@ class My_Articles_Settings {
                 </dl>
             </header>
 
-            <nav class="my-articles-admin__tabs" role="tablist" aria-label="<?php esc_attr_e( 'Navigation des réglages', 'mon-articles' ); ?>">
-                <?php foreach ( $tabs as $tab_key => $tab ) :
-                    $is_current = ( $tab_key === $active_tab );
-                    $tab_url    = add_query_arg(
-                        array(
-                            'page' => 'my-articles-settings',
-                            'tab'  => $tab_key,
-                        ),
-                        admin_url( 'admin.php' )
-                    );
-                    ?>
-                    <a
-                        id="my-articles-tab-<?php echo esc_attr( $tab_key ); ?>"
-                        href="<?php echo esc_url( $tab_url ); ?>"
-                        class="my-articles-admin__tab"
-                        role="tab"
-                        data-state="<?php echo esc_attr( $is_current ? 'active' : 'inactive' ); ?>"
-                        aria-selected="<?php echo esc_attr( $is_current ? 'true' : 'false' ); ?>"
-                        aria-controls="<?php echo esc_attr( $tab['panel_id'] ); ?>"
-                    >
-                        <span class="my-articles-admin__tab-label"><?php echo esc_html( $tab['label'] ); ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </nav>
-
             <?php $settings_messages = get_settings_errors(); ?>
             <?php if ( ! empty( $settings_messages ) ) : ?>
                 <div class="my-articles-admin__notices" aria-live="polite">
@@ -134,11 +88,6 @@ class My_Articles_Settings {
             <section
                 id="my-articles-panel-settings"
                 class="my-articles-admin__panel"
-                role="tabpanel"
-                aria-labelledby="my-articles-tab-settings"
-                data-state="<?php echo esc_attr( $is_settings_active ? 'active' : 'inactive' ); ?>"
-                <?php echo $is_settings_active ? '' : ' hidden'; ?>
-                aria-hidden="<?php echo esc_attr( $is_settings_active ? 'false' : 'true' ); ?>"
             >
                 <div class="my-articles-admin__panel-grid">
                     <article class="my-articles-card my-articles-card--primary my-articles-admin__settings-card">
@@ -174,11 +123,6 @@ class My_Articles_Settings {
             <section
                 id="my-articles-panel-tutorial"
                 class="my-articles-admin__panel"
-                role="tabpanel"
-                aria-labelledby="my-articles-tab-tutorial"
-                data-state="<?php echo esc_attr( $is_tutorial_active ? 'active' : 'inactive' ); ?>"
-                <?php echo $is_tutorial_active ? '' : ' hidden'; ?>
-                aria-hidden="<?php echo esc_attr( $is_tutorial_active ? 'false' : 'true' ); ?>"
             >
                 <article class="my-articles-card my-articles-card--prose my-articles-card--primary">
                     <h2><?php esc_html_e( 'Instrumentation : comprendre ce que vous activez', 'mon-articles' ); ?></h2>
