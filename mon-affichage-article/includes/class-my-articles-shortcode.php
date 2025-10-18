@@ -1747,6 +1747,10 @@ JS;
 
         $enqueue = My_Articles_Enqueue::get_instance();
 
+        $payload_registry = class_exists( 'My_Articles_Asset_Payload_Registry' )
+            ? My_Articles_Asset_Payload_Registry::get_instance()
+            : null;
+
         if ( $enqueue instanceof My_Articles_Enqueue ) {
             foreach ( (array) ( $assets['styles'] ?? array() ) as $style_handle ) {
                 $enqueue->declare_dependency( $style_handle, 'style' );
@@ -1769,10 +1773,24 @@ JS;
                     continue;
                 }
 
+                $aggregated_payload = (array) $payload['data'];
+
+                if ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
+                    $aggregated_payload = $payload_registry->register(
+                        (string) $payload['handle'],
+                        (string) $payload['object'],
+                        (array) $payload['data']
+                    );
+                }
+
+                if ( empty( $aggregated_payload ) ) {
+                    continue;
+                }
+
                 $enqueue->register_script_data(
                     $payload['handle'],
                     $payload['object'],
-                    (array) $payload['data']
+                    $aggregated_payload
                 );
             }
 
@@ -1786,6 +1804,19 @@ JS;
                     (string) $inline['code'],
                     isset( $inline['position'] ) ? (string) $inline['position'] : 'after'
                 );
+            }
+        } elseif ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
+            foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
+                if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                    continue;
+                }
+
+                $payload_registry->register(
+                    (string) $payload['handle'],
+                    (string) $payload['object'],
+                    (array) $payload['data']
+                );
+                $payload_registry->dispatch( $payload['handle'], $payload['object'] );
             }
         }
 
@@ -2398,6 +2429,9 @@ JS;
 
     private function enqueue_swiper_scripts( $options, $instance_id ) {
         $assets = $this->get_swiper_assets( $options, $instance_id );
+        $payload_registry = class_exists( 'My_Articles_Asset_Payload_Registry' )
+            ? My_Articles_Asset_Payload_Registry::get_instance()
+            : null;
 
         if ( class_exists( 'My_Articles_Enqueue' ) ) {
             $enqueue = My_Articles_Enqueue::get_instance();
@@ -2416,10 +2450,24 @@ JS;
                         continue;
                     }
 
+                    $aggregated_payload = (array) $payload['data'];
+
+                    if ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
+                        $aggregated_payload = $payload_registry->register(
+                            (string) $payload['handle'],
+                            (string) $payload['object'],
+                            (array) $payload['data']
+                        );
+                    }
+
+                    if ( empty( $aggregated_payload ) ) {
+                        continue;
+                    }
+
                     $enqueue->register_script_data(
                         $payload['handle'],
                         $payload['object'],
-                        (array) $payload['data']
+                        $aggregated_payload
                     );
                 }
 
@@ -2439,19 +2487,18 @@ JS;
             }
         }
 
-        if ( function_exists( 'wp_localize_script' ) ) {
+        if ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
             foreach ( (array) ( $assets['payloads'] ?? array() ) as $payload ) {
                 if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
                     continue;
                 }
 
-                foreach ( $payload['data'] as $key => $settings ) {
-                    wp_localize_script(
-                        $payload['handle'],
-                        $payload['object'] . '_' . $key,
-                        $settings
-                    );
-                }
+                $payload_registry->register(
+                    (string) $payload['handle'],
+                    (string) $payload['object'],
+                    (array) $payload['data']
+                );
+                $payload_registry->dispatch( $payload['handle'], $payload['object'] );
             }
         }
     }

@@ -1811,6 +1811,7 @@ require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-sho
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-settings-sanitizer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-render-controller.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-asset-payload-registry.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-frontend-data.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-enqueue.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-response-cache-key.php';
