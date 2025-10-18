@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Générateur d'Effets Visuels</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" aria-label="Navigation des effets visuels">
+            <header class="sidebar__header">
+                <span class="sidebar__badge" aria-hidden="true">FX</span>
+                <div class="sidebar__titles">
+                    <p class="sidebar__title">Effets visuels</p>
+                    <p class="sidebar__subtitle">Ajustez chaque preset indépendamment.</p>
+                </div>
+            </header>
+            <nav class="sidebar__nav" role="tablist">
+                <button class="sidebar__link" type="button" data-target="animated-background" role="tab" aria-selected="true" aria-controls="panel-animated-background">
+                    <span class="sidebar__icon" aria-hidden="true">🌌</span>
+                    <span>Fonds animés</span>
+                </button>
+                <button class="sidebar__link" type="button" data-target="ecg" role="tab" aria-selected="false" aria-controls="panel-ecg">
+                    <span class="sidebar__icon" aria-hidden="true">❤️</span>
+                    <span>ECG / Battement</span>
+                </button>
+                <button class="sidebar__link" type="button" data-target="crt" role="tab" aria-selected="false" aria-controls="panel-crt">
+                    <span class="sidebar__icon" aria-hidden="true">📺</span>
+                    <span>Effet CRT (Scanline)</span>
+                </button>
+            </nav>
+        </aside>
+
+        <main class="workspace">
+            <header class="workspace__header">
+                <div>
+                    <h1>Générateur d'Effets Visuels</h1>
+                    <p>Chaque preset dispose maintenant de son propre panneau de réglages pour éviter les interférences.</p>
+                </div>
+                <div class="workspace__meta" aria-label="Préférences d'accessibilité">
+                    <label class="toggle">
+                        <input type="checkbox" id="reduced-motion-toggle">
+                        <span>Respecter « réduire les animations »</span>
+                    </label>
+                </div>
+            </header>
+
+            <section id="panel-animated-background" class="effect-panel" data-effect="animated-background" role="tabpanel" aria-labelledby="tab-animated-background">
+                <header class="effect-panel__header">
+                    <div>
+                        <h2 id="tab-animated-background">Fonds animés</h2>
+                        <p>Contrôlez la palette et le mouvement des effets de fond animés.</p>
+                    </div>
+                    <div class="effect-panel__actions">
+                        <button type="button" class="effect-panel__action" data-action="reset">Réinitialiser</button>
+                        <button type="button" class="effect-panel__action" data-action="copy">Copier le CSS</button>
+                    </div>
+                </header>
+                <div class="effect-panel__body">
+                    <form class="effect-form" data-effect-form>
+                        <fieldset>
+                            <legend>Paramètres du fond</legend>
+                            <label for="animated-background-primary">Couleur primaire</label>
+                            <input type="color" id="animated-background-primary" name="primaryColor" value="#312e81">
+
+                            <label for="animated-background-secondary">Couleur secondaire</label>
+                            <input type="color" id="animated-background-secondary" name="secondaryColor" value="#2563eb">
+
+                            <label for="animated-background-speed">Vitesse du gradient</label>
+                            <input type="range" id="animated-background-speed" name="speed" min="5" max="40" value="18">
+                        </fieldset>
+                        <fieldset>
+                            <legend>Composition</legend>
+                            <label for="animated-background-angle">Angle du gradient</label>
+                            <input type="range" id="animated-background-angle" name="angle" min="0" max="360" value="130">
+
+                            <label for="animated-background-noise">Intensité du bruit</label>
+                            <input type="range" id="animated-background-noise" name="noise" min="0" max="1" step="0.05" value="0.35">
+                        </fieldset>
+                    </form>
+                    <div class="effect-preview" data-preview>
+                        <div class="effect-preview__canvas effect-preview__canvas--animated" aria-hidden="true"></div>
+                        <div class="effect-preview__code" aria-live="polite">
+                            <pre><code data-css-preview></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="panel-ecg" class="effect-panel" data-effect="ecg" role="tabpanel" aria-labelledby="tab-ecg" hidden>
+                <header class="effect-panel__header">
+                    <div>
+                        <h2 id="tab-ecg">ECG / Battement de cœur</h2>
+                        <p>Ajustez l'onde, les couleurs et la fréquence du motif cardiaque.</p>
+                    </div>
+                    <div class="effect-panel__actions">
+                        <button type="button" class="effect-panel__action" data-action="reset">Réinitialiser</button>
+                        <button type="button" class="effect-panel__action" data-action="copy">Copier le CSS</button>
+                    </div>
+                </header>
+                <div class="effect-panel__body">
+                    <form class="effect-form" data-effect-form>
+                        <fieldset>
+                            <legend>Signal</legend>
+                            <label for="ecg-color">Couleur du tracé</label>
+                            <input type="color" id="ecg-color" name="strokeColor" value="#f43f5e">
+
+                            <label for="ecg-background">Couleur de fond</label>
+                            <input type="color" id="ecg-background" name="backgroundColor" value="#0f172a">
+
+                            <label for="ecg-thickness">Épaisseur du tracé</label>
+                            <input type="range" id="ecg-thickness" name="thickness" min="1" max="6" value="3">
+                        </fieldset>
+                        <fieldset>
+                            <legend>Animation</legend>
+                            <label for="ecg-speed">Vitesse de défilement</label>
+                            <input type="range" id="ecg-speed" name="speed" min="4" max="30" value="12">
+
+                            <label for="ecg-glow">Halo lumineux</label>
+                            <input type="range" id="ecg-glow" name="glow" min="0" max="30" value="12">
+                        </fieldset>
+                    </form>
+                    <div class="effect-preview" data-preview>
+                        <div class="effect-preview__canvas effect-preview__canvas--ecg" aria-hidden="true">
+                            <div class="ecg-wave">
+                                <svg class="ecg-wave__svg" viewBox="0 0 400 200" preserveAspectRatio="none" role="presentation">
+                                    <polyline class="ecg-wave__path" points="0,110 50,110 70,60 90,150 140,110 200,110 220,40 240,160 300,110 400,110"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="effect-preview__code" aria-live="polite">
+                            <pre><code data-css-preview></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="panel-crt" class="effect-panel" data-effect="crt" role="tabpanel" aria-labelledby="tab-crt" hidden>
+                <header class="effect-panel__header">
+                    <div>
+                        <h2 id="tab-crt">Effet CRT (Scanline)</h2>
+                        <p>Configurez les lignes de balayage, le vignettage et le scintillement.</p>
+                    </div>
+                    <div class="effect-panel__actions">
+                        <button type="button" class="effect-panel__action" data-action="reset">Réinitialiser</button>
+                        <button type="button" class="effect-panel__action" data-action="copy">Copier le CSS</button>
+                    </div>
+                </header>
+                <div class="effect-panel__body">
+                    <form class="effect-form" data-effect-form>
+                        <fieldset>
+                            <legend>Scanlines</legend>
+                            <label for="crt-line-color">Couleur des lignes</label>
+                            <input type="color" id="crt-line-color" name="lineColor" value="#1f2937">
+
+                            <label for="crt-line-opacity">Opacité des lignes</label>
+                            <input type="range" id="crt-line-opacity" name="lineOpacity" min="0" max="1" step="0.05" value="0.35">
+
+                            <label for="crt-line-density">Densité des lignes</label>
+                            <input type="range" id="crt-line-density" name="lineDensity" min="1" max="6" value="3">
+                        </fieldset>
+                        <fieldset>
+                            <legend>Ambiance</legend>
+                            <label for="crt-glow">Éclat périphérique</label>
+                            <input type="range" id="crt-glow" name="glow" min="0" max="40" value="18">
+
+                            <label for="crt-flicker">Intensité du scintillement</label>
+                            <input type="range" id="crt-flicker" name="flicker" min="0" max="1" step="0.05" value="0.25">
+                        </fieldset>
+                    </form>
+                    <div class="effect-preview" data-preview>
+                        <div class="effect-preview__canvas effect-preview__canvas--crt" aria-hidden="true">
+                            <div class="crt-overlay"></div>
+                        </div>
+                        <div class="effect-preview__code" aria-live="polite">
+                            <pre><code data-css-preview></code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
