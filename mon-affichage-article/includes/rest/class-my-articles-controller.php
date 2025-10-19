@@ -433,22 +433,10 @@ class My_Articles_Controller extends WP_REST_Controller {
      * @return WP_REST_Response|WP_Error
      */
     public function get_rest_nonce( WP_REST_Request $request ) {
-        $nonce_validation = $this->validate_request_nonce( $request );
-
-        if ( is_wp_error( $nonce_validation ) ) {
-            return $nonce_validation;
-        }
-
         $origin_validation = $this->validate_request_origin( $request );
 
         if ( is_wp_error( $origin_validation ) ) {
             return $origin_validation;
-        }
-
-        $nonce_validation = $this->validate_request_nonce( $request );
-
-        if ( is_wp_error( $nonce_validation ) ) {
-            return $nonce_validation;
         }
 
         return rest_ensure_response(
