@@ -266,21 +266,6 @@ if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_C
             WP_CLI::success( sprintf( 'Catalogue de préréglages synchronisé (%d manifestes).', $count ) );
         }
 
-        private static function join_paths( $base, $segment ) {
-            $base    = rtrim( (string) $base, '/\\' );
-            $segment = ltrim( (string) $segment, '/\\' );
-
-            if ( '' === $base ) {
-                return $segment;
-            }
-
-            if ( '' === $segment ) {
-                return $base;
-            }
-
-            return $base . DIRECTORY_SEPARATOR . $segment;
-        }
-
         private static function normalize_path( $path ) {
             $normalized = str_replace( '\\', '/', (string) $path );
             $normalized = preg_replace( '#/+#', '/', $normalized );
