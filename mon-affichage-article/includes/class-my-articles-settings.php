@@ -27,7 +27,14 @@ class My_Articles_Settings {
     }
 
     public function add_plugin_page() {
-        $this->plugin_page_hook = add_menu_page( 'Réglages Tuiles - LCV', 'Tuiles - LCV', 'manage_options', 'my-articles-settings', array( $this, 'create_admin_page' ), 'dashicons-admin-post', 27 );
+        $this->plugin_page_hook = add_submenu_page(
+            'edit.php?post_type=mon_affichage',
+            __( 'Réglages', 'mon-articles' ),
+            __( 'Réglages', 'mon-articles' ),
+            'manage_options',
+            'my-articles-settings',
+            array( $this, 'create_admin_page' )
+        );
     }
 
     public function enqueue_admin_scripts( $hook ) {
@@ -57,7 +64,7 @@ class My_Articles_Settings {
         }
 
         ?>
-        <div class="wrap my-articles-admin" data-ui="radix" data-theme="<?php echo esc_attr( $admin_theme ); ?>">
+        <div class="wrap my-articles-admin" data-theme="<?php echo esc_attr( $admin_theme ); ?>">
             <header class="my-articles-admin__header">
                 <div class="my-articles-admin__title-group">
                     <span class="my-articles-admin__badge" aria-hidden="true">LCV</span>
@@ -368,10 +375,10 @@ class My_Articles_Settings {
     }
 
     public function reset_settings() {
-        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'my_articles_reset_settings_nonce' ) ) { wp_die( 'La vérification a échoué.' ); }
-        if ( ! current_user_can( 'manage_options' ) ) { wp_die( 'Permission refusée.' ); }
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( wp_unslash( $_POST['_wpnonce'] ), 'my_articles_reset_settings_nonce' ) ) { wp_die( esc_html__( 'La vérification a échoué.', 'mon-articles' ) ); }
+        if ( ! current_user_can( 'manage_options' ) ) { wp_die( esc_html__( 'Permission refusée.', 'mon-articles' ) ); }
         delete_option( $this->option_name );
-        wp_safe_redirect( admin_url( 'admin.php?page=my-articles-settings&status=reset' ) );
+        wp_safe_redirect( admin_url( 'edit.php?post_type=mon_affichage&page=my-articles-settings&status=reset' ) );
         exit;
     }
 }
