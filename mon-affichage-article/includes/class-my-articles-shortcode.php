@@ -959,6 +959,16 @@ JS;
             return self::$matching_pinned_ids_cache[ $cache_key ];
         }
 
+        if ( function_exists( 'wp_cache_get' ) ) {
+            $cached = wp_cache_get( $cache_key, 'my_articles_pinned' );
+
+            if ( is_array( $cached ) ) {
+                self::$matching_pinned_ids_cache[ $cache_key ] = $cached;
+
+                return $cached;
+            }
+        }
+
         $pinned_ids = isset( $options['pinned_posts'] ) ? (array) $options['pinned_posts'] : array();
 
         if ( empty( $pinned_ids ) ) {
@@ -1009,6 +1019,11 @@ JS;
         wp_reset_postdata();
 
         self::$matching_pinned_ids_cache[ $cache_key ] = $matching_ids;
+
+        if ( function_exists( 'wp_cache_set' ) ) {
+            $ttl = defined( 'MINUTE_IN_SECONDS' ) ? MINUTE_IN_SECONDS : 60;
+            wp_cache_set( $cache_key, $matching_ids, 'my_articles_pinned', $ttl );
+        }
 
         return $matching_ids;
     }
