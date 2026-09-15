@@ -1543,20 +1543,23 @@ if (!function_exists('esc_attr__')) {
 
 if (!function_exists('load_template')) {
     /**
+     * Mirrors WordPress core `load_template()` (5.5+ / 7.1): the third
+     * argument is in scope as `$args` but is not extracted into locals.
+     *
      * @param string               $template
-     * @param bool                 $require_once
-     * @param array<string, mixed> $args
+     * @param bool                 $load_once
+     * @param array<string, mixed> $args Exposed to the included template.
      */
-    function load_template($template, $require_once = true, $args = array()): void
+    function load_template($template, $load_once = true, $args = array()): void
     {
-        if (is_array($args)) {
-            extract($args, EXTR_SKIP);
+        if (!is_array($args)) {
+            $args = array();
         }
 
-        if ($require_once) {
-            require $template;
+        if ($load_once) {
+            require_once $template;
         } else {
-            include $template;
+            require $template;
         }
     }
 }

@@ -88,6 +88,7 @@ use My_Articles_Enqueue;
 use My_Articles_Settings;
 use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 
 final class Phase2AdminCharterAndWp71Test extends TestCase
 {
@@ -379,6 +380,151 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
         $this->assertIsString($output);
         $this->assertNotSame('', $output);
         $this->assertStringContainsString('my-articles', $output);
+    }
+
+    public function test_shortcode_instance_template_reads_load_template_args(): void
+    {
+        $args = array(
+            'wrapper_attribute_string' => 'id="my-articles-wrapper-52" class="my-articles-wrapper my-articles-grid"',
+            'search_form_html'         => '',
+            'filter_nav_html'          => '',
+            'results_html'             => '<article class="my-article-item">Tile 52</article>',
+            'pagination_html'          => '',
+            'debug_html'               => '',
+        );
+
+        ob_start();
+        // WordPress 7.1 load_template() leaves context in $args only.
+        include $this->pluginRoot() . '/templates/shortcode-instance.php';
+        $html = (string) ob_get_clean();
+
+        $this->assertStringNotContainsString('<div >', $html);
+        $this->assertStringContainsString('id="my-articles-wrapper-52"', $html);
+        $this->assertStringContainsString('my-articles-wrapper', $html);
+        $this->assertStringContainsString('<article class="my-article-item">', $html);
+        $this->assertStringContainsString('Tile 52', $html);
+    }
+
+    public function test_render_shortcode_id_52_outputs_article_tiles_not_empty_wrapper(): void
+    {
+        global $mon_articles_test_post_type_map,
+            $mon_articles_test_post_status_map,
+            $mon_articles_test_post_meta_map,
+            $mon_articles_test_wp_query_factory;
+
+        $this->resetShortcodeRuntimeCaches();
+
+        $mon_articles_test_post_type_map   = array();
+        $mon_articles_test_post_status_map = array();
+        $mon_articles_test_post_meta_map   = array();
+
+        $instanceId = 52;
+        $posts      = array();
+
+        foreach (array(5201, 5202, 5203, 5204, 5205, 5206, 5207, 5208, 5209, 5210) as $postId) {
+            $posts[] = array(
+                'ID'           => $postId,
+                'post_author'  => 1,
+                'post_title'   => 'Post ' . $postId,
+                'post_type'    => 'post',
+                'post_status'  => 'publish',
+                'post_content' => 'Content ' . $postId,
+            );
+        }
+
+        $mon_articles_test_post_type_map[$instanceId]   = 'mon_affichage';
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
+        $mon_articles_test_post_meta_map[$instanceId]   = array(
+            '_my_articles_settings' => array(
+                'display_mode'          => 'grid',
+                'posts_per_page'        => 10,
+                'taxonomy'              => 'category',
+                'term'                  => '',
+                'enable_keyword_search' => 0,
+                'show_category_filter'  => 0,
+                'pagination_mode'       => 'none',
+                'enable_lazy_load'      => 0,
+                'hover_lift_desktop'    => 0,
+                'hover_neon_pulse'      => 0,
+            ),
+        );
+        $mon_articles_test_wp_query_factory = static function (array $query_args) use ($posts) {
+            $posts_per_page = isset($query_args['posts_per_page']) ? (int) $query_args['posts_per_page'] : count($posts);
+            $offset         = isset($query_args['offset']) ? (int) $query_args['offset'] : 0;
+
+            if ($posts_per_page < 0) {
+                $slice = array_slice($posts, $offset);
+            } else {
+                $slice = array_slice($posts, $offset, $posts_per_page);
+            }
+
+            return array(
+                'posts'       => $slice,
+                'found_posts' => count($posts),
+            );
+        };
+
+        $output = My_Articles_Shortcode::get_instance()->render_shortcode(array('id' => (string) $instanceId));
+
+        $this->assertIsString($output);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<div\s*>/',
+            $output,
+            'WordPress load_template() must not produce an empty wrapper: the template has to read $args.'
+        );
+        $this->assertStringContainsString('my-articles-wrapper', $output);
+        $this->assertStringContainsString('my-articles-wrapper-52', $output);
+        $this->assertStringContainsString('<article', $output);
+        $this->assertStringContainsString('my-article-item', $output);
+        $this->assertSame(10, substr_count($output, '<article'));
+        $this->assertSame(10, substr_count($output, 'my-article-item'));
+    }
+
+    public function test_plugin_has_a_single_load_template_call(): void
+    {
+        $root = $this->pluginRoot();
+        $hits = array();
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (!$file->isFile() || 'php' !== strtolower($file->getExtension())) {
+                continue;
+            }
+
+            $path = $file->getPathname();
+            if (str_contains($path, DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
+            $contents = (string) file_get_contents($path);
+            if (preg_match('/\bload_template\s*\(\s*\$/', $contents)) {
+                $hits[] = str_replace($root . DIRECTORY_SEPARATOR, '', $path);
+            }
+        }
+
+        sort($hits);
+
+        $this->assertSame(
+            array('includes/class-my-articles-shortcode.php'),
+            $hits,
+            'Only the shortcode wrapper should call load_template(); partials already extract via Response_Renderer.'
+        );
+    }
+
+    private function resetShortcodeRuntimeCaches(): void
+    {
+        $shortcodeReflection = new ReflectionClass(My_Articles_Shortcode::class);
+
+        $normalizedProperty = $shortcodeReflection->getProperty('normalized_options_cache');
+        $normalizedProperty->setAccessible(true);
+        $normalizedProperty->setValue(null, array());
+
+        $matchingProperty = $shortcodeReflection->getProperty('matching_pinned_ids_cache');
+        $matchingProperty->setAccessible(true);
+        $matchingProperty->setValue(null, array());
     }
 
     /**

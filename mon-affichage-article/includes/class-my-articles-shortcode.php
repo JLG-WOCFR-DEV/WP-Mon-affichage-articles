@@ -1860,6 +1860,7 @@ JS;
 
         ob_start();
         if ( file_exists( $template_path ) ) {
+            // WP 7.1 load_template does not extract $context; the template reads $args.
             load_template( $template_path, false, $context );
         }
 

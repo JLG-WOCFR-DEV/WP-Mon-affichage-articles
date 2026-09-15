@@ -3,6 +3,16 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+/**
+ * WordPress core load_template (5.5+ / 7.1) exposes the third argument as `$args`
+ * and does not extract it into local variables.
+ *
+ * @var array<string, mixed>|null $args
+ */
+if ( isset( $args ) && is_array( $args ) ) {
+    extract( $args, EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- Template context from load_template.
+}
+
 $wrapper_attribute_string = isset( $wrapper_attribute_string ) ? (string) $wrapper_attribute_string : '';
 $search_form_html         = isset( $search_form_html ) ? (string) $search_form_html : '';
 $filter_nav_html          = isset( $filter_nav_html ) ? (string) $filter_nav_html : '';
