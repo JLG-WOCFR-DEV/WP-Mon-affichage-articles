@@ -1766,76 +1766,82 @@ JS;
             ? My_Articles_Asset_Payload_Registry::get_instance()
             : null;
 
+        $enqueue_frontend_scripts = My_Articles_Enqueue::should_enqueue_frontend_script();
+
         if ( $enqueue instanceof My_Articles_Enqueue ) {
             foreach ( (array) ( $assets['styles'] ?? array() ) as $style_handle ) {
                 $enqueue->declare_dependency( $style_handle, 'style' );
             }
 
-            foreach ( (array) ( $assets['scripts'] ?? array() ) as $script_handle ) {
-                if ( 'lazysizes' === $script_handle && self::$lazysizes_enqueued ) {
-                    continue;
+            if ( $enqueue_frontend_scripts ) {
+                foreach ( (array) ( $assets['scripts'] ?? array() ) as $script_handle ) {
+                    if ( 'lazysizes' === $script_handle && self::$lazysizes_enqueued ) {
+                        continue;
+                    }
+
+                    $enqueue->declare_dependency( $script_handle );
+
+                    if ( 'lazysizes' === $script_handle ) {
+                        self::$lazysizes_enqueued = true;
+                    }
                 }
 
-                $enqueue->declare_dependency( $script_handle );
+                foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
+                    if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                        continue;
+                    }
 
-                if ( 'lazysizes' === $script_handle ) {
-                    self::$lazysizes_enqueued = true;
+                    $aggregated_payload = (array) $payload['data'];
+
+                    if ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
+                        $aggregated_payload = $payload_registry->register(
+                            (string) $payload['handle'],
+                            (string) $payload['object'],
+                            (array) $payload['data']
+                        );
+                    }
+
+                    if ( empty( $aggregated_payload ) ) {
+                        continue;
+                    }
+
+                    $enqueue->register_script_data(
+                        $payload['handle'],
+                        $payload['object'],
+                        $aggregated_payload
+                    );
+                }
+
+                foreach ( (array) ( $assets['inline_scripts'] ?? array() ) as $inline ) {
+                    if ( empty( $inline['handle'] ) || empty( $inline['code'] ) ) {
+                        continue;
+                    }
+
+                    $enqueue->push_inline_payload(
+                        $inline['handle'],
+                        (string) $inline['code'],
+                        isset( $inline['position'] ) ? (string) $inline['position'] : 'after'
+                    );
                 }
             }
+        } elseif ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
+            if ( $enqueue_frontend_scripts ) {
+                foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
+                    if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
+                        continue;
+                    }
 
-            foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
-                if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
-                    continue;
-                }
-
-                $aggregated_payload = (array) $payload['data'];
-
-                if ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
-                    $aggregated_payload = $payload_registry->register(
+                    $payload_registry->register(
                         (string) $payload['handle'],
                         (string) $payload['object'],
                         (array) $payload['data']
                     );
+                    $payload_registry->dispatch( $payload['handle'], $payload['object'] );
                 }
-
-                if ( empty( $aggregated_payload ) ) {
-                    continue;
-                }
-
-                $enqueue->register_script_data(
-                    $payload['handle'],
-                    $payload['object'],
-                    $aggregated_payload
-                );
-            }
-
-            foreach ( (array) ( $assets['inline_scripts'] ?? array() ) as $inline ) {
-                if ( empty( $inline['handle'] ) || empty( $inline['code'] ) ) {
-                    continue;
-                }
-
-                $enqueue->push_inline_payload(
-                    $inline['handle'],
-                    (string) $inline['code'],
-                    isset( $inline['position'] ) ? (string) $inline['position'] : 'after'
-                );
-            }
-        } elseif ( $payload_registry instanceof My_Articles_Asset_Payload_Registry ) {
-            foreach ( (array) ( $assets['script_payloads'] ?? array() ) as $payload ) {
-                if ( empty( $payload['handle'] ) || empty( $payload['object'] ) || empty( $payload['data'] ) ) {
-                    continue;
-                }
-
-                $payload_registry->register(
-                    (string) $payload['handle'],
-                    (string) $payload['object'],
-                    (array) $payload['data']
-                );
-                $payload_registry->dispatch( $payload['handle'], $payload['object'] );
             }
         }
 
-        if ( ! empty( $assets['requires_lazyload'] ) ) {
+        if ( $enqueue_frontend_scripts && ! empty( $assets['requires_lazyload'] ) ) {
             if ( ! self::$lazysizes_enqueued && $enqueue instanceof My_Articles_Enqueue ) {
                 $enqueue->declare_dependency( 'lazysizes' );
                 self::$lazysizes_enqueued = true;

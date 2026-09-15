@@ -219,11 +219,11 @@ final class MyArticlesEnqueueTest extends TestCase
             $mon_articles_test_enqueued_scripts
         );
 
-        $this->assertContains('my-articles-styles', $enqueued_style_handles);
-        $this->assertNotContains('swiper-css', $enqueued_style_handles, 'Swiper styles should not be enqueued by default in the editor.');
+        $this->assertNotContains('my-articles-styles', $enqueued_style_handles, 'Front CSS must load in the iframed canvas, not the parent editor frame.');
+        $this->assertNotContains('swiper-css', $enqueued_style_handles, 'Swiper styles should not be enqueued by default in the editor parent.');
 
-        $this->assertContains('my-articles-responsive-layout', $enqueued_script_handles);
-        $this->assertContains('my-articles-debug-helper', $enqueued_script_handles);
+        $this->assertNotContains('my-articles-responsive-layout', $enqueued_script_handles, 'Front layout JS must not boot in the parent editor frame.');
+        $this->assertNotContains('my-articles-debug-helper', $enqueued_script_handles);
         $this->assertNotContains('swiper-js', $enqueued_script_handles, 'Swiper script should load on demand in the editor.');
         $this->assertNotContains('lazysizes', $enqueued_script_handles, 'LazySizes should load on demand in the editor.');
 

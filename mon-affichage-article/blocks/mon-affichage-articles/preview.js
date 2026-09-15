@@ -35,6 +35,28 @@
         return window.myArticlesAssets.dynamic || {};
     }
 
+    function getCanvasDocument() {
+        if (typeof document === 'undefined') {
+            return null;
+        }
+
+        var body = document.body;
+        if (body && body.classList && body.classList.contains('block-editor-iframe__body')) {
+            return document;
+        }
+
+        try {
+            var iframe = document.querySelector('iframe[name="editor-canvas"], iframe.editor-canvas__iframe');
+            if (iframe && iframe.contentDocument) {
+                return iframe.contentDocument;
+            }
+        } catch (error) {
+            // Cross-origin canvas access is ignored.
+        }
+
+        return document;
+    }
+
     function withVersion(url, ver) {
         if (typeof url !== 'string' || !url) {
             return '';
@@ -86,16 +108,18 @@
 
         var loader = function () {
             return new Promise(function (resolve, reject) {
-                if (typeof document === 'undefined') {
+                var canvasDocument = getCanvasDocument();
+
+                if (!canvasDocument) {
                     resolve();
                     return;
                 }
 
                 var selector = 'link[data-my-articles-handle="' + handle + '"]';
-                var existing = handle ? document.querySelector(selector) : null;
+                var existing = handle ? canvasDocument.querySelector(selector) : null;
 
                 if (!existing && href) {
-                    existing = document.querySelector('link[href="' + href + '"]');
+                    existing = canvasDocument.querySelector('link[href="' + href + '"]');
                 }
 
                 if (existing) {
@@ -103,7 +127,7 @@
                     return;
                 }
 
-                var link = document.createElement('link');
+                var link = canvasDocument.createElement('link');
                 link.rel = 'stylesheet';
                 link.href = href;
 
@@ -119,7 +143,7 @@
                     reject(new Error('style_load_failed:' + handle));
                 };
 
-                (document.head || document.documentElement).appendChild(link);
+                (canvasDocument.head || canvasDocument.documentElement).appendChild(link);
             });
         };
 
@@ -140,6 +164,10 @@
             return Promise.resolve();
         }
 
+        if (typeof window !== 'undefined' && window.MY_ARTICLES_IS_EDITOR) {
+            return Promise.resolve();
+        }
+
         if (handle === 'swiper-js' && typeof window !== 'undefined' && typeof window.Swiper === 'function') {
             return Promise.resolve();
         }
@@ -156,13 +184,15 @@
 
         var loader = function () {
             return new Promise(function (resolve, reject) {
-                if (typeof document === 'undefined') {
+                var canvasDocument = getCanvasDocument();
+
+                if (!canvasDocument) {
                     resolve();
                     return;
                 }
 
                 var selector = 'script[data-my-articles-handle="' + handle + '"]';
-                var existing = handle ? document.querySelector(selector) : null;
+                var existing = handle ? canvasDocument.querySelector(selector) : null;
 
                 if (existing) {
                     if (existing.getAttribute('data-my-articles-loaded') === 'true') {
@@ -179,7 +209,7 @@
                     return;
                 }
 
-                var script = document.createElement('script');
+                var script = canvasDocument.createElement('script');
                 script.src = url;
 
                 if (handle) {
@@ -210,7 +240,7 @@
                     reject(new Error('script_load_failed:' + handle));
                 };
 
-                (document.head || document.documentElement).appendChild(script);
+                (canvasDocument.head || canvasDocument.documentElement).appendChild(script);
             });
         };
 
@@ -499,6 +529,10 @@
                     shouldInitSwipers = displayModeProp === 'slideshow';
                 }
 
+                if (window.MY_ARTICLES_IS_EDITOR) {
+                    return undefined;
+                }
+
                 if (typeof window !== 'undefined' && typeof window.myArticlesInitWrappers === 'function') {
                     window.myArticlesInitWrappers();
                 }
@@ -731,7 +765,7 @@
             children.push(el('div', { key: 'overlay', className: 'my-articles-preview-canvas__overlay' }, overlayChildren));
         }
 
-        return el('div', { className: className, style: style }, children);
+        return el('div', { className: className, style: style, 'data-my-articles-editor': '1' }, children);
     }
     window.myArticlesBlocks = window.myArticlesBlocks || {};
     window.myArticlesBlocks.PreviewCanvas = PreviewCanvas;

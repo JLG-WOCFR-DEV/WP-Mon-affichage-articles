@@ -1,6 +1,28 @@
 (function ($) {
     'use strict';
 
+    function isEditorCanvas() {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        if (window.MY_ARTICLES_IS_EDITOR) {
+            return true;
+        }
+        try {
+            if (window.parent && window.parent !== window && window.parent.MY_ARTICLES_IS_EDITOR) {
+                return true;
+            }
+        } catch (error) {}
+        if (document.body && document.body.classList && document.body.classList.contains('block-editor-iframe__body')) {
+            return true;
+        }
+        return false;
+    }
+
+    if (isEditorCanvas()) {
+        return;
+    }
+
     $(document).ready(function() {
         // Crée un objet pour lire les paramètres de l'URL
         var urlParams = new URLSearchParams(window.location.search);

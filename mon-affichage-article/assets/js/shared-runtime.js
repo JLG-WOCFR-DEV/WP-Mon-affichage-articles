@@ -32,6 +32,48 @@
         }
     }
 
+    function isEditorCanvas() {
+        var win = (typeof window !== 'undefined') ? window : root;
+
+        if (!win) {
+            return false;
+        }
+
+        if (win.MY_ARTICLES_IS_EDITOR) {
+            return true;
+        }
+
+        try {
+            if (win.parent && win.parent !== win && win.parent.MY_ARTICLES_IS_EDITOR) {
+                return true;
+            }
+        } catch (error) {
+            // Cross-origin parent access is ignored.
+        }
+
+        var doc = win.document;
+        var body = doc && doc.body ? doc.body : null;
+
+        if (body && body.classList && body.classList.contains('block-editor-iframe__body')) {
+            return true;
+        }
+
+        if (doc && typeof doc.querySelector === 'function' && doc.querySelector('[data-my-articles-editor]')) {
+            return true;
+        }
+
+        var frame = win.frameElement;
+        if (frame) {
+            var frameName = typeof frame.getAttribute === 'function' ? (frame.getAttribute('name') || '') : '';
+            var frameClass = frame.className || '';
+            if (frameName === 'editor-canvas' || (typeof frameClass === 'string' && frameClass.indexOf('editor-canvas__iframe') !== -1)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function dispatchCustomEvent(eventName, detail) {
         var target = root && root.document ? root : null;
 
@@ -406,6 +448,7 @@
     }
 
     var api = Object.assign({}, existing, {
+        isEditorCanvas: isEditorCanvas,
         dispatchCustomEvent: dispatchCustomEvent,
         createEventEmitter: createEventEmitter,
         createNonceManager: createNonceManager,

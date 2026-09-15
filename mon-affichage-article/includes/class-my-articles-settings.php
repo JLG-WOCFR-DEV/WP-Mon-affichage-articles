@@ -57,105 +57,81 @@ class My_Articles_Settings {
     }
 
     public function create_admin_page() {
-        $options = get_option( $this->option_name, array() );
-        $admin_theme = isset( $options['admin_theme'] ) ? (string) $options['admin_theme'] : 'auto';
-        if ( ! in_array( $admin_theme, array( 'auto', 'light', 'dark' ), true ) ) {
-            $admin_theme = 'auto';
+        $current_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'settings'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! in_array( $current_tab, array( 'settings', 'instrumentation' ), true ) ) {
+            $current_tab = 'settings';
         }
 
-        ?>
-        <div class="wrap my-articles-admin" data-theme="<?php echo esc_attr( $admin_theme ); ?>">
-            <header class="my-articles-admin__header">
-                <div class="my-articles-admin__title-group">
-                    <span class="my-articles-admin__badge" aria-hidden="true">LCV</span>
-                    <div>
-                        <h1 class="my-articles-admin__title"><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
-                        <p class="my-articles-admin__subtitle"><?php esc_html_e( 'Contrôlez l’apparence et les intégrations de vos tuiles en quelques clics.', 'mon-articles' ); ?></p>
-                    </div>
-                </div>
-                <dl class="my-articles-admin__meta">
-                    <div class="my-articles-admin__meta-item">
-                        <dt><?php esc_html_e( 'Auteur', 'mon-articles' ); ?></dt>
-                        <dd>LCV</dd>
-                    </div>
-                    <div class="my-articles-admin__meta-item">
-                        <dt><?php esc_html_e( 'Version', 'mon-articles' ); ?></dt>
-                        <dd><?php echo esc_html( MY_ARTICLES_VERSION ); ?></dd>
-                    </div>
-                </dl>
-            </header>
+        $base_url = admin_url( 'edit.php?post_type=mon_affichage&page=my-articles-settings' );
 
-            <?php $settings_messages = get_settings_errors(); ?>
-            <?php if ( ! empty( $settings_messages ) ) : ?>
-                <div class="my-articles-admin__notices" aria-live="polite">
-                    <?php settings_errors(); ?>
-                </div>
+        ?>
+        <div class="wrap">
+            <h1><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
+
+            <?php if ( isset( $_GET['status'] ) && 'reset' === $_GET['status'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
+                <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Les réglages ont été réinitialisés.', 'mon-articles' ); ?></p></div>
             <?php endif; ?>
 
-            <section
-                id="my-articles-panel-settings"
-                class="my-articles-admin__panel"
-            >
-                <div class="my-articles-admin__panel-grid">
-                    <article class="my-articles-card my-articles-card--primary my-articles-admin__settings-card">
-                        <div class="my-articles-card__body">
-                            <p class="my-articles-admin__intro"><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
+            <?php settings_errors(); ?>
 
-                            <form method="post" action="options.php" class="my-articles-admin__form">
-                                <?php settings_fields( $this->option_group ); do_settings_sections( 'my-articles-admin' ); submit_button(); ?>
-                            </form>
-                        </div>
-                    </article>
+            <nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php echo esc_attr__( 'Sections des réglages Tuiles', 'mon-articles' ); ?>">
+                <a href="<?php echo esc_url( add_query_arg( 'tab', 'settings', $base_url ) ); ?>" class="nav-tab<?php echo 'settings' === $current_tab ? ' nav-tab-active' : ''; ?>"><?php esc_html_e( 'Réglages', 'mon-articles' ); ?></a>
+                <a href="<?php echo esc_url( add_query_arg( 'tab', 'instrumentation', $base_url ) ); ?>" class="nav-tab<?php echo 'instrumentation' === $current_tab ? ' nav-tab-active' : ''; ?>"><?php esc_html_e( 'Instrumentation', 'mon-articles' ); ?></a>
+            </nav>
 
-                    <aside
-                        class="my-articles-card my-articles-card--muted my-articles-admin__maintenance"
-                        aria-labelledby="my-articles-maintenance-title"
-                        aria-describedby="my-articles-maintenance-description"
-                    >
-                        <div class="my-articles-card__header">
-                            <h2 id="my-articles-maintenance-title" class="my-articles-card__title"><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
-                            <p id="my-articles-maintenance-description" class="my-articles-card__description"><?php esc_html_e( 'Réinitialise toutes les options aux valeurs par défaut.', 'mon-articles' ); ?></p>
-                        </div>
-                        <div class="my-articles-card__body">
-                            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="my-articles-admin__actions">
-                                <input type="hidden" name="action" value="my_articles_reset_settings">
-                                <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
-                                <?php submit_button( __( 'Réinitialiser les réglages', 'mon-articles' ), 'delete', 'submit', false, array( 'onclick' => 'return confirm("' . esc_js( __( 'Êtes-vous sûr de vouloir réinitialiser tous les réglages ?', 'mon-articles' ) ) . '");' ) ); ?>
-                            </form>
-                        </div>
-                    </aside>
-                </div>
-            </section>
+            <?php if ( 'instrumentation' === $current_tab ) : ?>
+                <h2><?php esc_html_e( 'Instrumentation : comprendre ce que vous activez', 'mon-articles' ); ?></h2>
+                <p><?php esc_html_e( 'La section « Instrumentation » vous permet de suivre ce que font les utilisateurs dans vos tuiles (filtrage, chargement progressif, etc.). En activant l’option, le plugin publie automatiquement des événements JavaScript qui décrivent chaque étape de ces interactions (requête, succès, erreur).', 'mon-articles' ); ?></p>
 
-            <section
-                id="my-articles-panel-tutorial"
-                class="my-articles-admin__panel"
-            >
-                <article class="my-articles-card my-articles-card--prose my-articles-card--primary">
-                    <h2><?php esc_html_e( 'Instrumentation : comprendre ce que vous activez', 'mon-articles' ); ?></h2>
-                    <p><?php esc_html_e( 'La section « Instrumentation » vous permet de suivre ce que font les utilisateurs dans vos tuiles (filtrage, chargement progressif, etc.). En activant l’option, le plugin publie automatiquement des événements JavaScript qui décrivent chaque étape de ces interactions (requête, succès, erreur).', 'mon-articles' ); ?></p>
+                <h3><?php esc_html_e( 'Choisir le canal de sortie', 'mon-articles' ); ?></h3>
+                <ul>
+                    <li><strong><?php esc_html_e( 'Console du navigateur', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'les événements sont simplement journalisés pour le débogage.', 'mon-articles' ); ?></li>
+                    <li><strong><?php esc_html_e( 'dataLayer', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'les événements sont poussés dans window.dataLayer, idéal avec Google Tag Manager ou un outil d’analytics similaire.', 'mon-articles' ); ?></li>
+                    <li><strong><?php esc_html_e( 'fetch', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'chaque événement est envoyé en POST JSON vers l’endpoint REST wp-json/my-articles/v1/track pour un traitement serveur ou une redirection vers un service tiers.', 'mon-articles' ); ?></li>
+                </ul>
 
-                    <h3><?php esc_html_e( 'Choisir le canal de sortie', 'mon-articles' ); ?></h3>
-                    <ul>
-                        <li><strong><?php esc_html_e( 'Console du navigateur', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'les événements sont simplement journalisés pour le débogage.', 'mon-articles' ); ?></li>
-                        <li><strong><?php esc_html_e( 'dataLayer', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'les événements sont poussés dans window.dataLayer, idéal avec Google Tag Manager ou un outil d’analytics similaire.', 'mon-articles' ); ?></li>
-                        <li><strong><?php esc_html_e( 'fetch', 'mon-articles' ); ?></strong> — <?php esc_html_e( 'chaque événement est envoyé en POST JSON vers l’endpoint REST wp-json/my-articles/v1/track pour un traitement serveur ou une redirection vers un service tiers.', 'mon-articles' ); ?></li>
-                    </ul>
+                <h3><?php esc_html_e( 'Utilisation côté front-end', 'mon-articles' ); ?></h3>
+                <p><?php esc_html_e( 'Une fois l’instrumentation activée, la configuration est disponible dans window.myArticlesFilter.instrumentation et window.myArticlesLoadMore.instrumentation. Deux événements personnalisés sont émis :', 'mon-articles' ); ?></p>
+                <ul>
+                    <li><code>my-articles:filter</code></li>
+                    <li><code>my-articles:load-more</code></li>
+                </ul>
+                <p><?php esc_html_e( 'Chaque événement possède un objet detail indiquant la phase (request, success, error), l’instance concernée, les paramètres de filtrage et des informations additionnelles (pages totales, nombre d’éléments ajoutés, etc.). Vous pouvez y réagir pour afficher des messages, alimenter votre outil d’analyse ou déclencher d’autres actions.', 'mon-articles' ); ?></p>
 
-                    <h3><?php esc_html_e( 'Utilisation côté front-end', 'mon-articles' ); ?></h3>
-                    <p><?php esc_html_e( 'Une fois l’instrumentation activée, la configuration est disponible dans window.myArticlesFilter.instrumentation et window.myArticlesLoadMore.instrumentation. Deux événements personnalisés sont émis :', 'mon-articles' ); ?></p>
-                    <ul>
-                        <li><code>my-articles:filter</code></li>
-                        <li><code>my-articles:load-more</code></li>
-                    </ul>
-                    <p><?php esc_html_e( 'Chaque événement possède un objet detail indiquant la phase (request, success, error), l’instance concernée, les paramètres de filtrage et des informations additionnelles (pages totales, nombre d’éléments ajoutés, etc.). Vous pouvez y réagir pour afficher des messages, alimenter votre outil d’analyse ou déclencher d’autres actions.', 'mon-articles' ); ?></p>
+                <h3><?php esc_html_e( 'Traitement côté serveur (optionnel)', 'mon-articles' ); ?></h3>
+                <p><?php esc_html_e( 'Avec le canal « fetch », les événements sont également disponibles via l’action WordPress my_articles_track_interaction. C’est l’occasion de connecter facilement votre solution de monitoring ou d’analytics existante.', 'mon-articles' ); ?></p>
 
-                    <h3><?php esc_html_e( 'Traitement côté serveur (optionnel)', 'mon-articles' ); ?></h3>
-                    <p><?php esc_html_e( 'Avec le canal « fetch », les événements sont également disponibles via l’action WordPress my_articles_track_interaction. C’est l’occasion de connecter facilement votre solution de monitoring ou d’analytics existante.', 'mon-articles' ); ?></p>
+                <p><?php esc_html_e( 'En résumé, cette section vous offre un moyen simple de suivre, analyser et rediriger les interactions des utilisateurs avec vos tuiles, sans code supplémentaire.', 'mon-articles' ); ?></p>
+            <?php else : ?>
+                <p class="description"><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
 
-                    <p><?php esc_html_e( 'En résumé, cette section vous offre un moyen simple de suivre, analyser et rediriger les interactions des utilisateurs avec vos tuiles, sans code supplémentaire.', 'mon-articles' ); ?></p>
-                </article>
-            </section>
+                <form method="post" action="options.php">
+                    <?php
+                    settings_fields( $this->option_group );
+                    do_settings_sections( 'my-articles-admin' );
+                    submit_button();
+                    ?>
+                </form>
+
+                <hr />
+                <h2><?php esc_html_e( 'Maintenance', 'mon-articles' ); ?></h2>
+                <p class="description"><?php esc_html_e( 'Réinitialise toutes les options aux valeurs par défaut.', 'mon-articles' ); ?></p>
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <input type="hidden" name="action" value="my_articles_reset_settings">
+                    <?php wp_nonce_field( 'my_articles_reset_settings_nonce' ); ?>
+                    <?php
+                    submit_button(
+                        __( 'Réinitialiser les réglages', 'mon-articles' ),
+                        'secondary',
+                        'submit',
+                        false,
+                        array(
+                            'onclick' => 'return confirm("' . esc_js( __( 'Êtes-vous sûr de vouloir réinitialiser tous les réglages ?', 'mon-articles' ) ) . '");',
+                        )
+                    );
+                    ?>
+                </form>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -178,7 +154,6 @@ class My_Articles_Settings {
         add_settings_field( 'module_margin_right', __( 'Marge à droite (px)', 'mon-articles' ), array( $this, 'module_margin_right_callback' ), 'my-articles-admin', 'setting_section_layout' );
         
         add_settings_section( 'setting_section_appearance', __( 'Apparence', 'mon-articles' ), null, 'my-articles-admin' );
-        add_settings_field( 'admin_theme', __( 'Mode d\'affichage de l\'interface', 'mon-articles' ), array( $this, 'admin_theme_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'module_bg_color', __( 'Couleur de fond du module', 'mon-articles' ), array( $this, 'module_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'vignette_bg_color', __( 'Couleur de fond de la vignette', 'mon-articles' ), array( $this, 'vignette_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'title_wrapper_bg_color', __( 'Couleur de fond du bloc titre', 'mon-articles' ), array( $this, 'title_wrapper_bg_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
@@ -265,55 +240,6 @@ class My_Articles_Settings {
     public function module_bg_color_callback() { $this->render_color_input('module_bg_color', 'rgba(255,255,255,0)', true); }
     public function vignette_bg_color_callback() { $this->render_color_input('vignette_bg_color', '#ffffff'); }
     public function title_wrapper_bg_color_callback() { $this->render_color_input('title_wrapper_bg_color', '#ffffff'); }
-    public function admin_theme_callback() {
-        $options = get_option( $this->option_name );
-        if ( ! is_array( $options ) ) {
-            $options = array();
-        }
-
-        $current_theme = isset( $options['admin_theme'] ) ? (string) $options['admin_theme'] : 'auto';
-        if ( ! in_array( $current_theme, array( 'auto', 'light', 'dark' ), true ) ) {
-            $current_theme = 'auto';
-        }
-
-        $choices = array(
-            'auto'  => array(
-                'label'       => __( 'Automatique', 'mon-articles' ),
-                'description' => __( 'Suit automatiquement vos préférences système ou WordPress.', 'mon-articles' ),
-            ),
-            'light' => array(
-                'label'       => __( 'Mode clair', 'mon-articles' ),
-                'description' => __( 'Palette lumineuse optimisée pour les environnements clairs.', 'mon-articles' ),
-            ),
-            'dark'  => array(
-                'label'       => __( 'Mode sombre', 'mon-articles' ),
-                'description' => __( 'Palette contrastée agréable dans les ambiances sombres.', 'mon-articles' ),
-            ),
-        );
-
-        ?>
-        <fieldset class="my-articles-theme-toggle">
-            <legend class="screen-reader-text"><?php esc_html_e( 'Mode d\'affichage de l\'interface', 'mon-articles' ); ?></legend>
-            <?php foreach ( $choices as $value => $data ) : ?>
-                <label class="my-articles-theme-toggle__option">
-                    <input
-                        type="radio"
-                        name="<?php echo esc_attr( $this->option_name ); ?>[admin_theme]"
-                        value="<?php echo esc_attr( $value ); ?>"
-                        <?php checked( $current_theme, $value ); ?>
-                    />
-                    <span class="my-articles-theme-toggle__label">
-                        <span class="my-articles-theme-toggle__title"><?php echo esc_html( $data['label'] ); ?></span>
-                        <?php if ( ! empty( $data['description'] ) ) : ?>
-                            <span class="my-articles-theme-toggle__description"><?php echo esc_html( $data['description'] ); ?></span>
-                        <?php endif; ?>
-                    </span>
-                </label>
-            <?php endforeach; ?>
-        </fieldset>
-        <p class="description"><?php esc_html_e( 'Contrôlez manuellement l’apparence du tableau de bord du plugin.', 'mon-articles' ); ?></p>
-        <?php
-    }
     public function module_margin_top_callback() { $this->render_number_input('module_margin_top', 0, 0, 200); }
     public function module_margin_bottom_callback() { $this->render_number_input('module_margin_bottom', 0, 0, 200); }
     public function module_margin_left_callback() { $this->render_number_input('module_margin_left', 0, 0, 200); }

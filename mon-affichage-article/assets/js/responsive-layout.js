@@ -2,6 +2,35 @@
 (function () {
     'use strict';
 
+    function isEditorCanvas() {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        if (window.MY_ARTICLES_IS_EDITOR) {
+            return true;
+        }
+        try {
+            if (window.parent && window.parent !== window && window.parent.MY_ARTICLES_IS_EDITOR) {
+                return true;
+            }
+        } catch (error) {}
+        if (document.body && document.body.classList && document.body.classList.contains('block-editor-iframe__body')) {
+            return true;
+        }
+        if (document.querySelector && document.querySelector('[data-my-articles-editor]')) {
+            return true;
+        }
+        var frame = window.frameElement;
+        if (frame) {
+            var frameName = typeof frame.getAttribute === 'function' ? (frame.getAttribute('name') || '') : '';
+            var frameClass = frame.className || '';
+            if (frameName === 'editor-canvas' || (typeof frameClass === 'string' && frameClass.indexOf('editor-canvas__iframe') !== -1)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     const MIN_CARD_WIDTH_FALLBACK = 220;
     const BREAKPOINTS = [
         { key: 'mobile', minViewport: 0 },
@@ -251,9 +280,11 @@
 
     window.myArticlesInitWrappers = initWrappers;
 
-    if (document.readyState !== 'loading') {
-        handleDomReady();
-    } else {
-        document.addEventListener('DOMContentLoaded', handleDomReady);
+    if (!isEditorCanvas()) {
+        if (document.readyState !== 'loading') {
+            handleDomReady();
+        } else {
+            document.addEventListener('DOMContentLoaded', handleDomReady);
+        }
     }
 })();

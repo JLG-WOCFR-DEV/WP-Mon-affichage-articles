@@ -4,6 +4,15 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
 
+if (!function_exists('wp_delete_post')) {
+    function wp_delete_post($post_id, $force_delete = false)
+    {
+        unset($post_id, $force_delete);
+
+        return true;
+    }
+}
+
 final class UninstallTest extends TestCase
 {
     protected function setUp(): void
@@ -18,6 +27,7 @@ final class UninstallTest extends TestCase
         $mon_articles_test_transients_store = array();
         $wp_object_cache                   = null;
         $wpdb                              = null;
+        unset($GLOBALS['mon_articles_test_wp_query_factory']);
     }
 
     public function test_uninstall_removes_options_and_cache_and_transients(): void
@@ -96,12 +106,18 @@ final class UninstallTest extends TestCase
 
             private function convert_like_to_regex(string $pattern): string
             {
-                $pattern = str_replace(array('\\%', '\\_'), array('%', '_'), $pattern);
+                $pattern = stripslashes($pattern);
 
                 $regex = '';
                 $length = strlen($pattern);
 
                 for ($i = 0; $i < $length; $i++) {
+                    if ('\\' === $pattern[$i] && ($i + 1) < $length) {
+                        $regex .= preg_quote($pattern[$i + 1], '/');
+                        $i++;
+                        continue;
+                    }
+
                     $character = $pattern[$i];
 
                     if ('%' === $character) {
@@ -120,6 +136,10 @@ final class UninstallTest extends TestCase
                 return '/^' . $regex . '$/';
             }
         };
+
+        if (!defined('WP_UNINSTALL_PLUGIN')) {
+            define('WP_UNINSTALL_PLUGIN', true);
+        }
 
         require __DIR__ . '/../mon-affichage-article/uninstall.php';
 

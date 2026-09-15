@@ -10,6 +10,37 @@
 
     const doc = root && root.document;
 
+    function isEditorCanvas() {
+        var win = (typeof window !== 'undefined') ? window : root;
+        if (!win) {
+            return false;
+        }
+        if (win.MY_ARTICLES_IS_EDITOR) {
+            return true;
+        }
+        try {
+            if (win.parent && win.parent !== win && win.parent.MY_ARTICLES_IS_EDITOR) {
+                return true;
+            }
+        } catch (error) {}
+        var body = win.document && win.document.body ? win.document.body : null;
+        if (body && body.classList && body.classList.contains('block-editor-iframe__body')) {
+            return true;
+        }
+        if (win.document && typeof win.document.querySelector === 'function' && win.document.querySelector('[data-my-articles-editor]')) {
+            return true;
+        }
+        var frame = win.frameElement;
+        if (frame) {
+            var frameName = typeof frame.getAttribute === 'function' ? (frame.getAttribute('name') || '') : '';
+            var frameClass = frame.className || '';
+            if (frameName === 'editor-canvas' || (typeof frameClass === 'string' && frameClass.indexOf('editor-canvas__iframe') !== -1)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function escapeAttribute(value) {
         if (value === null || value === undefined) {
             return '';
@@ -738,7 +769,7 @@
         root.myArticlesInitSwipers = initSwipers;
     }
 
-    if (doc) {
+    if (doc && !isEditorCanvas()) {
         if (doc.readyState !== 'loading') {
             handleDomReady();
         } else {

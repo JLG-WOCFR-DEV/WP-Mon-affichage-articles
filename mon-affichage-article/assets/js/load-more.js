@@ -23,6 +23,18 @@
         return shared || {};
     }());
 
+    var isEditorCanvas = (sharedRuntime && typeof sharedRuntime.isEditorCanvas === 'function')
+        ? function () {
+            return sharedRuntime.isEditorCanvas();
+        }
+        : function () {
+            return typeof window !== 'undefined' && !!window.MY_ARTICLES_IS_EDITOR;
+        };
+
+    if (isEditorCanvas()) {
+        return;
+    }
+
     var eventEmitter = (sharedRuntime && typeof sharedRuntime.createEventEmitter === 'function')
         ? sharedRuntime.createEventEmitter(function () {
             return loadMoreSettings;
