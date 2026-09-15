@@ -23,6 +23,7 @@ class My_Articles_Enqueue {
         add_action( 'init', array( $this, 'register_plugin_styles_scripts' ) );
         add_action( 'wp_enqueue_scripts', array( $this, 'ensure_assets_registered' ) );
         add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_block_editor_assets' ) );
+        add_action( 'enqueue_block_assets', array( $this, 'enqueue_block_editor_canvas_assets' ) );
     }
 
     public function register_plugin_styles_scripts() {
@@ -122,11 +123,6 @@ class My_Articles_Enqueue {
     public function enqueue_block_editor_assets() {
         $this->register_plugin_styles_scripts();
 
-        wp_enqueue_style( 'my-articles-styles' );
-
-        wp_enqueue_script( 'my-articles-responsive-layout' );
-        wp_enqueue_script( 'my-articles-debug-helper' );
-
         $editor_handle  = 'mon-affichage-articles-editor-script';
         $preview_handle = 'mon-affichage-articles-preview';
 
@@ -135,6 +131,9 @@ class My_Articles_Enqueue {
         if ( function_exists( 'wp_set_script_translations' ) && wp_script_is( $preview_handle, 'registered' ) ) {
             wp_set_script_translations( $preview_handle, 'mon-articles', $translations_dir );
         }
+
+        $this->print_editor_flag( $preview_handle );
+        $this->print_editor_flag( $editor_handle );
 
         $dynamic_assets = $this->get_dynamic_asset_manifest();
 
@@ -289,5 +288,126 @@ class My_Articles_Enqueue {
         }
 
         return My_Articles_Frontend_Data::get_instance()->register( $handle, $object_name, $data );
+    }
+
+    /**
+     * Copies preview CSS and an editor-mode flag into the WP 6.3+/7.1 iframed canvas.
+     *
+     * `enqueue_block_editor_assets` prints into the parent editor frame, so tile
+     * styles would miss the iframe. `enqueue_block_assets` is copied into the canvas.
+     * The flag must stay off on the public site.
+     */
+    public function enqueue_block_editor_canvas_assets() {
+        if ( ! function_exists( 'is_admin' ) || ! is_admin() ) {
+            return;
+        }
+
+        $this->register_plugin_styles_scripts();
+
+        if ( function_exists( 'wp_enqueue_style' ) ) {
+            wp_enqueue_style( 'my-articles-styles' );
+            wp_enqueue_style( 'swiper-css' );
+        }
+
+        if ( function_exists( 'wp_register_script' ) ) {
+            wp_register_script(
+                'my-articles-editor-canvas-guard',
+                false,
+                array(),
+                defined( 'MY_ARTICLES_VERSION' ) ? MY_ARTICLES_VERSION : '1.0.0',
+                true
+            );
+        }
+
+        if ( function_exists( 'wp_enqueue_script' ) ) {
+            wp_enqueue_script( 'my-articles-editor-canvas-guard' );
+        }
+
+        $this->print_editor_flag( 'my-articles-editor-canvas-guard' );
+    }
+
+    /**
+     * Whether the current request is a block editor / canvas preview.
+     *
+     * @return bool
+     */
+    public static function is_block_editor_preview_context() {
+        if ( function_exists( 'wp_is_block_editor' ) && wp_is_block_editor() ) {
+            return true;
+        }
+
+        if ( function_exists( 'get_current_screen' ) ) {
+            $screen = get_current_screen();
+            if ( $screen && ! empty( $screen->is_block_editor ) ) {
+                return true;
+            }
+        }
+
+        if ( isset( $_GET['canvas'] ) && 'edit' === $_GET['canvas'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            return true;
+        }
+
+        $route = '';
+
+        if ( isset( $GLOBALS['wp'] ) && is_object( $GLOBALS['wp'] ) && isset( $GLOBALS['wp']->query_vars['rest_route'] ) ) {
+            $route = (string) $GLOBALS['wp']->query_vars['rest_route'];
+        } elseif ( isset( $_SERVER['REQUEST_URI'] ) ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+            $route = (string) $_SERVER['REQUEST_URI'];
+        }
+
+        $is_rest = ( defined( 'REST_REQUEST' ) && REST_REQUEST )
+            || ( '' !== $route && false !== strpos( $route, '/wp-json/' ) );
+
+        if ( $is_rest ) {
+            $context = '';
+
+            if ( isset( $_REQUEST['context'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+                $raw     = $_REQUEST['context']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+                $raw     = function_exists( 'wp_unslash' ) ? wp_unslash( $raw ) : $raw;
+                $context = function_exists( 'sanitize_key' ) ? sanitize_key( $raw ) : strtolower( preg_replace( '/[^a-z0-9_\-]/', '', (string) $raw ) );
+            }
+
+            if ( 'edit' === $context ) {
+                return true;
+            }
+
+            if ( '' !== $route && ( false !== strpos( $route, 'block-renderer' ) || false !== strpos( $route, 'render-preview' ) ) ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether interactive front scripts should be enqueued.
+     *
+     * @return bool
+     */
+    public static function should_enqueue_frontend_script() {
+        if ( self::is_block_editor_preview_context() ) {
+            return false;
+        }
+
+        if ( function_exists( 'is_admin' ) && is_admin() ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @param string $handle Script handle.
+     */
+    private function print_editor_flag( $handle ) {
+        if ( '' === $handle || ! function_exists( 'wp_add_inline_script' ) || ! function_exists( 'wp_script_is' ) ) {
+            return;
+        }
+
+        if ( ! wp_script_is( $handle, 'registered' ) && ! wp_script_is( $handle, 'enqueued' ) ) {
+            return;
+        }
+
+        wp_add_inline_script( $handle, 'window.MY_ARTICLES_IS_EDITOR = true;', 'before' );
     }
 }

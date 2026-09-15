@@ -51,6 +51,12 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 1. Copier le dossier `mon-affichage-article` dans le répertoire `wp-content/plugins/` de votre installation WordPress.
 2. Activer **Tuiles – LCV** depuis le menu **Extensions** de l'administration WordPress.
 
+## Compatibilité
+
+- Requires at least : WordPress 5.8
+- Requires PHP : 7.4
+- Tested up to : WordPress 7.1 (éditeur d’articles iframé)
+
 ## Utilisation
 
 Utiliser le shortcode :
