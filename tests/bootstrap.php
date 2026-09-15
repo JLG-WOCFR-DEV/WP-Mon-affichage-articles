@@ -1810,6 +1810,7 @@ require_once __DIR__ . '/../mon-affichage-article/includes/helpers.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode-data-preparer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-settings-sanitizer.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-render-controller.php';
+require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-display-state-builder.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-shortcode.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-asset-payload-registry.php';
 require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-frontend-data.php';

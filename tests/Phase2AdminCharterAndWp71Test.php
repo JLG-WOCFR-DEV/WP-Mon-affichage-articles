@@ -83,8 +83,10 @@ if (!function_exists('esc_js')) {
 
 namespace MonAffichageArticles\Tests {
 
+use Mon_Affichage_Articles;
 use My_Articles_Enqueue;
 use My_Articles_Settings;
+use My_Articles_Shortcode;
 use PHPUnit\Framework\TestCase;
 
 final class Phase2AdminCharterAndWp71Test extends TestCase
@@ -148,6 +150,10 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
         unset($_GET['canvas']);
         unset($_SERVER['REQUEST_URI']);
         unset($_REQUEST['context']);
+        unset($GLOBALS['mon_articles_test_post_type_map']);
+        unset($GLOBALS['mon_articles_test_post_status_map']);
+        unset($GLOBALS['mon_articles_test_post_meta_map']);
+        unset($GLOBALS['mon_articles_test_wp_query_factory']);
     }
 
     public function test_plugin_headers_declare_wordpress_71_compatibility(): void
@@ -307,6 +313,72 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
         exec($command, $output, $status);
 
         $this->assertSame(0, $status, implode(PHP_EOL, $output));
+    }
+
+    public function test_plugin_includes_load_display_state_builder(): void
+    {
+        $plugin = (string) file_get_contents($this->pluginRoot() . '/mon-affichage-articles.php');
+
+        $this->assertStringContainsString(
+            "class-my-articles-display-state-builder.php",
+            $plugin,
+            'Mon_Affichage_Articles::includes() must load the display-state builder used by the shortcode.'
+        );
+
+        $includesPos = strpos($plugin, 'function includes');
+        $builderPos  = strpos($plugin, 'class-my-articles-display-state-builder.php');
+        $shortcodePos = strpos($plugin, 'class-my-articles-shortcode.php');
+
+        $this->assertNotFalse($includesPos);
+        $this->assertNotFalse($builderPos);
+        $this->assertGreaterThan($includesPos, $builderPos);
+        $this->assertLessThan(
+            $shortcodePos,
+            $builderPos,
+            'The display-state builder must be required before the shortcode class.'
+        );
+    }
+
+    public function test_render_shortcode_does_not_fatal_without_display_state_builder(): void
+    {
+        global $mon_articles_test_post_type_map,
+            $mon_articles_test_post_status_map,
+            $mon_articles_test_post_meta_map,
+            $mon_articles_test_wp_query_factory;
+
+        $mon_articles_test_post_type_map   = array();
+        $mon_articles_test_post_status_map = array();
+        $mon_articles_test_post_meta_map   = array();
+        $mon_articles_test_wp_query_factory = null;
+
+        Mon_Affichage_Articles::get_instance();
+
+        $this->assertTrue(
+            class_exists('My_Articles_Display_State_Builder'),
+            'The shortcode render path requires My_Articles_Display_State_Builder to be loaded.'
+        );
+
+        $instanceId = 52;
+        $mon_articles_test_post_type_map[$instanceId]   = 'mon_affichage';
+        $mon_articles_test_post_status_map[$instanceId] = 'publish';
+        $mon_articles_test_post_meta_map[$instanceId]   = array(
+            '_my_articles_settings' => array(
+                'display_mode'   => 'grid',
+                'posts_per_page' => 6,
+            ),
+        );
+        $mon_articles_test_wp_query_factory = static function () {
+            return array(
+                'posts'       => array(),
+                'found_posts' => 0,
+            );
+        };
+
+        $output = My_Articles_Shortcode::get_instance()->render_shortcode(array('id' => (string) $instanceId));
+
+        $this->assertIsString($output);
+        $this->assertNotSame('', $output);
+        $this->assertStringContainsString('my-articles', $output);
     }
 
     /**

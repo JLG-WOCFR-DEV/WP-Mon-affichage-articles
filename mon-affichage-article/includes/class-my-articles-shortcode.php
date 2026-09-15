@@ -5,6 +5,10 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
+if ( ! class_exists( 'My_Articles_Display_State_Builder', false ) ) {
+    require_once __DIR__ . '/class-my-articles-display-state-builder.php';
+}
+
 class My_Articles_Shortcode {
 
     private static $instance;
