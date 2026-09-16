@@ -904,7 +904,7 @@
                     GuidePage,
                     {
                         key: 'welcome',
-                        title: __('Bienvenue dans Tuiles – LCV', 'mon-articles'),
+                        title: __('Bienvenue dans Tuiles - JLG', 'mon-articles'),
                         description: __('Un assistant condensé pour paramétrer rapidement votre module.', 'mon-articles'),
                     },
                     el(
@@ -961,7 +961,7 @@
             return el(
                 Modal,
                 {
-                    title: __('Bienvenue dans Tuiles – LCV', 'mon-articles'),
+                    title: __('Bienvenue dans Tuiles - JLG', 'mon-articles'),
                     className: 'my-articles-onboarding-modal',
                     onRequestClose: onDismiss,
                 },
@@ -3366,7 +3366,7 @@
                     Placeholder,
                     {
                         icon: 'screenoptions',
-                        label: __('Tuiles – LCV', 'mon-articles'),
+                        label: __('Tuiles - JLG', 'mon-articles'),
                         className: 'my-articles-block-placeholder',
                     },
                     placeholderChildren

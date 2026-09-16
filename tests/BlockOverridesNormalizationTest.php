@@ -10,6 +10,26 @@ use PHPUnit\Framework\TestCase;
 
 final class BlockOverridesNormalizationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (!defined('MY_ARTICLES_PLUGIN_DIR')) {
+            define('MY_ARTICLES_PLUGIN_DIR', dirname(__DIR__) . '/mon-affichage-article/');
+        }
+
+        if (!class_exists(\My_Articles_Shortcode::class)) {
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/helpers.php';
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-shortcode.php';
+        }
+
+        if (!class_exists(\My_Articles_Block::class)) {
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/interface-my-articles-content-adapter.php';
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-block-preview-adapter.php';
+            require_once dirname(__DIR__) . '/mon-affichage-article/includes/class-my-articles-block.php';
+        }
+    }
+
     protected function tearDown(): void
     {
         parent::tearDown();

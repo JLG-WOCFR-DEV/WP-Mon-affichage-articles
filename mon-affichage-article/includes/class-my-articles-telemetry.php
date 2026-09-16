@@ -1,6 +1,6 @@
 <?php
 /**
- * Telemetry aggregation for the Mon Affichage Articles plugin.
+ * Telemetry aggregation for Tuiles - JLG.
  *
  * @package Mon_Affichage_Articles
  */

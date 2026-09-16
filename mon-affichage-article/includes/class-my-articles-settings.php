@@ -29,7 +29,7 @@ class My_Articles_Settings {
     public function add_plugin_page() {
         $this->plugin_page_hook = add_submenu_page(
             'edit.php?post_type=mon_affichage',
-            __( 'Réglages', 'mon-articles' ),
+            __( 'Réglages Tuiles - JLG', 'mon-articles' ),
             __( 'Réglages', 'mon-articles' ),
             'manage_options',
             'my-articles-settings',
@@ -66,7 +66,7 @@ class My_Articles_Settings {
 
         ?>
         <div class="wrap">
-            <h1><?php esc_html_e( 'Réglages Tuiles - LCV', 'mon-articles' ); ?></h1>
+            <h1><?php esc_html_e( 'Réglages Tuiles - JLG', 'mon-articles' ); ?></h1>
 
             <?php if ( isset( $_GET['status'] ) && 'reset' === $_GET['status'] ) : // phpcs:ignore WordPress.Security.NonceVerification.Recommended ?>
                 <div class="notice notice-success is-dismissible"><p><?php esc_html_e( 'Les réglages ont été réinitialisés.', 'mon-articles' ); ?></p></div>
@@ -74,7 +74,7 @@ class My_Articles_Settings {
 
             <?php settings_errors(); ?>
 
-            <nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php echo esc_attr__( 'Sections des réglages Tuiles', 'mon-articles' ); ?>">
+            <nav class="nav-tab-wrapper wp-clearfix" aria-label="<?php echo esc_attr__( 'Sections des réglages Tuiles - JLG', 'mon-articles' ); ?>">
                 <a href="<?php echo esc_url( add_query_arg( 'tab', 'settings', $base_url ) ); ?>" class="nav-tab<?php echo 'settings' === $current_tab ? ' nav-tab-active' : ''; ?>"><?php esc_html_e( 'Réglages', 'mon-articles' ); ?></a>
                 <a href="<?php echo esc_url( add_query_arg( 'tab', 'instrumentation', $base_url ) ); ?>" class="nav-tab<?php echo 'instrumentation' === $current_tab ? ' nav-tab-active' : ''; ?>"><?php esc_html_e( 'Instrumentation', 'mon-articles' ); ?></a>
             </nav>
@@ -102,6 +102,14 @@ class My_Articles_Settings {
                 <p><?php esc_html_e( 'Avec le canal « fetch », les événements sont également disponibles via l’action WordPress my_articles_track_interaction. C’est l’occasion de connecter facilement votre solution de monitoring ou d’analytics existante.', 'mon-articles' ); ?></p>
 
                 <p><?php esc_html_e( 'En résumé, cette section vous offre un moyen simple de suivre, analyser et rediriger les interactions des utilisateurs avec vos tuiles, sans code supplémentaire.', 'mon-articles' ); ?></p>
+
+                <form method="post" action="options.php">
+                    <?php
+                    settings_fields( $this->option_group );
+                    do_settings_sections( 'my-articles-admin-instrumentation' );
+                    submit_button();
+                    ?>
+                </form>
             <?php else : ?>
                 <p class="description"><?php esc_html_e( 'Utilisez le shortcode [mon_affichage_articles id="123"] pour afficher les articles. Vous pouvez récupérer l\'identifiant dans la metabox « Shortcode à utiliser ».', 'mon-articles' ); ?></p>
 
@@ -169,9 +177,9 @@ class My_Articles_Settings {
         add_settings_field( 'meta_color_hover', __( 'Couleur du texte (méta, survol)', 'mon-articles' ), array( $this, 'meta_color_hover_callback' ), 'my-articles-admin', 'setting_section_appearance' );
         add_settings_field( 'pagination_color', __( 'Couleur de la pagination (Diaporama)', 'mon-articles' ), array( $this, 'pagination_color_callback' ), 'my-articles-admin', 'setting_section_appearance' );
 
-        add_settings_section( 'setting_section_instrumentation', __( 'Instrumentation', 'mon-articles' ), null, 'my-articles-admin' );
-        add_settings_field( 'instrumentation_enabled', __( 'Activer l\'instrumentation', 'mon-articles' ), array( $this, 'instrumentation_enabled_callback' ), 'my-articles-admin', 'setting_section_instrumentation' );
-        add_settings_field( 'instrumentation_channel', __( 'Canal de sortie', 'mon-articles' ), array( $this, 'instrumentation_channel_callback' ), 'my-articles-admin', 'setting_section_instrumentation' );
+        add_settings_section( 'setting_section_instrumentation', __( 'Instrumentation', 'mon-articles' ), null, 'my-articles-admin-instrumentation' );
+        add_settings_field( 'instrumentation_enabled', __( 'Activer l\'instrumentation', 'mon-articles' ), array( $this, 'instrumentation_enabled_callback' ), 'my-articles-admin-instrumentation', 'setting_section_instrumentation' );
+        add_settings_field( 'instrumentation_channel', __( 'Canal de sortie', 'mon-articles' ), array( $this, 'instrumentation_channel_callback' ), 'my-articles-admin-instrumentation', 'setting_section_instrumentation' );
     }
 
     public function sanitize( $input ) {

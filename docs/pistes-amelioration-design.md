@@ -11,7 +11,7 @@
 - Permettre d'enregistrer des variantes personnalisées (ex. par rédaction ou section du site) puis de les partager via l'API REST afin de capitaliser sur les configurations plébiscitées.
 - Offrir un bouton « Dupliquer ce preset » qui pré-remplit les curseurs avant de passer en mode personnalisé, afin de réduire la friction entre expérimentation et industrialisation.
 
-> **Point de départ actuel :** l'éditeur expose quatre préréglages (« Personnalisé », « Classique LCV », « Projecteur sombre », « Focus éditorial ») mais sans aperçu ni métadonnées, ce qui limite leur appropriation par les équipes éditoriales.【F:README.md†L69-L98】
+> **Point de départ actuel :** l'éditeur expose quatre préréglages (« Personnalisé », « Classique JLG », « Projecteur sombre », « Focus éditorial ») mais sans aperçu ni métadonnées, ce qui limite leur appropriation par les équipes éditoriales.【F:README.md†L69-L98】
 
 ## 3. Raffiner les états de chargement et vides
 - Décliner plusieurs variations de skeleton (carte, liste, diaporama) avec options de densité, de couleur et de motion pour coller aux différents contextes éditoriaux (actualité chaude vs. dossiers long format).

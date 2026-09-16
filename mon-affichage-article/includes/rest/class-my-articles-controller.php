@@ -1,6 +1,6 @@
 <?php
 /**
- * REST controller for My Articles responses.
+ * REST controller for Tuiles - JLG responses.
  *
  * @package Mon_Affichage_Articles
  */

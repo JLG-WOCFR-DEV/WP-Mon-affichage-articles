@@ -7,6 +7,10 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
+if ( ! interface_exists( 'My_Articles_Content_Adapter_Interface' ) ) {
+    require_once __DIR__ . '/interface-my-articles-content-adapter.php';
+}
+
 if ( ! class_exists( 'My_Articles_Block_Preview_Adapter' ) ) {
     class My_Articles_Block_Preview_Adapter implements My_Articles_Content_Adapter_Interface {
         /**

@@ -5,7 +5,7 @@ if ( ! defined( 'WPINC' ) ) {
 
 if ( defined( 'WP_CLI' ) && WP_CLI && ! class_exists( 'My_Articles_CLI_Presets_Command' ) ) {
     /**
-     * Manage design presets for the Mon Affichage Articles plugin.
+     * Manage design presets for Tuiles - JLG.
      */
     class My_Articles_CLI_Presets_Command extends WP_CLI_Command {
         /**
