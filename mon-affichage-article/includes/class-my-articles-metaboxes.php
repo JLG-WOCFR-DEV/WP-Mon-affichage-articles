@@ -192,7 +192,7 @@ class My_Articles_Metaboxes {
         );
 
         printf(
-            '<p style="font-size: 14px; background-color: #f0f6fc; border-left: 4px solid #72aee6; padding: 10px;">%s</p>',
+            '<div class="notice notice-info inline"><p>%s</p></div>',
             $helper_message
         );
 

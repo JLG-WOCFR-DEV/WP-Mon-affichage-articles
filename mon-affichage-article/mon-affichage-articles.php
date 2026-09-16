@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Tuiles - LCV
+ * Plugin Name:       Tuiles - JLG
  * Description:       Affiche les articles d'une catégorie spécifique via un shortcode, avec un design personnalisable.
- * Version:           2.4.0
- * Author:            LCV
+ * Version:           2.4.1
+ * Author:            Jérôme Le Gousse
  * License:           GPL-2.0+
  * License URI:       http://www.gnu.org/licenses/gpl-2.0.txt
  * Text Domain:       mon-articles
@@ -17,7 +17,7 @@ if ( ! defined( 'WPINC' ) ) {
     die;
 }
 
-define( 'MY_ARTICLES_VERSION', '2.4.0' );
+define( 'MY_ARTICLES_VERSION', '2.4.1' );
 define( 'MY_ARTICLES_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MY_ARTICLES_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -1743,7 +1743,7 @@ public function prepare_filter_articles_response( array $args ) {
         $labels = [
             'name' => _x( 'Affichages Articles', 'Post Type General Name', 'mon-articles' ),
             'singular_name' => _x( 'Affichage Articles', 'Post Type Singular Name', 'mon-articles' ),
-            'menu_name' => __( 'Mes Affichages', 'mon-articles' ),
+            'menu_name' => __( 'Tuiles - JLG', 'mon-articles' ),
             'name_admin_bar' => __( 'Affichage Articles', 'mon-articles' ),
             'all_items' => __( 'Tous les Affichages', 'mon-articles' ),
             'add_new_item' => __( 'Ajouter un nouvel Affichage', 'mon-articles' ),

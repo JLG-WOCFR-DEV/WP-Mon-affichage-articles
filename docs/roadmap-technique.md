@@ -1,4 +1,4 @@
-# Roadmap technique Tuiles – LCV
+# Roadmap technique Tuiles - JLG
 
 Cette feuille de route découpe les chantiers identifiés dans le README et les notes techniques en lots activables. Chaque objectif renvoie vers les zones de code concernées pour faciliter la planification.
 

@@ -1,4 +1,4 @@
-# Revue technique et accessibilité de l'extension "Tuiles - LCV"
+# Revue technique et accessibilité de l'extension "Tuiles - JLG"
 
 ## 1. Synthèse exécutive
 - **Couverture fonctionnelle** : le plugin fournit un module riche (grille, liste, carrousel, recherche, filtres) et expose une instrumentation avancée (`aria-*`, télémétrie, debug mode).

@@ -1,4 +1,4 @@
-# Revue du plugin « Tuiles – LCV »
+# Revue du plugin « Tuiles - JLG »
 
 ## Résumé exécutif
 - Le cœur du plugin est bien structuré (services singleton, séparation helpers / REST / bloc) mais certains comportements JavaScript sont ré-implémentés « maison » et n’offrent pas les garanties attendues (gestion du carrousel notamment).

@@ -22,6 +22,7 @@ final class BlockPreviewTest extends TestCase
         parent::setUp();
 
         if (!class_exists(\My_Articles_Block::class)) {
+            require_once __DIR__ . '/../mon-affichage-article/includes/interface-my-articles-content-adapter.php';
             require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-block-preview-adapter.php';
             require_once __DIR__ . '/../mon-affichage-article/includes/class-my-articles-block.php';
         }

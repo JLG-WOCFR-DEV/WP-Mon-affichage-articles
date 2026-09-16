@@ -172,8 +172,16 @@ class My_Articles_Block {
     public static function prepare_overrides_from_attributes( array $attributes ) {
         $defaults  = My_Articles_Shortcode::get_default_options();
         $overrides = array();
-        $filtered  = array_intersect_key( $attributes, $defaults );
         $schema    = self::get_override_schema();
+        $allowed   = $defaults;
+
+        foreach ( array_keys( $schema ) as $schema_key ) {
+            if ( ! array_key_exists( $schema_key, $allowed ) ) {
+                $allowed[ $schema_key ] = null;
+            }
+        }
+
+        $filtered = array_intersect_key( $attributes, $allowed );
 
         foreach ( $filtered as $key => $raw_value ) {
             if ( null === $raw_value ) {
@@ -181,7 +189,7 @@ class My_Articles_Block {
             }
 
             $definition    = isset( $schema[ $key ] ) && is_array( $schema[ $key ] ) ? $schema[ $key ] : array();
-            $default_value = $defaults[ $key ];
+            $default_value = array_key_exists( $key, $defaults ) ? $defaults[ $key ] : null;
             $normalized    = self::normalize_override_value( $raw_value, $default_value, $definition );
 
             if ( null === $normalized ) {

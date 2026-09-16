@@ -161,6 +161,8 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
     {
         $plugin = (string) file_get_contents($this->pluginRoot() . '/mon-affichage-articles.php');
 
+        $this->assertMatchesRegularExpression('/Plugin Name:\s*Tuiles - JLG/', $plugin);
+        $this->assertMatchesRegularExpression('/Author:\s*Jérôme Le Gousse/', $plugin);
         $this->assertMatchesRegularExpression('/Requires at least:\s*\S+/', $plugin);
         $this->assertMatchesRegularExpression('/Tested up to:\s*7\.1/', $plugin);
         $this->assertMatchesRegularExpression('/Requires PHP:\s*\S+/', $plugin);
@@ -173,6 +175,8 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
 
         $this->assertStringContainsString('class="wrap"', $settings);
         $this->assertMatchesRegularExpression('/<h1[^>]*>/', $settings);
+        $this->assertStringContainsString('Réglages Tuiles - JLG', $settings);
+        $this->assertStringContainsString('my-articles-admin-instrumentation', $settings);
         $this->assertLessThan(
             (int) strpos($settings, 'nav-tab-wrapper'),
             (int) strpos($settings, '<h1'),
@@ -216,6 +220,8 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
 
         $this->assertStringContainsString('class="wrap"', $output);
         $this->assertStringContainsString('<h1>', $output);
+        $this->assertStringContainsString('Réglages Tuiles - JLG', $output);
+        $this->assertStringNotContainsString('LCV', $output);
         $this->assertStringContainsString('nav-tab-wrapper', $output);
         $this->assertStringContainsString('nav-tab-active', $output);
         $this->assertStringContainsString('notice notice-success', $output);
@@ -223,6 +229,25 @@ final class Phase2AdminCharterAndWp71Test extends TestCase
         $this->assertStringContainsString('button-primary', $output);
         $this->assertStringNotContainsString('my-articles-admin__header', $output);
         $this->assertStringNotContainsString('data-theme=', $output);
+    }
+
+    public function test_instrumentation_tab_renders_native_settings_form(): void
+    {
+        $_GET['tab'] = 'instrumentation';
+        $page        = My_Articles_Settings::get_instance();
+
+        ob_start();
+        $page->create_admin_page();
+        $output = (string) ob_get_clean();
+
+        $this->assertStringContainsString('class="wrap"', $output);
+        $this->assertStringContainsString('Réglages Tuiles - JLG', $output);
+        $this->assertStringContainsString('nav-tab-active', $output);
+        $this->assertStringContainsString('name="option_page"', $output);
+        $this->assertStringContainsString('form-table', $output);
+        $this->assertStringContainsString('button-primary', $output);
+        $this->assertStringNotContainsString('LCV', $output);
+        $this->assertStringNotContainsString('my-articles-admin__header', $output);
     }
 
     public function test_block_json_uses_api_version_3(): void

@@ -1,6 +1,6 @@
 # Vérification des fonctionnalités implémentées
 
-Cette note récapitule la présence (ou non) des fonctionnalités décrites dans le README pour **Tuiles – LCV**.
+Cette note récapitule la présence (ou non) des fonctionnalités décrites dans le README pour **Tuiles - JLG**.
 
 ## Gestion du contenu
 - **Type de contenu personnalisé** `mon_affichage` : enregistré avec exposition REST et metaboxes dédiées. 【F:mon-affichage-article/mon-affichage-articles.php†L1480-L1519】【F:mon-affichage-article/includes/class-my-articles-metaboxes.php†L17-L239】

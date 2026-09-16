@@ -1,6 +1,6 @@
 # Comparaison avec des extensions professionnelles et pistes d'amélioration
 
-Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress professionnelles de mise en avant de contenus (ex. Essential Grid, JetEngine Listings, WP Grid Builder) et propose des améliorations pour combler les écarts fonctionnels et UX.
+Ce mémo met en parallèle **Tuiles - JLG** avec des extensions WordPress professionnelles de mise en avant de contenus (ex. Essential Grid, JetEngine Listings, WP Grid Builder) et propose des améliorations pour combler les écarts fonctionnels et UX.
 
 ## Forces actuelles
 
@@ -10,7 +10,7 @@ Ce mémo met en parallèle **Tuiles – LCV** avec des extensions WordPress prof
 
 ### Tableau comparatif synthétique
 
-| Dimension | Tuiles – LCV (actuel) | Extensions pro (Essential Grid, JetEngine, WP Grid Builder) | Opportunité d'évolution |
+| Dimension | Tuiles - JLG (actuel) | Extensions pro (Essential Grid, JetEngine, WP Grid Builder) | Opportunité d'évolution |
 | --- | --- | --- | --- |
 | **Sélection de templates** | Liste déroulante textuelle sans aperçu.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L806-L881】 | Bibliothèque visuelle filtrable, preview responsive et cas d'usage prédéfinis. | Créer un catalogue de presets versionnés avec vignettes et tags de contexte. |
 | **Composition des cartes** | Structure figée (image, titre, métadonnées, extrait).【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1972-L2075】 | Builder drag & drop avec champs dynamiques (ACF, WooCommerce, taxonomies). | Introduire des slots configurables et la prise en charge de champs personnalisés. |
@@ -99,7 +99,7 @@ La feuille de style front assure les fondamentaux (squelettes animés, transitio
 - **État vide scénarisé** : permettre d'ajouter un bouton d'action, une liste d'articles suggérés ou un formulaire d'abonnement lorsque la requête ne retourne aucun contenu, plutôt que le simple message statique généré actuellement.
 - **Feedbacks interactifs** : intégrer des micro-effets (hover avec élévation, focus accentué, lottie ou icônes animées pour les badges) et des réglages d'accessibilité associés (contraste renforcé, annonce ARIA personnalisée) pour se rapprocher du niveau de finition des produits concurrents.
 
-En priorisant ces axes, Tuiles – LCV pourra rivaliser plus sereinement avec les extensions professionnelles, tant sur le confort d'utilisation que sur la richesse fonctionnelle attendue par les équipes marketing et éditoriales exigeantes.
+En priorisant ces axes, Tuiles - JLG pourra rivaliser plus sereinement avec les extensions professionnelles, tant sur le confort d'utilisation que sur la richesse fonctionnelle attendue par les équipes marketing et éditoriales exigeantes.
 
 ### Compléments UX/UI inspirés des suites professionnelles
 
@@ -138,7 +138,7 @@ En priorisant ces axes, Tuiles – LCV pourra rivaliser plus sereinement avec le
 
 ### Comparatif accessibilité, UI et fiabilité
 
-| Dimension | Tuiles – LCV (actuel) | Extensions pro (JetEngine, WP Grid Builder, Stackable Pro) | Opportunités d’évolution |
+| Dimension | Tuiles - JLG (actuel) | Extensions pro (JetEngine, WP Grid Builder, Stackable Pro) | Opportunités d’évolution |
 | --- | --- | --- | --- |
 | **Accessibilité sémantique** | Le shortcode applique des libellés ARIA configurables pour le wrapper et la barre de filtres, mais laisse l’utilisateur final rédiger chaque message manuellement.【F:mon-affichage-article/includes/class-my-articles-shortcode.php†L1844-L1884】 | Les solutions premium pré-remplissent des libellés localisés, détectent l’absence de description et proposent des messages adaptés aux filtres actifs. | Ajouter un générateur de descriptions contextuelles (avec suggestions automatiques et contrôle de contraste) et des messages d’état dynamiques annoncés via `aria-live`. |
 | **Organisation des réglages** | Tous les contrôles (disposition, pagination, slideshow, accessibilité, recherche) cohabitent dans la même sidebar Gutenberg avec de multiples `PanelBody`, ce qui crée des parcours longs à scroller.【F:mon-affichage-article/blocks/mon-affichage-articles/edit.js†L1661-L1755】 | Les extensions pro distinguent un mode « Essentiel » (affichage, contenu, interactions de base) d’un mode « Avancé » (animation, fine tuning) et intègrent une recherche instantanée. | Structurer un double panneau « Simple » vs « Expert », avec une vue condensée basée sur les presets et une vue détaillée munie de favoris et de filtres par catégorie de réglage. |

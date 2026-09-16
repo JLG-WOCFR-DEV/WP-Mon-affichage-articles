@@ -1,4 +1,4 @@
-# Tuiles - LCV
+# Tuiles - JLG
 
 Affiche les articles d'une catégorie spécifique via un shortcode, avec un design personnalisable.
 
@@ -9,7 +9,7 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 - Type de contenu personnalisé `mon_affichage` pour stocker les configurations d'affichage, exposé dans l'administration WordPress et accessible en REST pour les intégrations.
 - Metabox par instance pour choisir la source de contenus (type, taxonomie, terme), appliquer des filtres permanents, exclure des IDs et piloter les articles épinglés.
 - Gestion avancée des articles mis en avant : badge personnalisable, couleurs dédiées, contournement optionnel des filtres et dépriorisation des sticky natifs de WordPress.
-- Paramètres globaux (catégorie par défaut, tri, colonnes, couleurs, instrumentation, etc.) avec bouton de réinitialisation disponibles dans le menu « Tuiles – LCV ».
+- Paramètres globaux (catégorie par défaut, tri, colonnes, couleurs, instrumentation, etc.) avec bouton de réinitialisation disponibles dans le menu « Tuiles - JLG ».
 
 ### Affichage et interactions
 
@@ -22,7 +22,7 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 
 ### Personnalisation visuelle
 
-- Quatre préréglages de design intégrés (« Personnalisé », « Classique LCV », « Projecteur sombre », « Focus éditorial ») synchronisés avec l'éditeur Gutenberg.
+- Quatre préréglages de design intégrés (« Personnalisé », « Classique JLG », « Projecteur sombre », « Focus éditorial ») synchronisés avec l'éditeur Gutenberg.
 - Contrôles fins des espacements, marges internes, arrondis, couleurs (module, vignettes, badges, métadonnées, pagination), typographies et longueur des extraits, y compris des réglages spécifiques au mode liste.
 - Mode de débogage front pouvant afficher les informations techniques sous le module pour investiguer les requêtes et options appliquées.
 
@@ -49,7 +49,7 @@ Affiche les articles d'une catégorie spécifique via un shortcode, avec un desi
 ## Installation
 
 1. Copier le dossier `mon-affichage-article` dans le répertoire `wp-content/plugins/` de votre installation WordPress.
-2. Activer **Tuiles – LCV** depuis le menu **Extensions** de l'administration WordPress.
+2. Activer **Tuiles - JLG** depuis le menu **Extensions** de l'administration WordPress.
 
 ## Compatibilité
 
@@ -67,7 +67,7 @@ Utiliser le shortcode :
 
 ## Utilisation dans l'éditeur de blocs
 
-1. Depuis l'éditeur Gutenberg, ajouter le bloc **Tuiles – LCV**.
+1. Depuis l'éditeur Gutenberg, ajouter le bloc **Tuiles - JLG**.
 2. Sélectionner l'instance `mon_affichage` à afficher via le panneau latéral.
 3. Ajuster les principaux réglages (mode d'affichage, filtres, pagination...) depuis les contrôles du bloc.
 4. Utiliser le champ de recherche du panneau **Module** pour retrouver un contenu `mon_affichage`. Les résultats sont chargés par lots (20 éléments) depuis l'API REST et le bouton « Charger plus de résultats » permet de parcourir l'ensemble des contenus disponibles.
@@ -98,7 +98,7 @@ Les panneaux **Disposition**, **Espacements & typographie** et **Couleurs** regr
 Les modèles intégrés permettent de démarrer rapidement avec des combinaisons cohérentes :
 
 - **Personnalisé** (`custom`) : aucun ajustement automatique, vos réglages manuels sont conservés.
-- **Classique LCV** (`lcv-classique`) : fond clair, ombres légères et cartes arrondies.
+- **Classique JLG** (`lcv-classique`) : fond clair, ombres légères et cartes arrondies.
 - **Projecteur sombre** (`dark-spotlight`) : palette foncée à fort contraste pour des mises en avant immersives.
 - **Focus éditorial** (`editorial-focus`) : présentation magazine verrouillée (mode liste, extraits activés) pour homogénéiser les modules éditoriaux.
 - **Headless Air** (`headless-air`) : rendu lumineux et épuré, parfait pour les interfaces système type Headless UI.
@@ -126,7 +126,7 @@ Options principales :
 
 ### Activer le suivi dans l'administration
 
-Le menu **Tuiles – LCV** comporte désormais une section « Instrumentation » :
+Le menu **Tuiles - JLG** comporte désormais une section « Instrumentation » :
 
 - **Activer l’instrumentation** : cochez cette case pour exposer des événements front-end lors des interactions (filtre, chargement progressif). Vous pouvez également activer le mode de débogage pour afficher les informations techniques sous le module côté public.
 - **Canal de sortie** : choisissez le mode de collecte associé (`console`, `dataLayer` ou `fetch`). Lorsque « fetch » est sélectionné, un POST JSON est envoyé vers l’endpoint REST `my-articles/v1/track` et l’action serveur `my_articles_track_interaction` est déclenchée pour chaque succès.
@@ -267,12 +267,12 @@ Le script affecte automatiquement le modèle « Personnalisé » (`custom`) au
 Pour vérifier la prise en charge d'un slug de taxonomie égal à `"0"` :
 
 1. Créez ou identifiez une catégorie (ou tout terme de la taxonomie utilisée) dont le slug vaut exactement `0`.
-2. Configurez un module **Tuiles – LCV** afin qu'il utilise ce terme comme valeur par défaut et activez, si besoin, le filtre de catégories en frontal.
+2. Configurez un module **Tuiles - JLG** afin qu'il utilise ce terme comme valeur par défaut et activez, si besoin, le filtre de catégories en frontal.
 3. Affichez le module côté public et vérifiez que les articles associés au terme `0` apparaissent bien, que le filtre est sélectionné et que la pagination/chargement additionnel respecte ce terme.
 
 Pour valider la prise en compte des réglages globaux :
 
-1. Modifiez un ou plusieurs réglages dans le menu **Tuiles – LCV** (par exemple le mode d'affichage ou les couleurs).
+1. Modifiez un ou plusieurs réglages dans le menu **Tuiles - JLG** (par exemple le mode d'affichage ou les couleurs).
 2. Créez un nouveau contenu de type **mon_affichage** sans surcharger ces options dans la metabox.
 3. Affichez le shortcode correspondant en frontal et vérifiez que le rendu reflète les réglages globaux enregistrés.
 
@@ -301,6 +301,6 @@ Consultez `docs/roadmap-technique.md` pour une version détaillée des chantiers
 
 ## Crédits
 
-Développé par LCV.
+Développé par Jérôme Le Gousse.
 
 Publié sous licence [GPL-2.0+](http://www.gnu.org/licenses/gpl-2.0.txt).

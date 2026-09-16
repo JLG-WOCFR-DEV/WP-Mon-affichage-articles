@@ -1,14 +1,14 @@
 {
     "apiVersion": 3,
     "name": "mon-affichage/articles",
-    "title": "Tuiles – LCV",
+    "title": "Tuiles - JLG",
     "category": "widgets",
     "icon": "screenoptions",
-    "description": "Afficher un module Tuiles – LCV directement dans l’éditeur de blocs.",
+    "description": "Afficher un module Tuiles - JLG directement dans l’éditeur de blocs.",
     "keywords": [
         "articles",
         "tuiles",
-        "lcv"
+        "jlg"
     ],
     "textdomain": "mon-articles",
     "supports": {
